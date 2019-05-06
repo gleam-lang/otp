@@ -36,7 +36,7 @@ pub external fn receive_(Int) -> Result(any:Any, Nil)
   = "erlang_process_external" "receive_";
 
 pub external fn send(Pid, msg) -> msg
-  = "erlang_process_external" "send";
+  = "erlang" "send";
 
 pub external fn is_alive(Pid) -> Bool
   = "erlang" "is_process_alive";

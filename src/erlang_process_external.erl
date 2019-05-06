@@ -1,6 +1,6 @@
 -module(erlang_process_external).
 
--export([send/2, named/1, receive_/1, link/1, register/2, unregister/1]).
+-export([named/1, receive_/1, link/1, register/2, unregister/1]).
 
 register(Pid, Name) ->
   try erlang:register(Name, Pid) of
@@ -33,6 +33,3 @@ receive_(Timeout) ->
   after
     Timeout -> {error, nil}
   end.
-
-send(Pid, Msg) ->
-  Pid ! Msg.
