@@ -1,4 +1,4 @@
--module(erlang_process_external).
+-module(gleam_otp_process_external).
 
 -export([named/1, receive_/1, link/1, register/2, unregister/1]).
 

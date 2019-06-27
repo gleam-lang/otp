@@ -1,5 +1,5 @@
-{application, gleam_erlang_process,
- [{description, "A Gleam library"},
+{application, gleam_otp_process,
+ [{description, "A Gleam library for working with Erlang/OTP processes"},
   {vsn, "0.1.0"},
   {registered, []},
   {applications,
