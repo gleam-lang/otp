@@ -10,7 +10,7 @@ pub external type Pid;
 pub external fn self() -> Pid
   = "erlang" "self";
 
-pub external fn named(atom:Atom) -> Result(Pid, Nil)
+pub external fn named(atom.Atom) -> Result(Pid, Nil)
   = "gleam_otp_process_external" "named";
 
 pub external fn spawn(fn() -> anything) -> Pid
@@ -25,14 +25,13 @@ pub external fn link(Pid) -> Bool
 pub external fn unlink(Pid) -> Bool
   = "erlang" "unlink";
 
-pub external fn register(Pid, atom:Atom) -> Result(atom:Atom, Nil)
+pub external fn register(Pid, atom.Atom) -> Result(atom.Atom, Nil)
   = "gleam_otp_process_external" "register";
 
-pub external fn unregister(atom:Atom) -> Result(atom:Atom, Nil)
+pub external fn unregister(atom.Atom) -> Result(atom.Atom, Nil)
   = "gleam_otp_process_external" "unregister";
 
-// TODO: rename when we have escaping
-pub external fn receive(Int) -> Result(any:Any, Nil)
+pub external fn receive(Int) -> Result(any.Any, Nil)
   = "gleam_otp_process_external" "receive_";
 
 pub external fn send(Pid, msg) -> msg
@@ -46,8 +45,9 @@ pub external fn send_exit(Pid, reason) -> Bool
 
 pub external type MonitorRef;
 
-enum MonitorType =
-  | Process
+enum MonitorType {
+  Process
+}
 
 external fn erl_monitor(MonitorType, Pid) -> MonitorRef
   = "erlang" "monitor";
