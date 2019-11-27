@@ -1,10 +1,7 @@
 # gleam_otp_process
 
-A Gleam library for working with Erlang/OTP processes.
-
-The process abstraction here is a very thin layer over Erlang and as such is
-is opaque and provides little to no type safety. This is useful for interop
-with Erlang systems but type safe abstractions should be used where possible.
+A Gleam library for working with Erlang/OTP processes in a (mostly) type safe
+fashion.
 
 
 ## Quick start
