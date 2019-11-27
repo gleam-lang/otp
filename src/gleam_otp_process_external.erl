@@ -1,35 +1,25 @@
 -module(gleam_otp_process_external).
 
--export([named/1, receive_/1, link/1, register/2, unregister/1]).
+-export([cast/1, send_exit/2, link/1, unlink/1]).
 
-register(Pid, Name) ->
-  try erlang:register(Name, Pid) of
-    _ -> {ok, Name}
-  catch
-    error:badarg -> {error, nil}
-  end.
+cast(X) -> X.
 
-unregister(Name) ->
-  try erlang:unregister(Name) of
-    _ -> {ok, Name}
-  catch
-    error:badarg -> {error, nil}
-  end.
+send_exit(Pid, Reason) ->
+  exit(Pid, Reason),
+  nil.
 
 link(Pid) ->
-  try erlang:link(Pid) catch
-    error:noproc -> false
+  try
+    erlang:link(Pid),
+    linked
+  catch
+    error:noproc -> process_not_found
   end.
 
-named(Name) ->
-  case whereis(Name) of
-    Pid when is_pid(Pid) -> {ok, Pid};
-    _ -> {error, nil}
-  end.
-
-receive_(Timeout) ->
+unlink(Pid) ->
+  erlang:unlink(Pid),
   receive
-    Msg -> {ok, Msg}
+    {'EXIT', Pid, _} -> nil
   after
-    Timeout -> {error, nil}
+    0 -> nil
   end.
