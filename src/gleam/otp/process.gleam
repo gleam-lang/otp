@@ -30,7 +30,6 @@ pub enum UnknownMessage {
 // This may be useful for when you wish to have a list or other data structure
 // of Pids but don't care about what messages they can receieve.
 //
-// TODO: test
 pub external fn make_opaque(Pid(msg)) -> Pid(UnknownMessage)
   = "gleam_otp_process_external" "cast";
 
@@ -55,7 +54,6 @@ pub enum LinkResult {
 // See the [Erlang documentation][erl] for more information.
 // [erl]: http://erlang.org/doc/man/erlang.html#link-1
 //
-// TODO: test
 pub external fn link(Pid(msg)) -> LinkResult
   = "gleam_otp_process_external" "link";
 
@@ -66,7 +64,6 @@ pub external fn link(Pid(msg)) -> LinkResult
 // See the [Erlang documentation][erl] for more information.
 // [erl]: http://erlang.org/doc/man/erlang.html#unlink-1
 //
-// TODO: test
 pub external fn unlink(Pid(msg)) -> Nil
   = "gleam_otp_process_external" "unlink";
 
@@ -87,7 +84,6 @@ pub external fn send(to: Pid(msg), msg: msg) -> msg
 // See the [Erlang documentation][erl] for more information.
 // [erl]: http://erlang.org/doc/man/erlang.html#is_process_alive-1
 //
-// TODO: test
 pub external fn is_alive(Pid(msg)) -> Bool
   = "erlang" "is_process_alive";
 
@@ -185,7 +181,7 @@ pub enum Flag(msg) {
 
 // TODO: document
 // TODO: test
-pub external fn spawn(List(Flag(msg)), fn(Self(msg)) -> Nil) -> Pid(msg)
+pub external fn spawn(fn(Self(msg)) -> Nil, List(Flag(msg))) -> Pid(msg)
   = "gleam_otp_process_external" "spawn";
 
 // TODO: document

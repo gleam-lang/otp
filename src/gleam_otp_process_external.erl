@@ -44,8 +44,8 @@ apply_flag({trap_exit, F}, Self) ->
 apply_flag(link, Self) ->
   Self.
 
-spawn(Flags, Fn) ->
-  Spawner = case list:member(link, Flags) of
+spawn(Fn, Flags) ->
+  Spawner = case lists:member(link, Flags) of
     true  -> fun spawn_link/1;
     false -> fun spawn/1
   end,
@@ -60,7 +60,7 @@ receive_(Self, Timeout) ->
       {ok, Exit(From, Reason)};
 
     OtherMsg ->
-      OtherMsg
+      {ok, OtherMsg}
   after
     Timeout -> {error, nil}
   end.
