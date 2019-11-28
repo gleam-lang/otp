@@ -2,6 +2,7 @@ import gleam/otp/process
 import gleam/expect
 import gleam/result
 import gleam/atom
+import gleam/any
 
 external fn sleep(Int) -> Nil = "timer" "sleep"
 
@@ -43,7 +44,6 @@ pub fn make_opaque_test() {
   let f = fn(add: fn(x) -> x) {
     fn(self) {
       self |> process.receive_(_, 0) |> result.map(_, add)
-      Nil
     }
   }
   let float_pid = process.spawn(f(fn(x) { x +. 1. }), [])
@@ -59,9 +59,52 @@ pub fn send_test() {
     self |> process.receive_(_, 50) |> expect.equal(_, Ok(1))
     self |> process.receive_(_, 50) |> expect.equal(_, Ok(2))
     self |> process.receive_(_, 50) |> expect.equal(_, Ok(3))
-    Nil
   }, [process.Link])
   process.send(pid, 1)
   process.send(pid, 2)
   process.send(pid, 3)
+}
+
+pub fn unsafe_downcast_send() {
+  let f = fn(add: fn(x) -> x) {
+    fn(self) {
+      self |> process.receive_(_, 0) |> result.map(_, add)
+    }
+  }
+  let float_pid = process.spawn(f(fn(x) { x +. 1. }), [])
+  let int_pid = process.spawn(f(fn(x) { x + 1 }), [])
+  // They can be compared now, they are the same type
+  let opaque_pid = process.make_opaque(int_pid)
+  let fake_float_pid = process.unsafe_downcast(opaque_pid)
+  expect.false(
+    float_pid == fake_float_pid
+  )
+}
+
+pub fn send_exit_test() {
+  let pid = process.spawn(fn(_) { Nil }, [])
+  expect.true(process.is_alive(pid))
+  process.send_exit(pid, atom.create_from_string("normal"))
+  sleep(20)
+  expect.false(process.is_alive(pid))
+}
+
+pub fn own_pid_test() {
+  process.spawn(fn(self) {
+    self
+    |> process.own_pid
+    |> process.make_opaque
+    |> expect.equal(_, process.opaque_own_pid())
+  }, [])
+  sleep(20)
+}
+
+pub fn opaque_receive_test() {
+  let pid = process.spawn(fn(self) {
+    self |> process.receive_(_, 20) |> expect.equal(_, Ok(1))
+    process.opaque_receive(20) |> expect.equal(_, Ok(any.from("hi")))
+  }, [process.Link])
+  process.send(pid, 1)
+  pid |> process.make_opaque |> process.unsafe_downcast |> process.send(_, "hi")
+  sleep(50)
 }

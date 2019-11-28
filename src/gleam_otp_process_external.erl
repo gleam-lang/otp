@@ -67,7 +67,7 @@ receive_(Self, Timeout) ->
 
 receive_(Timeout) ->
   receive
-    Msg -> Msg
+    Msg -> {ok, Msg}
   after
     Timeout -> {error, nil}
   end.

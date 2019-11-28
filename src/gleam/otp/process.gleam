@@ -40,7 +40,6 @@ pub external fn make_opaque(Pid(msg)) -> Pid(UnknownMessage)
 // If you use this and there is a mistake the process will likely crash when
 // you send a message to it!
 //
-// TODO: test
 pub external fn unsafe_downcast(Pid(UnknownMessage)) -> Pid(known_message)
   = "gleam_otp_process_external" "cast";
 
@@ -75,7 +74,6 @@ pub external fn unlink(Pid(msg)) -> Nil
 // See the [Erlang documentation][erl] for more information.
 // [erl]: http://erlang.org/doc/man/erlang.html#send-2
 //
-// TODO: test
 pub external fn send(to: Pid(msg), msg: msg) -> msg
   = "erlang" "send";
 
@@ -93,7 +91,6 @@ pub external fn is_alive(Pid(msg)) -> Bool
 // See the [Erlang documentation][erl] for more information.
 // [erl]: http://erlang.org/doc/man/erlang.html#exit-2
 //
-// TODO: test
 pub external fn send_exit(to: Pid(msg), because: reason) -> Nil
   = "gleam_otp_process_external" "send_exit";
 
@@ -114,7 +111,6 @@ pub external type Self(accepted_message)
 
 // Get the Pid of the current process.
 //
-// TODO: test
 pub external fn own_pid(Self(msg)) -> Pid(msg)
   = "gleam_otp_process_external" "own_pid";
 
@@ -124,7 +120,6 @@ pub external fn own_pid(Self(msg)) -> Pid(msg)
 // type of the messages that the current process accepts, so it uses the
 // UnknownMessage type which cannot be constructed or sent.
 //
-// TODO: test
 pub external fn opaque_own_pid() -> Pid(UnknownMessage)
   = "gleam_otp_process_external" "own_pid";
 
@@ -180,17 +175,14 @@ pub enum Flag(msg) {
 }
 
 // TODO: document
-// TODO: test
-pub external fn spawn(fn(Self(msg)) -> Nil, List(Flag(msg))) -> Pid(msg)
+pub external fn spawn(fn(Self(msg)) -> anything, List(Flag(msg))) -> Pid(msg)
   = "gleam_otp_process_external" "spawn";
 
 // TODO: document
-// TODO: test
 // TODO: rename once we have better escaping https://github.com/gleam-lang/gleam/issues/329
 pub external fn receive_(Self(msg), waiting_max: Int) -> Result(msg, Nil)
   = "gleam_otp_process_external" "receive_";
 
 // TODO: document
-// TODO: test
 pub external fn opaque_receive(waiting_max: Int) -> Result(Any, Nil)
   = "gleam_otp_process_external" "receive_";
