@@ -2,7 +2,7 @@ import gleam/otp/process
 import gleam/expect
 import gleam/result
 import gleam/atom
-import gleam/any
+import gleam/any.{Any}
 
 external fn sleep(Int) -> Nil = "timer" "sleep"
 
@@ -107,4 +107,21 @@ pub fn opaque_receive_test() {
   process.send(pid, 1)
   pid |> process.make_opaque |> process.unsafe_downcast |> process.send(_, "hi")
   sleep(50)
+}
+
+struct Exit {
+  exited: process.Pid(process.UnknownMessage)
+  reason: Any
+}
+
+pub fn trap_exit_test() {
+  let linkee = process.spawn(process.receive_(_, 150), [])
+  process.spawn(fn(self) {
+    let expected_exit_signal = Exit(process.make_opaque(linkee), any.from(1))
+    self
+    |> process.receive_(_, 150)
+    |> expect.equal(_, Ok(expected_exit_signal))
+  }, [process.TrapExit(Exit)])
+  process.send(linkee, 1)
+  sleep(20)
 }

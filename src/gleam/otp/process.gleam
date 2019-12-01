@@ -143,7 +143,6 @@ pub enum Flag(msg) {
   Link
 
   // TODO: document
-  // TODO: test
   TrapExit(fn(Pid(UnknownMessage), Any) -> msg)
 
   // TODO: document
