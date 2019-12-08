@@ -1,7 +1,5 @@
 // TODO: README
-// TODO: Linking
-// TODO: Trapping exits
-// TODO: monitor (similar to trap exit?)
+// TODO: monitor
 
 import gleam/atom
 import gleam/any.{Any}
@@ -123,9 +121,97 @@ pub external fn own_pid(Self(msg)) -> Pid(msg)
 pub external fn opaque_own_pid() -> Pid(UnknownMessage)
   = "gleam_otp_process_external" "own_pid";
 
+// A private type to ensure we do not leak values from unreliable Erlang
+// functions.
+external type DoNotLeak
+
+external fn process_dictionary_set(anything, anything_else) -> DoNotLeak
+  = "erlang" "put";
+
+external fn process_dictionary_delete(anything) -> DoNotLeak
+  = "erlang" "erase";
+
+// The key used to store in the process dictionary the the trap_exit msg
+// constructor.
+struct GleamOtpProcessExitMsgConstructor {}
+
+// TODO: document
+pub fn trap_exit(constructor: fn(Pid(UnknownMessage), Any) -> msg) {
+  process_dictionary_set(GleamOtpProcessExitMsgConstructor, constructor)
+  Nil
+}
+
+// TODO: document
+// TODO: test
+pub fn no_trap_exit() {
+  process_dictionary_delete(GleamOtpProcessExitMsgConstructor)
+  Nil
+}
+
+enum FlagKey {
+  MaxHeapSize
+  MessageQueueData
+  MinBinVheapSize
+  MinHeapSize
+  Priority
+  SaveCalls
+  Sensitive
+}
+
+external fn apply_process_flag(FlagKey, anything) -> DoNotLeak
+  = "erlang" "process_flag";
+
+// http://erlang.org/doc/man/erlang.html#process_flag-2
+// TODO: document
+// TODO: test
+pub fn set_min_heap_size(in_words limit: Int) {
+  apply_process_flag(MinHeapSize, limit)
+  Nil
+}
+
+// http://erlang.org/doc/man/erlang.html#process_flag-2
+// TODO: document
+// TODO: test
+pub fn set_min_bin_vheap_size(in_words limit: Int) {
+  apply_process_flag(MinBinVheapSize, limit)
+  Nil
+}
+
+// http://erlang.org/doc/man/erlang.html#process_flag-2
+// TODO: document
+// TODO: test
+pub fn set_max_heap_size(in_words limit: Int) {
+  apply_process_flag(MaxHeapSize, limit)
+  Nil
+}
+
 pub enum DataLocation {
   OnHeap
   OffHeap
+}
+
+// http://erlang.org/doc/man/erlang.html#process_flag-2
+// TODO: document
+// TODO: test
+pub fn set_message_queue_data(location: DataLocation) {
+  apply_process_flag(MessageQueueData, location)
+  Nil
+}
+
+// http://erlang.org/doc/man/erlang.html#process_flag-2
+// TODO: document
+// TODO: test
+pub fn set_save_calls(limit: Int) {
+  apply_process_flag(SaveCalls, limit)
+  Nil
+}
+
+// http://erlang.org/doc/man/erlang.html#process_flag-2
+// TODO: document
+// TODO: test
+pub fn set_sensitive(is_sensitive: Int) {
+  apply_process_flag(Sensitive, is_sensitive)
+  Nil
 }
 
 pub enum SchedulerPriority {
@@ -135,53 +221,27 @@ pub enum SchedulerPriority {
   Max
 }
 
-// TODO: document
 // http://erlang.org/doc/man/erlang.html#process_flag-2
-pub enum Flag(msg) {
-  // TODO: document
-  // TODO: test
-  Link
-
-  // TODO: document
-  TrapExit(fn(Pid(UnknownMessage), Any) -> msg)
-
-  // TODO: document
-  // TODO: test
-  MinHeapSize(Int)
-
-  // TODO: document
-  // TODO: test
-  MinBinVheapSize(Int)
-
-  // TODO: document
-  // TODO: test
-  MaxHeapSize(
-    Int,
-    Bool, // kill when max hit
-  )
-
-  // TODO: document
-  // TODO: test
-  MessageQueueData(DataLocation)
-
-  // TODO: document
-  // TODO: test
-  SaveCalls(Int)
-
-  // TODO: document
-  // TODO: test
-  Sensitive
+// TODO: document
+// TODO: test
+pub fn set_priority(level: SchedulerPriority) {
+  apply_process_flag(Priority, level)
+  Nil
 }
 
 // TODO: document
-pub external fn spawn(fn(Self(msg)) -> anything, List(Flag(msg))) -> Pid(msg)
-  = "gleam_otp_process_external" "spawn";
+pub external fn spawn(fn(Self(msg)) -> anything) -> Pid(msg)
+  = "gleam_otp_process_external" "do_spawn";
 
 // TODO: document
-// TODO: rename once we have better escaping https://github.com/gleam-lang/gleam/issues/329
+pub external fn spawn_link(fn(Self(msg)) -> anything) -> Pid(msg)
+  = "gleam_otp_process_external" "do_spawn_link";
+
+// TODO: document
+// TODO: rename once we have better escaping https://github.com/gleam-lang/gleam/issues/340
 pub external fn receive_(Self(msg), waiting_max: Int) -> Result(msg, Nil)
-  = "gleam_otp_process_external" "receive_";
+  = "gleam_otp_process_external" "do_receive";
 
 // TODO: document
 pub external fn opaque_receive(waiting_max: Int) -> Result(Any, Nil)
-  = "gleam_otp_process_external" "receive_";
+  = "gleam_otp_process_external" "do_receive";
