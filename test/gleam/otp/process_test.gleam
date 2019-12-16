@@ -2,7 +2,7 @@ import gleam/otp/process
 import gleam/expect
 import gleam/result
 import gleam/atom
-import gleam/any.{Any}
+import gleam/dynamic.{Dynamic}
 
 external fn sleep(Int) -> Nil = "timer" "sleep"
 
@@ -102,7 +102,7 @@ pub fn own_pid_test() {
 pub fn opaque_receive_test() {
   let pid = process.spawn_link(fn(self) {
     self |> process.receive_(_, 20) |> expect.equal(_, Ok(1))
-    process.opaque_receive(20) |> expect.equal(_, Ok(any.from("hi")))
+    process.opaque_receive(20) |> expect.equal(_, Ok(dynamic.from("hi")))
   })
   process.send(pid, 1)
   pid |> process.make_opaque |> process.unsafe_downcast |> process.send(_, "hi")
@@ -111,14 +111,14 @@ pub fn opaque_receive_test() {
 
 struct Exit {
   exited: process.Pid(process.UnknownMessage)
-  reason: Any
+  reason: Dynamic
 }
 
 pub fn trap_exit_test() {
   let linkee = process.spawn(process.receive_(_, 150))
   process.spawn(fn(self) {
     process.trap_exit(Exit)
-    let expected_exit_signal = Exit(process.make_opaque(linkee), any.from(1))
+    let expected_exit_signal = Exit(process.make_opaque(linkee), dynamic.from(1))
     self
     |> process.receive_(_, 150)
     |> expect.equal(_, Ok(expected_exit_signal))

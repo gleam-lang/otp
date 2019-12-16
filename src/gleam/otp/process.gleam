@@ -2,7 +2,7 @@
 // TODO: monitor
 
 import gleam/atom
-import gleam/any.{Any}
+import gleam/dynamic.{Dynamic}
 
 // A Pid (or Process identifier) is a reference to an OTP process, which is a
 // lightweight thread that communicates by sending and receiving messages.
@@ -14,7 +14,7 @@ pub external type Pid(accepted_message);
 
 // UnknownMessage is a type that has no values, it can never be constructed!
 //
-// This is useful because we can safely cast a Pid of any message type to a Pid
+// This is useful because we can safely cast a Pid of dynamic message type to a Pid
 // of with message type of UnknownMessage as there's no risk of a
 // UnknownMessage value being sent to the process.
 //
@@ -125,10 +125,10 @@ pub external fn opaque_own_pid() -> Pid(UnknownMessage)
 // functions.
 external type DoNotLeak
 
-external fn process_dictionary_set(anything, anything_else) -> DoNotLeak
+external fn process_dictionary_set(dynamicthing, dynamicthing_else) -> DoNotLeak
   = "erlang" "put";
 
-external fn process_dictionary_delete(anything) -> DoNotLeak
+external fn process_dictionary_delete(dynamicthing) -> DoNotLeak
   = "erlang" "erase";
 
 // The key used to store in the process dictionary the the trap_exit msg
@@ -136,7 +136,7 @@ external fn process_dictionary_delete(anything) -> DoNotLeak
 struct GleamOtpProcessExitMsgConstructor {}
 
 // TODO: document
-pub fn trap_exit(constructor: fn(Pid(UnknownMessage), Any) -> msg) {
+pub fn trap_exit(constructor: fn(Pid(UnknownMessage), Dynamic) -> msg) {
   process_dictionary_set(GleamOtpProcessExitMsgConstructor, constructor)
   Nil
 }
@@ -158,7 +158,7 @@ enum FlagKey {
   Sensitive
 }
 
-external fn apply_process_flag(FlagKey, anything) -> DoNotLeak
+external fn apply_process_flag(FlagKey, dynamicthing) -> DoNotLeak
   = "erlang" "process_flag";
 
 // http://erlang.org/doc/man/erlang.html#process_flag-2
@@ -230,11 +230,11 @@ pub fn set_priority(level: SchedulerPriority) {
 }
 
 // TODO: document
-pub external fn spawn(fn(Self(msg)) -> anything) -> Pid(msg)
+pub external fn spawn(fn(Self(msg)) -> dynamicthing) -> Pid(msg)
   = "gleam_otp_process_external" "do_spawn";
 
 // TODO: document
-pub external fn spawn_link(fn(Self(msg)) -> anything) -> Pid(msg)
+pub external fn spawn_link(fn(Self(msg)) -> dynamicthing) -> Pid(msg)
   = "gleam_otp_process_external" "do_spawn_link";
 
 // TODO: document
@@ -243,5 +243,5 @@ pub external fn receive_(Self(msg), waiting_max: Int) -> Result(msg, Nil)
   = "gleam_otp_process_external" "do_receive";
 
 // TODO: document
-pub external fn opaque_receive(waiting_max: Int) -> Result(Any, Nil)
+pub external fn opaque_receive(waiting_max: Int) -> Result(Dynamic, Nil)
   = "gleam_otp_process_external" "do_receive";
