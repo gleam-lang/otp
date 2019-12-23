@@ -109,9 +109,11 @@ pub fn opaque_receive_test() {
   sleep(50)
 }
 
-struct Exit {
-  exited: process.Pid(process.UnknownMessage)
-  reason: Dynamic
+type Exit {
+  Exit(
+    exited: process.Pid(process.UnknownMessage),
+    reason: Dynamic,
+  )
 }
 
 pub fn trap_exit_test() {

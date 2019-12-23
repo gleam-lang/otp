@@ -18,7 +18,7 @@ pub external type Pid(accepted_message);
 // of with message type of UnknownMessage as there's no risk of a
 // UnknownMessage value being sent to the process.
 //
-pub enum UnknownMessage {
+pub type UnknownMessage {
   ImpossibleRecursiveConstructor(UnknownMessage)
 }
 
@@ -41,7 +41,7 @@ pub external fn make_opaque(Pid(msg)) -> Pid(UnknownMessage)
 pub external fn unsafe_downcast(Pid(UnknownMessage)) -> Pid(known_message)
   = "gleam_otp_process_external" "cast";
 
-pub enum LinkResult {
+pub type LinkResult {
   Linked
   ProcessNotFound
 }
@@ -133,7 +133,9 @@ external fn process_dictionary_delete(dynamicthing) -> DoNotLeak
 
 // The key used to store in the process dictionary the the trap_exit msg
 // constructor.
-struct GleamOtpProcessExitMsgConstructor {}
+type GleamOtpProcessExitMsgConstructor {
+  GleamOtpProcessExitMsgConstructor
+}
 
 // TODO: document
 pub fn trap_exit(constructor: fn(Pid(UnknownMessage), Dynamic) -> msg) {
@@ -148,7 +150,7 @@ pub fn no_trap_exit() {
   Nil
 }
 
-enum FlagKey {
+type FlagKey {
   MaxHeapSize
   MessageQueueData
   MinBinVheapSize
@@ -185,7 +187,7 @@ pub fn set_max_heap_size(in_words limit: Int) {
   Nil
 }
 
-pub enum DataLocation {
+pub type DataLocation {
   OnHeap
   OffHeap
 }
@@ -214,7 +216,7 @@ pub fn set_sensitive(is_sensitive: Int) {
   Nil
 }
 
-pub enum SchedulerPriority {
+pub type SchedulerPriority {
   Low
   Normal
   High
