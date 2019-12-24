@@ -138,7 +138,7 @@ type GleamOtpProcessExitMsgConstructor {
 }
 
 // TODO: document
-pub fn trap_exit(constructor: fn(Pid(UnknownMessage), Dynamic) -> msg) {
+pub fn trap_exit(_: Self(msg), constructor: fn(Pid(UnknownMessage), Dynamic) -> msg) {
   process_dictionary_set(GleamOtpProcessExitMsgConstructor, constructor)
   Nil
 }

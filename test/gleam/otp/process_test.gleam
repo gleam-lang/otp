@@ -119,7 +119,7 @@ type Exit {
 pub fn trap_exit_test() {
   let linkee = process.spawn(process.receive(_, 150))
   process.spawn(fn(self) {
-    process.trap_exit(Exit)
+    process.trap_exit(self, Exit)
     let expected_exit_signal = Exit(process.make_opaque(linkee), dynamic.from(1))
     self
     |> process.receive(_, 150)
