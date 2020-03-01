@@ -16,6 +16,6 @@ jobs:
           otp-version: 22.2
       - uses: gleam-lang/setup-gleam@v1.0.1
         with:
-          gleam-version: 0.6.0
+          gleam-version: 0.7.0-rc1
       - run: rebar3 install_deps
       - run: rebar3 eunit
