@@ -240,7 +240,6 @@ pub external fn spawn_link(fn(Self(msg)) -> dynamicthing) -> Pid(msg)
   = "gleam_otp_process_external" "do_spawn_link";
 
 // TODO: document
-// TODO: rename once we have better escaping https://github.com/gleam-lang/gleam/issues/340
 pub external fn receive(Self(msg), waiting_max: Int) -> Result(msg, Nil)
   = "gleam_otp_process_external" "do_receive";
 
