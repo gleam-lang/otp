@@ -3,6 +3,9 @@
 A Gleam library for working with Erlang/OTP processes in a (mostly) type safe
 fashion.
 
+This library is experimental and will likely have many breaking changes in the
+future!
+
 
 ## Quick start
 
