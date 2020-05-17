@@ -2,6 +2,7 @@
 // TODO: monitor
 // TODO: link
 import gleam/atom
+import gleam/otp/port.{Port}
 import gleam/result.{Option}
 import gleam/dynamic.{Dynamic}
 
@@ -31,9 +32,6 @@ pub type ExitReason {
 
 // TODO: document
 pub external type Ref
-
-// TODO: document
-pub external type Port
 
 // TODO: document
 // Special thanks to Peter Saxton for designing the synchronous message system
@@ -93,6 +91,9 @@ pub external fn make_opaque(Pid(msg)) -> Pid(UnknownMessage) =
 pub external fn unsafe_downcast(Pid(UnknownMessage)) -> Pid(known_message) =
   "gleam_otp_process_external" "unsafe_coerce"
 
+pub external fn erl_async_send(to: Pid(msg), msg: msg) -> msg =
+  "erlang" "send"
+
 /// Send a message to a process.
 ///
 /// Message sending is asynchronous and this function will likely return before
@@ -101,13 +102,15 @@ pub external fn unsafe_downcast(Pid(UnknownMessage)) -> Pid(known_message) =
 /// See the [Erlang documentation][erl] for more information.
 /// [erl]: http://erlang.org/doc/man/erlang.html#send-2
 ///
-pub external fn async_send(to: Pid(msg), msg: msg) -> msg =
-  "erlang" "send"
+pub fn async_send(to receiever: Pid(msg), msg msg: msg) -> Nil {
+  erl_async_send(receiever, msg)
+  Nil
+}
 
 // TODO: document
 pub external fn sync_send(
   to: Pid(msg),
-  msg: fn(From(reply)) -> msg,
+  message: fn(From(reply)) -> msg,
   timeout: Int,
 ) -> reply =
   "gleam_otp_process_external" "sync_send"

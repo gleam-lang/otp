@@ -51,9 +51,12 @@ pub fn send_test() {
       |> should.equal(Ok(Message(3)))
     },
   )
-  process.async_send(pid, 1)
-  process.async_send(pid, 2)
-  process.async_send(pid, 3)
+  let resp = process.async_send(pid, 1)
+  should.equal(resp, Nil)
+  let resp = process.async_send(pid, 2)
+  should.equal(resp, Nil)
+  let resp = process.async_send(pid, 3)
+  should.equal(resp, Nil)
 }
 
 pub fn unsafe_downcast_send() {
