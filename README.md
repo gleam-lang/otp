@@ -1,4 +1,4 @@
-# gleam_otp_process
+# Gleam OTP
 
 A Gleam library for working with Erlang/OTP processes in a (mostly) type safe
 fashion.
