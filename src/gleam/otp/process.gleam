@@ -36,6 +36,7 @@ pub external type Ref
 pub external type Port
 
 // TODO: document
+// Special thanks to Peter Saxton for designing the synchronous message system
 pub external type From(reply)
 
 // TODO: document
