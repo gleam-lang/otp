@@ -7,9 +7,6 @@ pub type Next(state) {
   Stop(ExitReason)
 }
 
-type Handler(msg, state) =
-  fn(msg, state) -> Next(state)
-
 pub type Spec(state, msg) {
   Spec(
     init: fn(Pid(msg)) -> Result(state, ExitReason),
@@ -25,7 +22,7 @@ fn exit_process(_: ExitReason) -> ExitReason {
 
 fn loop(
   self: Self(msg),
-  handler: Handler(msg, state),
+  handler: fn(msg, state) -> Next(state),
   state: state,
 ) -> ExitReason {
   case process.receive_forever(self) {
