@@ -2,13 +2,12 @@
 
 % Public functions
 -export([unsafe_coerce/1, send_exit/2, exit_self/1, own_pid/1, own_pid/0,
-         receive_any/2, sync_send/3, reply/2, start/1, started/1, init_failed/2]).
+         receive_any/2, receive_any_forever/1, sync_send/3, reply/2, start/1,
+         started/1, failed_to_start/2]).
 
--include("gen/src/gleam@otp@process_Exit.hrl").
 -include("gen/src/gleam@otp@process_Message.hrl").
--include("gen/src/gleam@otp@process_PortDown.hrl").
--include("gen/src/gleam@otp@process_ProcessDown.hrl").
 -include("gen/src/gleam@otp@process_Self.hrl").
+-include("gen/src/gleam@otp@process_Spec.hrl").
 -include("gen/src/gleam@otp@process_System.hrl").
 
 -define(is_record(Tag, Arity, Term),
@@ -27,6 +26,8 @@
          orelse ?is_exit_msg(Term)
          orelse ?is_gleam_special_msg(Term))).
 
+-define(exit_msg_constructor_key, '$gleam_exit_msg_constructor').
+
 unsafe_coerce(X) ->
   X.
 
@@ -44,17 +45,17 @@ own_pid() ->
 own_pid(_) ->
   self().
 
-start(Fn) ->
+start(Spec) ->
   Parent = self(),
   FnWithSelf = fun() ->
     Self = #self{pid = self(), debug = sys:debug_options([]), parent = Parent},
-    Fn(Self)
+    (Spec#spec.routine)(Self)
   end,
-  spawn_link(FnWithSelf),
+  Pid = spawn_link(FnWithSelf),
   receive
     {'$gleam_special', {process_started, Pid}} -> {ok, Pid};
-    {'$gleam_special', {process_init_failed, Reason}} -> {error, Reason}
-    % TODO: timeout
+    {'$gleam_special', {process_failed_to_start, Pid, Reason}} -> {error, Reason}
+    % TODO: timeout?
   end.
 
 started(Self) ->
@@ -62,30 +63,42 @@ started(Self) ->
   Parent ! {'$gleam_special', {process_started, Pid}},
   nil.
 
-init_failed(Self, Reason) ->
-  #self{parent = Parent} = Self,
-  Parent ! {'$gleam_special', {process_init_failed, Reason}},
+failed_to_start(Self, Reason) ->
+  #self{pid = Pid, parent = Parent} = Self,
+  Parent ! {'$gleam_special', {process_failed_to_start, Pid, Reason}},
   nil.
 
 receive_any(_Self, Timeout) ->
+  case do_receive(Timeout) of
+    {error, _} = E -> E;
+    Msg -> {ok, Msg}
+  end.
+
+receive_any_forever(_Self) ->
+  do_receive(infinity).
+
+do_receive(Timeout) ->
   receive
     {system, From, Request} ->
-      {ok, #system{from = From, request = Request}};
+      #system{from = From, request = Request};
 
-    {'EXIT', Pid, Reason} ->
-      {ok, #exit{pid = Pid, reason = Reason}};
+    % TODO
+    % {'EXIT', Pid, Reason} ->
+    %   #exit{pid = Pid, reason = Reason};
 
-    {'DOWN', Ref, process, Pid, Reason} ->
-      {ok, #process_down{ref = Ref, pid = Pid, reason = Reason}};
+    % TODO
+    % {'DOWN', Ref, process, Pid, Reason} ->
+    %   #process_down{ref = Ref, pid = Pid, reason = Reason};
 
-    {'DOWN', Ref, port, Port, Reason} ->
-      {ok, #port_down{ref = Ref, port = Port, reason = Reason}};
+    % TODO
+    % {'DOWN', Ref, port, Port, Reason} ->
+    %   #port_down{ref = Ref, port = Port, reason = Reason};
 
     Msg when ?is_gleam_special_msg(Msg) ->
       exit({abnormal, {gleam_unexpected_message, Msg}}); % TODO: make this into a binary
 
     Msg ->
-      {ok, #message{message = Msg}}
+      #message{message = Msg}
   after
     Timeout -> {error, nil}
   end.

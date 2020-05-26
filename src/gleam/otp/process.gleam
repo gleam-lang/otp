@@ -3,8 +3,9 @@
 // TODO: link
 import gleam/atom
 import gleam/otp/port.{Port}
-import gleam/result.{Option}
+import gleam/result
 import gleam/dynamic.{Dynamic}
+import gleam/option.{Option, None}
 
 external type DoNotLeak
 
@@ -48,20 +49,16 @@ pub type StartResult(message) =
 
 // TODO: document
 pub type Message(msg) {
-  /// A regular message excepted by the process
-  Message(message: msg)
+  Message(
+    /// A regular message excepted by the process
+    message: msg,
+  )
 
-  /// A linked process has exited and the current process is trapping exits
-  Exit(pid: Pid(UnknownMessage), reason: ExitReason)
-
-  /// A monitored process has exited
-  ProcessDown(ref: Ref, pid: Pid(UnknownMessage), reason: ExitReason)
-
-  /// A monitored port has exited
-  PortDown(ref: Ref, port: Port, reason: ExitReason)
-
-  /// An OTP system message, for debugging or maintenance
-  System(from: From(SystemResponse), request: SystemRequest)
+  System(
+    /// An OTP system message, for debugging or maintenance
+    from: From(SystemResponse),
+    request: SystemRequest,
+  )
 }
 
 /// UnknownMessage is a type that has no values, it can never be constructed!
@@ -171,26 +168,38 @@ pub external fn started(self: Self(msg)) -> Nil =
   "gleam_otp_process_external" "started"
 
 // TODO: document
-pub external fn init_failed(self: Self(msg), ExitReason) -> Nil =
-  "gleam_otp_process_external" "init_failed"
+pub external fn failed_to_start(self: Self(msg), ExitReason) -> Nil =
+  "gleam_otp_process_external" "failed_to_start"
+
+// TODO: document
+pub type Spec(msg) {
+  Spec(
+    routine: fn(Self(msg)) -> ExitReason,
+    exit_trapper: Option(fn(Pid(UnknownMessage), ExitReason) -> msg),
+  )
+}
 
 // TODO: test
 // TODO: document
 // TODO: ensure to document that `started` must be called
-pub external fn start(fn(Self(msg)) -> anything) -> StartResult(msg) =
+pub external fn start_spec(Spec(msg)) -> StartResult(msg) =
   "gleam_otp_process_external" "start"
 
 // TODO: test
 // TODO: document
-pub fn async_start(f: fn(Self(msg)) -> anything) -> StartResult(msg) {
-  start(
-    fn(self) {
-      started(self)
-      f(self)
-    },
-  )
+// TODO: ensure to document that `started` must be called
+pub fn start(routine: fn(Self(msg)) -> ExitReason) -> StartResult(msg) {
+  let spec = Spec(routine: routine, exit_trapper: None)
+  start_spec(spec)
 }
 
+external fn debug(a) -> a =
+  "erlang" "display"
+
 // TODO: document
-pub external fn receive(Self(msg), timeout: Int) -> Option(Message(msg)) =
+pub external fn receive(Self(msg), timeout: Int) -> Result(Message(msg), Nil) =
   "gleam_otp_process_external" "receive_any"
+
+// TODO: document
+pub external fn receive_forever(Self(msg)) -> Message(msg) =
+  "gleam_otp_process_external" "receive_any_forever"
