@@ -1,8 +1,8 @@
 // TODO: README
 // TODO: monitor
 // TODO: link
+//
 import gleam/atom
-import gleam/otp/port.{Port}
 import gleam/result
 import gleam/dynamic.{Dynamic}
 import gleam/option.{Option, None}
@@ -39,7 +39,24 @@ pub external type Ref
 pub external type From(reply)
 
 // TODO: document
-pub external type SystemRequest
+// TODO: implement remaining messages
+pub type SystemMessage {
+  // {replace_state, StateFn}
+  // {change_code, Mod, Vsn, Extra}
+  // {terminate, Reason}
+  // {debug, {log, Flag}}
+  // {debug, {trace, Flag}}
+  // {debug, {log_to_file, FileName}}
+  // {debug, {statistics, Flag}}
+  // {debug, no_debug}
+  // {debug, {install, {Func, FuncState}}}
+  // {debug, {install, {FuncId, Func, FuncState}}}
+  // {debug, {remove, FuncOrId}}
+  // Suspend
+  // Resume
+  // GetStatus
+  GetState(From(Dynamic))
+}
 
 // TODO: document
 pub external type SystemResponse
@@ -56,8 +73,7 @@ pub type Message(msg) {
 
   System(
     /// An OTP system message, for debugging or maintenance
-    from: From(SystemResponse),
-    request: SystemRequest,
+    message: SystemMessage,
   )
 }
 
@@ -203,3 +219,8 @@ pub external fn receive(Self(msg), timeout: Int) -> Result(Message(msg), Nil) =
 // TODO: document
 pub external fn receive_forever(Self(msg)) -> Message(msg) =
   "gleam_otp_process_external" "receive_any_forever"
+
+// TODO: document
+// TODO: test
+pub external fn reply(to: From(reply), with: reply) -> reply =
+  "gen" "reply"

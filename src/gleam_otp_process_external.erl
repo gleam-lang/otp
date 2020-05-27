@@ -80,7 +80,7 @@ receive_any_forever(_Self) ->
 do_receive(Timeout) ->
   receive
     {system, From, Request} ->
-      #system{from = From, request = Request};
+      #system{message = normalise_system_msg(From, Request)};
 
     % TODO
     % {'EXIT', Pid, Reason} ->
@@ -102,6 +102,9 @@ do_receive(Timeout) ->
   after
     Timeout -> {error, nil}
   end.
+
+normalise_system_msg(From, get_state) ->
+  {get_state, From}.
 
 % This function is implemented in Erlang as it requires selective receives.
 % It is based off of gen:do_call/4.
