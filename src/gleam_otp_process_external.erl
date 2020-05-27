@@ -2,9 +2,10 @@
 
 % Public functions
 -export([unsafe_coerce/1, send_exit/2, exit_self/1, own_pid/1, own_pid/0,
-         receive_any/2, receive_any_forever/1, sync_send/3, reply/2, start/1,
+         receive_any/2, receive_any_forever/1, sync_send/3, start/1, reply/2,
          started/1, failed_to_start/2]).
 
+-include("gen/src/gleam@otp@process_From.hrl").
 -include("gen/src/gleam@otp@process_Message.hrl").
 -include("gen/src/gleam@otp@process_Self.hrl").
 -include("gen/src/gleam@otp@process_Spec.hrl").
@@ -95,7 +96,7 @@ do_receive(Timeout) ->
     %   #port_down{ref = Ref, port = Port, reason = Reason};
 
     Msg when ?is_gleam_special_msg(Msg) ->
-      exit({abnormal, {gleam_unexpected_message, Msg}}); % TODO: make this into a binary
+      unexpected_msg(Msg);
 
     Msg ->
       #message{message = Msg}
@@ -103,33 +104,47 @@ do_receive(Timeout) ->
     Timeout -> {error, nil}
   end.
 
+unexpected_msg(Msg) ->
+  % TODO: make Msg into a binary
+  exit({abnormal, {gleam_unexpected_message, Msg}}).
+
 normalise_system_msg(From, get_state) ->
-  {get_state, From}.
+  {get_state, gen_from_to_gleam_from(From)}.
 
 % This function is implemented in Erlang as it requires selective receives.
 % It is based off of gen:do_call/4.
 sync_send(Process, MakeMsg, Timeout) ->
-  Mref = erlang:monitor(process, Process),
-  From = {self(), Mref},
-  erlang:send(Process, MakeMsg(From), [noconnect]),
+  {RequestRef, Replier} = new_from(Process),
+  erlang:send(Process, MakeMsg(Replier), [noconnect]),
   receive
-    {Mref, Reply} ->
-      erlang:demonitor(Mref, [flush]),
-      {ok, Reply};
+    {RequestRef, Reply} ->
+      erlang:demonitor(RequestRef, [flush]),
+      Reply;
 
-    {'DOWN', Mref, _, _, noconnection} ->
+    {'DOWN', RequestRef, _, _, noconnection} ->
       Node = node(Process),
       exit({nodedown, Node});
 
-    {'DOWN', Mref, _, _, Reason} ->
+    {'DOWN', RequestRef, _, _, Reason} ->
       exit(Reason)
   after
     Timeout ->
-      erlang:demonitor(Mref, [flush]),
+      erlang:demonitor(RequestRef, [flush]),
       exit(timeout)
   end.
 
-reply({To, Tag}, Reply) ->
-  Msg = {Tag, Reply},
-  catch To ! Msg,
-  Msg.
+new_from(Process) ->
+  RequestRef = erlang:monitor(process, Process),
+  From = gen_from_to_gleam_from({self(), RequestRef}),
+  {RequestRef, From}.
+
+gen_from_to_gleam_from({Pid, RequestRef}) ->
+  Reply = fun(Reply) ->
+    Msg = {RequestRef, Reply},
+    catch erlang:send(Pid, Msg),
+    nil
+  end,
+  #from{reply = Reply}.
+
+reply(Replier, Msg) ->
+  Replier(Msg).

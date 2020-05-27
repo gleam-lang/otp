@@ -1,4 +1,4 @@
-import gleam/otp/process.{Message, Normal, ExitReason, Spec}
+import gleam/otp/process.{Message, Normal, ExitReason, Spec, From, Self}
 import gleam/should
 import gleam/io
 import gleam/result
@@ -48,7 +48,7 @@ pub fn make_opaque_test() {
   process.make_opaque(float_pid) != process.make_opaque(int_pid)
 }
 
-pub fn send_test() {
+pub fn async_send_test() {
   assert Ok(
     pid,
   ) = process.start(
@@ -72,6 +72,33 @@ pub fn send_test() {
   should.equal(resp, Nil)
   let resp = process.async_send(pid, 3)
   should.equal(resp, Nil)
+}
+
+type EchoMessage(x) {
+  EchoMessage(From(x), x)
+}
+
+pub fn sync_send_test() {
+  assert Ok(
+    pid,
+  ) = process.start(
+    fn(self: Self(EchoMessage(a))) {
+      process.started(self)
+      assert Ok(Message(EchoMessage(from, x))) = process.receive(self, 50)
+      assert Nil = process.reply(from, x)
+      assert Ok(Message(EchoMessage(from, x))) = process.receive(self, 50)
+      assert Nil = process.reply(from, x)
+      assert Ok(Message(EchoMessage(from, x))) = process.receive(self, 50)
+      assert Nil = process.reply(from, x)
+      Normal
+    },
+  )
+  let resp = process.sync_send(pid, EchoMessage(_, 1), 50)
+  should.equal(resp, 1)
+  let resp = process.sync_send(pid, EchoMessage(_, 2), 50)
+  should.equal(resp, 2)
+  let resp = process.sync_send(pid, EchoMessage(_, 2.0), 50)
+  should.equal(resp, 2.0)
 }
 
 pub fn unsafe_downcast_send() {

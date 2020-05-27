@@ -35,8 +35,22 @@ pub type ExitReason {
 pub external type Ref
 
 // TODO: document
-// Special thanks to Peter Saxton for designing the synchronous message system
-pub external type From(reply)
+// Special thanks to Peter Saxton for the idea of a typed From value
+pub opaque type From(reply) {
+  From(reply: fn(reply) -> Nil)
+}
+
+// TODO: document
+// TODO: test
+pub fn wrap_from(from: From(a), with adapter: fn(b) -> a) -> From(b) {
+  From(reply: fn(b) { from.reply(adapter(b)) })
+}
+
+// TODO: document
+// TODO: test
+pub fn reply(to caller: From(reply), with payload: reply) -> Nil {
+  caller.reply(payload)
+}
 
 // TODO: document
 // TODO: implement remaining messages
@@ -219,8 +233,3 @@ pub external fn receive(Self(msg), timeout: Int) -> Result(Message(msg), Nil) =
 // TODO: document
 pub external fn receive_forever(Self(msg)) -> Message(msg) =
   "gleam_otp_process_external" "receive_any_forever"
-
-// TODO: document
-// TODO: test
-pub external fn reply(to: From(reply), with: reply) -> reply =
-  "gen" "reply"
