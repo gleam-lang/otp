@@ -1,4 +1,4 @@
-import gleam/otp/process.{Pid, ExitReason, Self, StartResult, UnknownMessage, Ref, From, Normal, System, Message, GetState}
+import gleam/otp/process.{Pid, ExitReason, Self, StartResult, UnknownMessage, Ref, From, Normal, System, Message, GetState, Suspend, Resume, SystemMessage}
 import gleam/otp/port.{Port}
 import gleam/result
 import gleam/dynamic
@@ -6,6 +6,11 @@ import gleam/dynamic
 pub type Next(state) {
   Continue(state)
   Stop(ExitReason)
+}
+
+type Mode {
+  Running
+  Suspended
 }
 
 pub type Spec(state, msg) {
@@ -25,18 +30,34 @@ fn loop(
   self: Self(msg),
   handler: fn(msg, state) -> Next(state),
   state: state,
+  mode: Mode,
 ) -> ExitReason {
-  case process.receive_forever(self) {
+  let msg = case mode {
+    Suspended -> System(process.receive_system_forever())
+    Running -> process.receive_forever(self)
+  }
+
+  case msg {
     System(GetState(from)) -> {
       process.reply(to: from, with: dynamic.from(state))
-      loop(self, handler, state)
+      loop(self, handler, state, mode)
+    }
+
+    System(Resume(from)) -> {
+      process.reply(to: from, with: Nil)
+      loop(self, handler, state, Running)
+    }
+
+    System(Suspend(from)) -> {
+      process.reply(to: from, with: Nil)
+      loop(self, handler, state, Suspended)
     }
 
     System(_msg) -> todo
 
     Message(msg) -> case handler(msg, state) {
       Stop(reason) -> exit_process(reason)
-      Continue(state) -> loop(self, handler, state)
+      Continue(state) -> loop(self, handler, state, mode)
     }
   }
 }
@@ -48,7 +69,7 @@ pub fn start(spec: Spec(state, msg)) -> StartResult(msg) {
     case spec.init(self.pid) {
       Ok(state) -> {
         process.started(self)
-        loop(self, spec.loop, state)
+        loop(self, spec.loop, state, Running)
       }
       Error(reason) -> exit_process(reason)
     }

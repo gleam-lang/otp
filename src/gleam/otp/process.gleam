@@ -66,14 +66,11 @@ pub type SystemMessage {
   // {debug, {install, {Func, FuncState}}}
   // {debug, {install, {FuncId, Func, FuncState}}}
   // {debug, {remove, FuncOrId}}
-  // Suspend
-  // Resume
   // GetStatus
+  Suspend(From(Nil))
+  Resume(From(Nil))
   GetState(From(Dynamic))
 }
-
-// TODO: document
-pub external type SystemResponse
 
 pub type StartResult(message) =
   Result(Pid(message), ExitReason)
@@ -229,6 +226,10 @@ external fn debug(a) -> a =
 // TODO: document
 pub external fn receive(Self(msg), timeout: Int) -> Result(Message(msg), Nil) =
   "gleam_otp_process_external" "receive_any"
+
+// TODO: document
+pub external fn receive_system_forever() -> SystemMessage =
+  "gleam_otp_process_external" "receive_system_forever"
 
 // TODO: document
 pub external fn receive_forever(Self(msg)) -> Message(msg) =

@@ -3,7 +3,7 @@
 % Public functions
 -export([unsafe_coerce/1, send_exit/2, exit_self/1, own_pid/1, own_pid/0,
          receive_any/2, receive_any_forever/1, sync_send/3, start/1, reply/2,
-         started/1, failed_to_start/2]).
+         started/1, failed_to_start/2, receive_system_forever/0]).
 
 -include("gen/src/gleam@otp@process_From.hrl").
 -include("gen/src/gleam@otp@process_Message.hrl").
@@ -78,6 +78,11 @@ receive_any(_Self, Timeout) ->
 receive_any_forever(_Self) ->
   do_receive(infinity).
 
+receive_system_forever() ->
+  receive
+    {system, From, Request} -> normalise_system_msg(From, Request)
+  end.
+
 do_receive(Timeout) ->
   receive
     {system, From, Request} ->
@@ -108,8 +113,10 @@ unexpected_msg(Msg) ->
   % TODO: make Msg into a binary
   exit({abnormal, {gleam_unexpected_message, Msg}}).
 
-normalise_system_msg(From, get_state) ->
-  {get_state, gen_from_to_gleam_from(From)}.
+normalise_system_msg(From, Msg) when Msg =:= get_state ->
+  {Msg, gen_from_to_gleam_from(From)};
+normalise_system_msg(From, Msg) when Msg =:= suspend orelse Msg =:= resume ->
+  {Msg, gen_from_to_gleam_ok_from(From)}.
 
 % This function is implemented in Erlang as it requires selective receives.
 % It is based off of gen:do_call/4.
@@ -137,6 +144,11 @@ new_from(Process) ->
   RequestRef = erlang:monitor(process, Process),
   From = gen_from_to_gleam_from({self(), RequestRef}),
   {RequestRef, From}.
+
+gen_from_to_gleam_ok_from(GenFrom) ->
+  From = gen_from_to_gleam_from(GenFrom),
+  Reply = fun(_) -> (From#from.reply)(ok) end,
+  From#from{reply = Reply}.
 
 gen_from_to_gleam_from({Pid, RequestRef}) ->
   Reply = fun(Reply) ->
