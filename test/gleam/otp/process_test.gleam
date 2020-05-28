@@ -118,17 +118,6 @@ pub fn unsafe_downcast_send() {
   should.equal(float_pid, fake_float_pid)
 }
 
-// fn loop(self: process.Self(a)) -> never {
-//   sleep(5)
-//   loop(self)
-// }
-// pub fn send_exit_test() {
-//   assert Ok(pid) = process.start(loop)
-//   should.equal(process.is_alive(pid), True)
-//   process.send_exit(pid, atom.create_from_string("normal"))
-//   sleep(20)
-//   should.equal(process.is_alive(pid), False)
-// }
 pub fn own_pid_test() {
   let _ = process.start(
     fn(self) {

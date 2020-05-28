@@ -1,7 +1,8 @@
-import gleam/otp/process.{Pid, ExitReason, Self, StartResult, UnknownMessage, Ref, From, Normal, System, Message, GetState, Suspend, Resume, SystemMessage}
+import gleam/otp/process.{Pid, ExitReason, Self, StartResult, UnknownMessage, Ref, From, Normal, System, Message, GetState, Suspend, Resume, SystemMessage, GetStatus}
 import gleam/otp/port.{Port}
 import gleam/result
-import gleam/dynamic
+import gleam/atom
+import gleam/dynamic.{Dynamic}
 
 pub type Next(state) {
   Continue(state)
@@ -24,6 +25,25 @@ pub type Spec(state, msg) {
 fn exit_process(reason: ExitReason) -> ExitReason {
   // TODO
   reason
+}
+
+fn actor_status(self: Self(msg), mode: Mode, state: state) -> Dynamic {
+  tuple(
+    atom.create_from_string("status"),
+    self.pid,
+    tuple(
+      atom.create_from_string("module"),
+      atom.create_from_string("gleam@otp@actor"),
+    ),
+    [
+      dynamic.from([]),
+      dynamic.from(mode),
+      dynamic.from(self.parent),
+      dynamic.from(self.debug),
+      dynamic.from(tuple(atom.create_from_string("state"), state)),
+    ],
+  )
+  |> dynamic.from
 }
 
 fn loop(
@@ -51,6 +71,11 @@ fn loop(
     System(Suspend(from)) -> {
       process.reply(to: from, with: Nil)
       loop(self, handler, state, Suspended)
+    }
+
+    System(GetStatus(from)) -> {
+      process.reply(to: from, with: actor_status(self, mode, state))
+      loop(self, handler, state, mode)
     }
 
     System(_msg) -> todo

@@ -113,7 +113,7 @@ unexpected_msg(Msg) ->
   % TODO: make Msg into a binary
   exit({abnormal, {gleam_unexpected_message, Msg}}).
 
-normalise_system_msg(From, Msg) when Msg =:= get_state ->
+normalise_system_msg(From, Msg) when Msg =:= get_state orelse Msg =:= get_status ->
   {Msg, gen_from_to_gleam_from(From)};
 normalise_system_msg(From, Msg) when Msg =:= suspend orelse Msg =:= resume ->
   {Msg, gen_from_to_gleam_ok_from(From)}.

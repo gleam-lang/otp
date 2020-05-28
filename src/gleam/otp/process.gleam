@@ -47,7 +47,6 @@ pub fn wrap_from(from: From(a), with adapter: fn(b) -> a) -> From(b) {
 }
 
 // TODO: document
-// TODO: test
 pub fn reply(to caller: From(reply), with payload: reply) -> Nil {
   caller.reply(payload)
 }
@@ -66,7 +65,7 @@ pub type SystemMessage {
   // {debug, {install, {Func, FuncState}}}
   // {debug, {install, {FuncId, Func, FuncState}}}
   // {debug, {remove, FuncOrId}}
-  // GetStatus
+  GetStatus(From(Dynamic))
   Suspend(From(Nil))
   Resume(From(Nil))
   GetState(From(Dynamic))
@@ -206,13 +205,11 @@ pub type Spec(msg) {
   )
 }
 
-// TODO: test
 // TODO: document
 // TODO: ensure to document that `started` must be called
 pub external fn start_spec(Spec(msg)) -> StartResult(msg) =
   "gleam_otp_process_external" "start"
 
-// TODO: test
 // TODO: document
 // TODO: ensure to document that `started` must be called
 pub fn start(routine: fn(Self(msg)) -> ExitReason) -> StartResult(msg) {

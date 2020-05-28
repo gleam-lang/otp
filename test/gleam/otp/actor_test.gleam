@@ -15,6 +15,18 @@ pub fn get_state_test() {
   |> should.equal(dynamic.from("Test state"))
 }
 
+external fn get_status(Pid(a)) -> Dynamic =
+  "sys" "get_status"
+
+pub fn get_status_test() {
+  let spec = Spec(
+    init: fn(_pid) { Ok("Test state") },
+    loop: fn(_msg, state) { Continue(state) },
+  )
+  assert Ok(pid) = actor.start(spec)
+  get_status(pid)
+}
+
 pub fn suspend_resume_test() {
   let spec = Spec(
     init: fn(_pid) { Ok("Test state") },
