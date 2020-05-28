@@ -1,4 +1,4 @@
-import gleam/otp/process.{Pid, ExitReason, Self, StartResult, UnknownMessage, Ref, From, Normal, System, Message, GetState, Suspend, Resume, SystemMessage, GetStatus}
+import gleam/otp/process.{Pid, ExitReason, Self, StartResult, UnknownMessage, Ref, From, Normal, System, Message, GetState, Suspend, Resume, SystemMessage, GetStatus, DebugState}
 import gleam/otp/port.{Port}
 import gleam/result
 import gleam/atom
@@ -27,7 +27,12 @@ fn exit_process(reason: ExitReason) -> ExitReason {
   reason
 }
 
-fn actor_status(self: Self(msg), mode: Mode, state: state) -> Dynamic {
+fn actor_status(
+  self: Self(msg),
+  debug: DebugState,
+  mode: Mode,
+  state: state,
+) -> Dynamic {
   tuple(
     atom.create_from_string("status"),
     self.pid,
@@ -39,7 +44,7 @@ fn actor_status(self: Self(msg), mode: Mode, state: state) -> Dynamic {
       dynamic.from([]),
       dynamic.from(mode),
       dynamic.from(self.parent),
-      dynamic.from(self.debug),
+      dynamic.from(debug),
       dynamic.from(tuple(atom.create_from_string("state"), state)),
     ],
   )
@@ -50,6 +55,7 @@ fn loop(
   self: Self(msg),
   handler: fn(msg, state) -> Next(state),
   state: state,
+  debug: DebugState,
   mode: Mode,
 ) -> ExitReason {
   let msg = case mode {
@@ -60,41 +66,41 @@ fn loop(
   case msg {
     System(GetState(from)) -> {
       process.reply(to: from, with: dynamic.from(state))
-      loop(self, handler, state, mode)
+      loop(self, handler, state, debug, mode)
     }
 
     System(Resume(from)) -> {
       process.reply(to: from, with: Nil)
-      loop(self, handler, state, Running)
+      loop(self, handler, state, debug, Running)
     }
 
     System(Suspend(from)) -> {
       process.reply(to: from, with: Nil)
-      loop(self, handler, state, Suspended)
+      loop(self, handler, state, debug, Suspended)
     }
 
     System(GetStatus(from)) -> {
-      process.reply(to: from, with: actor_status(self, mode, state))
-      loop(self, handler, state, mode)
+      process.reply(to: from, with: actor_status(self, debug, mode, state))
+      loop(self, handler, state, debug, mode)
     }
 
     System(_msg) -> todo
 
     Message(msg) -> case handler(msg, state) {
       Stop(reason) -> exit_process(reason)
-      Continue(state) -> loop(self, handler, state, mode)
+      Continue(state) -> loop(self, handler, state, debug, mode)
     }
   }
 }
 
 // TODO: document
-// TODO: test
 pub fn start(spec: Spec(state, msg)) -> StartResult(msg) {
   let routine = fn(self: Self(msg)) {
     case spec.init(self.pid) {
       Ok(state) -> {
         process.started(self)
-        loop(self, spec.loop, state, Running)
+        let debug = process.debug_state([])
+        loop(self, spec.loop, state, debug, Running)
       }
       Error(reason) -> exit_process(reason)
     }

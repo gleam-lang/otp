@@ -49,7 +49,7 @@ own_pid(_) ->
 start(Spec) ->
   Parent = self(),
   FnWithSelf = fun() ->
-    Self = #self{pid = self(), debug = sys:debug_options([]), parent = Parent},
+    Self = #self{pid = self(), parent = Parent},
     (Spec#spec.routine)(Self)
   end,
   Pid = spawn_link(FnWithSelf),

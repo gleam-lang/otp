@@ -71,6 +71,15 @@ pub type SystemMessage {
   GetState(From(Dynamic))
 }
 
+pub type DebugOption {
+  NoDebug
+}
+
+pub external type DebugState
+
+pub external fn debug_state(List(DebugOption)) -> DebugState =
+  "sys" "debug_options"
+
 pub type StartResult(message) =
   Result(Pid(message), ExitReason)
 
@@ -156,8 +165,6 @@ pub external fn is_alive(Pid(msg)) -> Bool =
 pub external fn send_exit(to: Pid(msg), because: reason) -> Nil =
   "gleam_otp_process_external" "send_exit"
 
-pub external type DebugOptions
-
 /// A reference to the current process, parameterised with the type of message
 /// that the process will accept. This value is given to a process at start and
 /// is used to enable inference of the messages that a process can safely
@@ -172,7 +179,7 @@ pub external type DebugOptions
 /// making errors and runtime crashes likely.
 ///
 pub type Self(msg) {
-  Self(parent: Pid(UnknownMessage), pid: Pid(msg), debug: DebugOptions)
+  Self(parent: Pid(UnknownMessage), pid: Pid(msg))
 }
 
 /// Get the Pid of the current process.
@@ -216,9 +223,6 @@ pub fn start(routine: fn(Self(msg)) -> ExitReason) -> StartResult(msg) {
   let spec = Spec(routine: routine, exit_trapper: None)
   start_spec(spec)
 }
-
-external fn debug(a) -> a =
-  "erlang" "display"
 
 // TODO: document
 pub external fn receive(Self(msg), timeout: Int) -> Result(Message(msg), Nil) =

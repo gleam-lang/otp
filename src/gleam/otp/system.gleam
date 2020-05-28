@@ -10,7 +10,6 @@ pub external fn get_state(from: Pid(a)) -> Dynamic =
 external fn erl_suspend(Pid(a)) -> DoNotLeak =
   "sys" "suspend"
 
-// TODO: test
 // TODO: document
 pub fn suspend(pid: Pid(a)) -> Nil {
   erl_suspend(pid)
@@ -20,7 +19,6 @@ pub fn suspend(pid: Pid(a)) -> Nil {
 external fn erl_resume(from: Pid(a)) -> DoNotLeak =
   "sys" "resume"
 
-// TODO: test
 // TODO: document
 pub fn resume(pid: Pid(a)) -> Nil {
   erl_resume(pid)
