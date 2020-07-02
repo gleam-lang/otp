@@ -1,4 +1,4 @@
-import gleam/otp/process.{Message, Normal, ExitReason, Spec, From, Self}
+import gleam/otp/process.{ExitReason, From, Message, Normal, Self, Spec}
 import gleam/should
 import gleam/io
 import gleam/result

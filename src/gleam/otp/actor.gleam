@@ -1,4 +1,7 @@
-import gleam/otp/process.{Pid, ExitReason, Self, StartResult, UnknownMessage, Ref, From, Normal, System, Message, GetState, Suspend, Resume, SystemMessage, GetStatus, DebugState}
+import gleam/otp/process.{
+  DebugState, ExitReason, From, GetState, GetStatus, Message, Normal, Pid, Ref,
+  Resume, Self, StartResult, Suspend, System, SystemMessage, UnknownMessage
+}
 import gleam/otp/port.{Port}
 import gleam/result
 import gleam/atom

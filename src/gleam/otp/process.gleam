@@ -5,7 +5,7 @@
 import gleam/atom
 import gleam/result
 import gleam/dynamic.{Dynamic}
-import gleam/option.{Option, None}
+import gleam/option.{None, Option}
 
 external type DoNotLeak
 

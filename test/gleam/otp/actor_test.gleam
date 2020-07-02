@@ -1,4 +1,4 @@
-import gleam/otp/actor.{Spec, Continue}
+import gleam/otp/actor.{Continue, Spec}
 import gleam/otp/process.{Pid}
 import gleam/otp/system
 import gleam/dynamic.{Dynamic}
