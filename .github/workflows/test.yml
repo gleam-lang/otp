@@ -3,7 +3,7 @@ name: test
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
 
 jobs:
@@ -16,6 +16,6 @@ jobs:
           otp-version: 22.2
       - uses: gleam-lang/setup-gleam@v1.0.1
         with:
-          gleam-version: 0.9.0-rc1
+          gleam-version: 0.10.0
       - run: rebar3 install_deps
       - run: rebar3 eunit
