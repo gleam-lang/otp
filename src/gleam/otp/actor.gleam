@@ -87,7 +87,7 @@ fn loop(
       loop(self, handler, state, debug, mode)
     }
 
-    System(msg) -> todo("This system message is not yet supported")
+    System(_msg) -> todo("This system message is not yet supported")
 
     Message(msg) -> case handler(msg, state) {
       Stop(reason) -> exit_process(reason)
