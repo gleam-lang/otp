@@ -104,6 +104,9 @@ pub type Message(msg) {
 ///
 pub external type UnknownMessage
 
+pub type OpaquePid =
+  Pid(UnknownMessage)
+
 /// Coerce a Pid with a known message type to one with an unknown message type,
 /// erasing type information and making it impossible to send messages to.
 ///
