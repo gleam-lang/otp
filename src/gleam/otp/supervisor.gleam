@@ -4,109 +4,130 @@ import gleam/option.{None, Option, Some}
 import gleam/otp/process.{ExitReason, OpaquePid, Pid, StartResult}
 
 // API
-type Children(state) {
-  Children(pids: List(OpaquePid), state: state, init: Initialiser(Nil, state))
-}
-
 pub opaque type Spec(state) {
-  Starting(Children(state))
+  Starting(pids: List(OpaquePid), state: state, starter: Starter(Nil, state))
   Failed(ExitReason)
 }
 
 pub opaque type ChildSpec(msg, state_in, state_out) {
   ChildSpec(
     start: fn(state_in) -> StartResult(msg),
-    merge: fn(state_in, Pid(msg)) -> state_out,
+    update_state: fn(state_in, Pid(msg)) -> state_out,
   )
 }
 
-type InitialiserResult(state) =
-  Result(tuple(state_out, List(OpaquePid)), ExitReason)
-
-type Initialiser(state_in, state_out) =
-  fn(
-    state_in,
-    Option(OpaquePid),
-  ) -> Result(tuple(state_out, List(OpaquePid)), ExitReason)
-
-fn start_initializer(
-  child_spec: ChildSpec(msg, state_in, state_out),
-  pids: List(OpaquePid),
-  state: state_in,
-  problem_pid: Option(OpaquePid),
-) -> InitialiserResult(state_out) {
-  case child_spec.start(state) {
-    Error(fail) -> Error(fail)
-    Ok(new_pid) -> {
-      // If we have found the problem_pid then we don't need to keep looking
-      let opaque_pid = process.make_opaque(new_pid)
-      let problem_pid = case problem_pid {
-        Some(pid) if opaque_pid != pid -> problem_pid
-        _ -> None
-      }
-      let new_state = child_spec.merge(state, new_pid)
-      Ok(tuple(new_state, [process.make_opaque(new_pid), ..pids]))
-    }
-  }
+type StarterAcc(state) {
+  StarterAcc(state: state, pids: List(OpaquePid))
 }
 
-fn run_initializer(
-  state: state_1,
-  pids: List(OpaquePid),
+type StarterResult(state) =
+  Result(StarterAcc(state), ExitReason)
+
+// A starter is a function that can be called to start or restart the children
+// of the supervisor.
+//
+// The function takes 2 arguments:
+// - The state computed by previous layers
+// - The pid (if present) that has a problem and thus needs to be restarted
+//   (along with any younger children).
+//
+type Starter(state_in, state_out) =
+  fn(state_in, Option(OpaquePid)) -> StarterResult(state_out)
+
+type Child(msg, state) {
+  Child(pid: Pid(msg), state: state)
+}
+
+fn start_starter(
+  child_spec: ChildSpec(msg, state_in, state_out),
+  acc: StarterAcc(state_in),
+  problem_pid: Option(OpaquePid),
+) -> StarterResult(state_out) {
+  try new_pid = child_spec.start(acc.state)
+  let opaque_pid = process.make_opaque(new_pid)
+
+  // If we have found the problem_pid then we don't need to keep looking, so
+  // set the `problem_pid` to None while running the remaining Starter layers.
+  let problem_pid = case problem_pid {
+    Some(pid) if opaque_pid != pid -> problem_pid
+    _ -> None
+  }
+
+  // Merge the new child's pid into the state to be potentially used by its
+  // younger siblings.
+  let new_state = child_spec.update_state(acc.state, new_pid)
+
+  // Add this new child to the list of children
+  let pids = [process.make_opaque(new_pid), ..acc.pids]
+  Ok(StarterAcc(state: new_state, pids: pids))
+}
+
+fn run_starter(
+  acc: StarterAcc(state_1),
   child_spec: ChildSpec(msg, state_1, state_2),
   problem_pid: Option(OpaquePid),
-  existing_pid: Pid(msg),
-  existing_state: state_2,
-) -> InitialiserResult(state_2) {
-  let opaque_pid = process.make_opaque(existing_pid)
+  child: Child(msg, state_2),
+) -> StarterResult(state_2) {
+  let opaque_pid = process.make_opaque(child.pid)
   case problem_pid {
     // This Pid is still alive and we have not found the problem pid yet.
     // In this case we don't need to restart it, we keep the existing pid
     // and continue to the next.
     Some(problem) if problem != opaque_pid -> {
-      let pids = [opaque_pid, ..pids]
-      Ok(tuple(existing_state, pids))
+      let pids = [opaque_pid, ..acc.pids]
+      Ok(StarterAcc(state: child.state, pids: pids))
     }
 
     // This pid either is the cause of the problem, or we don't have problem
     // pid to compare with. In either case it must be restarted.
     _ -> {
-      process.send_exit(existing_pid, process.Normal)
-      start_initializer(child_spec, pids, state, problem_pid)
+      process.send_exit(child.pid, process.Normal)
+      start_starter(child_spec, acc, problem_pid)
     }
   }
 }
 
-fn add_initialiser_layer(
-  init: Initialiser(state_0, state_1),
+fn add_starter_layer(
+  starter: Starter(state_0, state_1),
   child_spec: ChildSpec(msg, state_1, state_2),
-  existing_pid: Pid(msg),
-  existing_state: state_2,
-) -> Initialiser(state_0, state_2) {
+  child: Child(msg, state_2),
+) -> Starter(state_0, state_2) {
   fn(state, problem_pid) {
-    case init(state, problem_pid) {
+    case starter(state, problem_pid) {
       // Older siblings failed, exit early
       Error(fail) -> Error(fail)
 
       // Older siblings ok, initialise the new process
-      Ok(tup) -> {
-        let tuple(state, pids) = tup
-        run_initializer(
-          state,
-          pids,
-          child_spec,
-          problem_pid,
-          existing_pid,
-          existing_state,
-        )
-      }
+      Ok(acc) -> run_starter(acc, child_spec, problem_pid, child)
     }
   }
 }
 
 pub fn begin() -> Spec(Nil) {
-  Children(state: Nil, pids: [], init: fn(state, _) { Ok(tuple(state, [])) })
-  |> Starting
+  Starting(
+    state: Nil,
+    pids: [],
+    starter: fn(state, _) { Ok(StarterAcc(state, [])) },
+  )
+}
+
+fn start_and_add_child(
+  pids: List(OpaquePid),
+  state: state,
+  starter: Starter(Nil, state),
+  child_spec: ChildSpec(msg, state, new_state),
+) -> Spec(new_state) {
+  case child_spec.start(state) {
+    Ok(pid) -> {
+      let pids = [process.make_opaque(pid), ..pids]
+      let state = child_spec.update_state(state, pid)
+      let child = Child(pid: pid, state: state)
+      let starter = add_starter_layer(starter, child_spec, child)
+      Starting(pids: pids, state: state, starter: starter)
+    }
+
+    Error(reason) -> Failed(reason)
+  }
 }
 
 pub fn add(
@@ -114,32 +135,31 @@ pub fn add(
   child_spec: ChildSpec(msg, state, new_state),
 ) -> Spec(new_state) {
   case spec {
-    Starting(children) -> case child_spec.start(children.state) {
-      Ok(pid) -> {
-        let state = child_spec.merge(children.state, pid)
-        let pids = [process.make_opaque(pid), ..children.pids]
-        let init = add_initialiser_layer(children.init, child_spec, pid, state)
-        Starting(Children(pids: pids, state: state, init: init))
-      }
-    }
+    // If one of the previous children has failed then we cannot continue
     Failed(fail) -> Failed(fail)
+
+    // If everything is OK so far then we can add the child
+    Starting(
+      state: state,
+      starter: starter,
+      pids: pids,
+    ) -> start_and_add_child(pids, state, starter, child_spec)
   }
 }
 
-pub fn old_worker(
-  children: Spec(state),
-  start start_child: fn(state) -> StartResult(msg),
-  returning merge: fn(state, Pid(msg)) -> new_state,
-) -> Spec(new_state) {
-  children
-  |> add(ChildSpec(start_child, merge))
+// TODO: document
+pub fn worker(
+  start: fn(state) -> StartResult(msg),
+) -> ChildSpec(msg, state, state) {
+  ChildSpec(start: start, update_state: fn(state, _pid) { state })
 }
 
-pub fn unreferenced_worker(
-  children: Spec(state),
-  start start_child: fn(state) -> StartResult(msg),
-) -> Spec(state) {
-  old_worker(children, start_child, fn(x, _) { x })
+// TODO: document
+pub fn returning_state(
+  child: ChildSpec(msg, state_a, state_b),
+  update_state: fn(state_a, Pid(msg)) -> state_c,
+) -> ChildSpec(msg, state_a, state_c) {
+  ChildSpec(start: child.start, update_state: update_state)
 }
 
 // Testing
@@ -147,26 +167,20 @@ pub fn start_child1(x: Nil) -> StartResult(Int) {
   todo
 }
 
-pub fn start_child2(older: Pid(Int)) -> StartResult(String) {
+pub fn start_child2(_older: Pid(Int)) -> StartResult(String) {
   todo
 }
 
-pub fn start_child3(older: Pid(Int)) -> StartResult(Float) {
+pub fn start_child3(_older: Pid(Int)) -> StartResult(Float) {
   todo
 }
 
-// pub fn init(spec: Spec(Nil)) {
-//   spec
-//   |> add(
-//     worker(start_child1)
-//     |> with_state(fn(_state, pid) { pid }),
-//   )
-//   |> add(worker(start_child2))
-//   |> add(worker(start_child3))
-// }
-pub fn init(spec: Spec(Nil)) {
+pub fn init(spec) {
   spec
-  |> old_worker(start: start_child1, returning: fn(_state, pid) { pid })
-  |> unreferenced_worker(start: start_child2)
-  |> unreferenced_worker(start: start_child3)
+  |> add(
+    worker(start_child1)
+    |> returning_state(fn(_state, pid) { pid }),
+  )
+  |> add(worker(start_child2))
+  |> add(worker(start_child3))
 }
