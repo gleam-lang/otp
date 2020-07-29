@@ -1,4 +1,4 @@
-import gleam/otp/process.{ExitReason, From, Message, Normal}
+import gleam/otp/process.{ExitReason, Message, Normal}
 import gleam/should
 import gleam/io
 import gleam/result
@@ -10,36 +10,73 @@ external fn sleep(Int) -> Nil =
   "timer" "sleep"
 
 pub fn is_alive_test() {
-  let f = fn() { sleep(1000) }
-  let pid = process.start(f)
+  let pid = process.start(fn() { sleep(1000) })
   pid
   |> process.is_alive
   |> should.equal(True)
 }
 
 pub fn is_alive_dead_test() {
-  let routine = fn() { Nil }
-  let pid = process.start(routine)
+  let pid = process.start(fn() { Nil })
   sleep(20)
   pid
   |> process.is_alive
   |> should.equal(False)
 }
 
-// pub fn make_opaque_test() {
-//   let f = fn(handle: fn(x) -> x) {
-//     fn(self) {
-//       process.started(self)
-//       assert Ok(Message(msg)) = process.receive(self, 1000)
-//       handle(msg)
-//       Normal
-//     }
-//   }
-//   assert Ok(float_pid) = process.start(f(fn(x) { x +. 1. }))
-//   assert Ok(int_pid) = process.start(f(fn(x) { x + 1 }))
-//   // They can be compared now, they are the same type
-//   process.make_opaque(float_pid) != process.make_opaque(int_pid)
-// }
+pub fn channel_receive_test() {
+  let channel = process.make_channel()
+
+  // Send message from self
+  process.channel_send(channel, 0)
+
+  // Send message from another process
+  process.start(
+    fn() {
+      process.channel_send(channel, 1)
+      process.channel_send(channel, 2)
+    },
+  )
+
+  // Assert all the messages arrived
+  process.channel_receive(channel, 0)
+  |> should.equal(Ok(0))
+  process.channel_receive(channel, 50)
+  |> should.equal(Ok(1))
+  process.channel_receive(channel, 0)
+  |> should.equal(Ok(2))
+  process.channel_receive(channel, 0)
+  |> should.equal(Error(Nil))
+}
+
+pub fn flush_channel_messages_test() {
+  let c1 = process.make_channel()
+  let c2 = process.make_channel()
+  process.channel_send(c1, 1)
+  process.channel_send(c2, 2)
+  process.channel_send(c2, 3)
+
+  // Flush c2
+  process.flush_channel_messages([c2])
+  |> should.equal(2)
+
+  // c2 messages have been dropped
+  process.channel_receive(c2, 0)
+  |> should.equal(Error(Nil))
+
+  // c1 still has messages
+  process.channel_receive(c1, 0)
+  |> should.equal(Ok(1))
+}
+
+pub fn channels_receive_test() {
+  let c1 = process.make_channel()
+  let c2 = process.make_channel()
+  process.channel_send(c1, 1)
+  process.channels_receive([c1, c2], 0)
+  |> should.equal(Ok(tuple(c1, 1)))
+}
+
 //pub fn async_send_test() {
 //  assert Ok(
 //    pid,
@@ -64,10 +101,9 @@ pub fn is_alive_dead_test() {
 //  let resp = process.async_send(pid, 3)
 //  should.equal(resp, Nil)
 //}
-type EchoMessage(x) {
-  EchoMessage(From(x), x)
-}
-
+// type EchoMessage(x) {
+//   EchoMessage(From(x), x)
+// }
 //pub fn sync_send_test() {
 //  assert Ok(
 //    pid,
