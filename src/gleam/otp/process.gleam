@@ -9,10 +9,90 @@ import gleam/option.{None, Option}
 
 external type DoNotLeak
 
+pub external type SystemOk
+
+pub fn system_ok() -> SystemOk {
+  "ok"
+  |> atom.from_string
+  |> dynamic.from
+  |> dynamic.unsafe_coerce
+}
+
 /// A Pid (or Process identifier) is a reference to an OTP process, which is a
 /// lightweight thread that communicates by sending and receiving messages.
 ///
 pub external type Pid
+
+// TODO: document that this doesn't get type checked etc
+// TODO: test
+/// Send a message to a process.
+///
+/// Message sending is asynchronous and this function will likely return before
+/// the message is handled by the receiving processes.
+///
+/// See the [Erlang documentation][erl] for more information.
+/// [erl]: http://erlang.org/doc/man/erlang.html#send-2
+///
+pub external fn unsafe_send(to: Pid, msg: msg) -> msg =
+  "erlang" "send"
+
+// TODO: document
+pub external type Reference
+
+// TODO: document
+// TODO: test
+pub external fn make_reference() -> Reference =
+  "erlang" "make_ref"
+
+// TODO: test
+// TODO: document
+pub external fn self() -> Pid =
+  "erlang" "self"
+
+// TODO: document
+// TODO: test
+pub opaque type Channel(msg) {
+  Channel(pid: Pid, reference: Reference)
+}
+
+// TODO: document
+pub fn make_channel() -> Channel(msg) {
+  Channel(pid: self(), reference: make_reference())
+}
+
+// TODO: document
+pub external fn channel_send(Channel(msg), msg) -> Channel(msg) =
+  "gleam_otp_process_external" "channel_send"
+
+// TODO: document
+pub external fn channels_receive(
+  List(Channel(msg)),
+  Int,
+) -> Result(tuple(Channel(msg), msg), Nil) =
+  "gleam_otp_process_external" "channels_receive"
+
+// TODO: document
+pub fn channel_receive(
+  channel: Channel(msg),
+  timeout: Int,
+) -> Result(msg, Nil) {
+  try tuple(_, msg) = channels_receive([channel], timeout)
+  Ok(msg)
+}
+
+// TODO: implement
+// TODO: test
+// TODO: document
+pub fn channel_call(
+  _channel: Channel(tuple(request, Channel(response))),
+  _timeout: Int,
+) -> Result(response, Nil) {
+  todo("Channel call")
+}
+
+// TODO: document
+pub external fn flush_channel_messages(List(Channel(msg))) -> Int =
+  "gleam_otp_process_external" "flush_channel_messages"
 
 pub type ExitReason {
   // The process is stopping due to normal and expected reasons. This is not
@@ -29,27 +109,8 @@ pub type ExitReason {
 }
 
 // TODO: document
-pub external type Ref
-
-// TODO: document
-// Special thanks to Peter Saxton for the idea of a typed From value
-pub opaque type From(reply) {
-  From(reply: fn(reply) -> Nil)
-}
-
-// TODO: document
-// TODO: test
-pub fn wrap_from(from: From(a), with adapter: fn(b) -> a) -> From(b) {
-  From(reply: fn(b) { from.reply(adapter(b)) })
-}
-
-// TODO: document
-pub fn reply(to caller: From(reply), with payload: reply) -> Nil {
-  caller.reply(payload)
-}
-
-// TODO: document
 // TODO: implement remaining messages
+// TODO: better abstraction around this to make it more type safe
 pub type SystemMessage {
   // {replace_state, StateFn}
   // {change_code, Mod, Vsn, Extra}
@@ -62,10 +123,10 @@ pub type SystemMessage {
   // {debug, {install, {Func, FuncState}}}
   // {debug, {install, {FuncId, Func, FuncState}}}
   // {debug, {remove, FuncOrId}}
-  GetStatus(From(Dynamic))
-  Suspend(From(Nil))
-  Resume(From(Nil))
-  GetState(From(Dynamic))
+  GetStatus(Channel(Dynamic))
+  Suspend(Channel(SystemOk))
+  Resume(Channel(SystemOk))
+  GetState(Channel(Dynamic))
 }
 
 pub type DebugOption {
@@ -82,29 +143,14 @@ pub type StartResult =
 
 // TODO: document
 pub type Message(msg) {
-  Message(
-    /// A regular message excepted by the process
-    message: msg,
-  )
+  /// A regular message excepted by the process
+  Message(message: msg)
 
-  System(
-    /// An OTP system message, for debugging or maintenance
-    message: SystemMessage,
-  )
+  /// An OTP system message, for debugging or maintenance
+  System(message: SystemMessage)
 }
 
-pub external fn erl_async_send(to: Pid, msg: msg) -> msg =
-  "erlang" "send"
-
 // TODO
-// Send a message to a process.
-//
-// Message sending is asynchronous and this function will likely return before
-// the message is handled by the receiving processes.
-//
-// See the [Erlang documentation][erl] for more information.
-// [erl]: http://erlang.org/doc/man/erlang.html#send-2
-//
 //pub fn async_send(to receiever: Pid(msg), msg msg: msg) -> Nil {
 //  erl_async_send(receiever, msg)
 //  Nil
@@ -124,10 +170,8 @@ pub external fn erl_async_send(to: Pid, msg: msg) -> msg =
 pub external fn is_alive(Pid) -> Bool =
   "erlang" "is_process_alive"
 
-// TODO: test
-// TODO: document
-pub external fn self() -> Pid =
-  "erlang" "self"
+pub external fn erlang_send_exit(to: Pid, because: ExitReason) -> Bool =
+  "erlang" "exit"
 
 // TODO: test
 /// Sends an exit signal to a process, indicating that that process is to shut
@@ -136,12 +180,18 @@ pub external fn self() -> Pid =
 /// See the [Erlang documentation][erl] for more information.
 /// [erl]: http://erlang.org/doc/man/erlang.html#exit-2
 ///
-pub external fn send_exit(to: Pid, because: reason) -> Nil =
-  "gleam_otp_process_external" "send_exit"
+pub fn send_exit(to pid: Pid, because reason: ExitReason) -> Nil {
+  erlang_send_exit(pid, reason)
+  Nil
+}
 
 // TODO: document
 pub external fn start(fn() -> anything) -> Pid =
   "erlang" "spawn_link"
+
+// TODO: document
+pub external fn start_unlinked(fn() -> anything) -> Pid =
+  "erlang" "spawn"
 
 // TODO: document
 pub external fn receive_system_message_forever() -> SystemMessage =
