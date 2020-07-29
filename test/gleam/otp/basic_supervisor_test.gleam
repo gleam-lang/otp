@@ -5,8 +5,8 @@ import gleam/otp/basic_supervisor
 import gleam/otp/process.{Pid}
 
 external fn unsafe_get_children(
-  Pid(a),
-) -> List(tuple(Dynamic, Pid(b), Dynamic, Dynamic)) =
+  Pid,
+) -> List(tuple(Dynamic, Pid, Dynamic, Dynamic)) =
   "supervisor" "which_children"
 
 pub fn start_link_test() {

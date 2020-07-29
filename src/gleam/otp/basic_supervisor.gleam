@@ -9,7 +9,7 @@
 import gleam/atom.{Atom}
 import gleam/dynamic
 import gleam/list
-import gleam/otp/process.{Pid, UnknownMessage}
+import gleam/otp/process.{Pid}
 import gleam/result
 
 pub type Strategy {
@@ -24,35 +24,30 @@ pub type Restart {
   Temporary
 }
 
-pub type ChildSpec(msg) {
-  SupervisorSpec(id: String, start: fn() -> Result(Pid(msg), String))
+pub type ChildSpec {
+  SupervisorSpec(id: String, start: fn() -> Result(Pid, String))
 
   WorkerSpec(
     id: String,
-    start: fn() -> Result(Pid(msg), String),
+    start: fn() -> Result(Pid, String),
     restart: Restart,
     shutdown: Int,
   )
 }
-
-pub external fn make_child_opaque(
-  spec: ChildSpec(msg),
-) -> ChildSpec(UnknownMessage) =
-  "gleam@dynamic" "unsafe_coerce"
 
 pub type Spec {
   Spec(
     strategy: Strategy,
     intensity: Int,
     period: Int,
-    children: List(ChildSpec(UnknownMessage)),
+    children: List(ChildSpec),
   )
 }
 
-external fn erl_start_link(Atom, Spec) -> Result(Pid(UnknownMessage), String) =
+external fn erl_start_link(Atom, Spec) -> Result(Pid, String) =
   "supervisor" "start_link"
 
-pub fn start_link(spec: Spec) -> Result(Pid(UnknownMessage), String) {
+pub fn start_link(spec: Spec) -> Result(Pid, String) {
   erl_start_link(atom.create_from_string("gleam@otp@basic_supervisor"), spec)
 }
 
