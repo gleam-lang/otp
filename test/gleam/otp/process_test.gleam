@@ -24,17 +24,17 @@ pub fn is_alive_dead_test() {
   |> should.equal(False)
 }
 
-pub fn channel_receive_test() {
+pub fn receive_test() {
   let channel = process.make_channel()
 
   // Send message from self
-  process.channel_send(channel, 0)
+  process.send(channel, 0)
 
   // Send message from another process
   process.start(
     fn() {
-      process.channel_send(channel, 1)
-      process.channel_send(channel, 2)
+      process.send(channel, 1)
+      process.send(channel, 2)
     },
   )
 
@@ -49,15 +49,15 @@ pub fn channel_receive_test() {
   |> should.equal(Error(Nil))
 }
 
-pub fn flush_channel_test() {
+pub fn flush_test() {
   let c1 = process.make_channel()
   let c2 = process.make_channel()
-  process.channel_send(c1, 1)
-  process.channel_send(c2, 2)
-  process.channel_send(c2, 3)
+  process.send(c1, 1)
+  process.send(c2, 2)
+  process.send(c2, 3)
 
   // Flush c2
-  process.flush_channel(c2)
+  process.flush(c2)
   |> should.equal(2)
 
   // c2 messages have been dropped
@@ -78,9 +78,7 @@ pub fn make_reference_test() {
 
 pub fn self_test() {
   let channel = process.make_channel()
-  let child_pid1 = process.start(
-    fn() { process.channel_send(channel, process.self()) },
-  )
+  let child_pid1 = process.start(fn() { process.send(channel, process.self()) })
   assert Ok(child_pid2) = process.receive(channel, 100)
 
   child_pid1

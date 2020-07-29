@@ -59,8 +59,10 @@ pub fn make_channel() -> Channel(msg) {
 }
 
 // TODO: document
-pub external fn channel_send(Channel(msg), msg) -> Channel(msg) =
-  "gleam_otp_process_external" "channel_send"
+pub fn send(channel: Channel(msg), msg: msg) -> Channel(msg) {
+  unsafe_send(channel.pid, tuple(channel.reference, msg))
+  channel
+}
 
 pub external type ProcessMonitor
 
@@ -92,7 +94,7 @@ pub external type Receiver(message)
 pub external fn make_receiver() -> Receiver(message) =
   "gleam_otp_process_external" "make_receiver"
 
-pub external fn run_receiver(Receiver(msg), Int) -> Result(msg, Nil) =
+pub external fn run_receiver(Receiver(msg)) -> Result(msg, Nil) =
   "gleam_otp_process_external" "run_receiver"
 
 pub external fn flush_receiver(Receiver(msg)) -> Int =
@@ -104,6 +106,9 @@ pub external fn add_channel(
   mapping: fn(a) -> b,
 ) -> Receiver(b) =
   "gleam_otp_process_external" "add_channel"
+
+pub external fn set_timeout(Receiver(a), Int) -> Receiver(a) =
+  "gleam_otp_process_external" "set_timeout"
 
 pub external fn receieve_system_messages(Receiver(a)) -> Receiver(a) =
   "gleam_otp_process_external" "receive_system_messages"
@@ -215,11 +220,12 @@ pub external fn receive_system_message_forever() -> SystemMessage =
 pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
   make_receiver()
   |> add_channel(channel, fn(x) { x })
-  |> run_receiver(timeout)
+  |> set_timeout(timeout)
+  |> run_receiver
 }
 
 // TODO: document
-pub fn flush_channel(channel: Channel(msg)) -> Int {
+pub fn flush(channel: Channel(msg)) -> Int {
   make_receiver()
   |> add_channel(channel, fn(x) { x })
   |> flush_receiver
