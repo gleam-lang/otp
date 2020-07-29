@@ -1,14 +1,10 @@
 -module(gleam_otp_process_external).
 
 % Public functions
--export([unsafe_coerce/1, send_exit/2, exit_self/1, own_pid/1, own_pid/0,
-         receive_any/2, receive_any_forever/1, sync_send/3, start/1, reply/2,
-         started/1, failed_to_start/2, receive_system_forever/0]).
+-export([send_exit/2, sync_send/3, receive_system_message_forever/0]).
 
 -include("gen/src/gleam@otp@process_From.hrl").
 -include("gen/src/gleam@otp@process_Message.hrl").
--include("gen/src/gleam@otp@process_Self.hrl").
--include("gen/src/gleam@otp@process_Spec.hrl").
 -include("gen/src/gleam@otp@process_System.hrl").
 
 -define(is_record(Tag, Arity, Term),
@@ -29,89 +25,44 @@
 
 -define(exit_msg_constructor_key, '$gleam_exit_msg_constructor').
 
-unsafe_coerce(X) ->
-  X.
-
 send_exit(Pid, Reason) ->
   exit(Pid, Reason),
   nil.
 
-exit_self(Reason) ->
-  exit(Reason),
-  nil.
-
-own_pid() ->
-  self().
-
-own_pid(_) ->
-  self().
-
-start(Spec) ->
-  Parent = self(),
-  FnWithSelf = fun() ->
-    Self = #self{pid = self(), parent = Parent},
-    (Spec#spec.routine)(Self)
-  end,
-  Pid = spawn_link(FnWithSelf),
-  receive
-    {'$gleam_special', {process_started, Pid}} -> {ok, Pid};
-    {'$gleam_special', {process_failed_to_start, Pid, Reason}} -> {error, Reason}
-    % TODO: timeout?
-  end.
-
-started(Self) ->
-  #self{pid = Pid, parent = Parent} = Self,
-  Parent ! {'$gleam_special', {process_started, Pid}},
-  nil.
-
-failed_to_start(Self, Reason) ->
-  #self{pid = Pid, parent = Parent} = Self,
-  Parent ! {'$gleam_special', {process_failed_to_start, Pid, Reason}},
-  nil.
-
-receive_any(_Self, Timeout) ->
-  case do_receive(Timeout) of
-    {error, _} = E -> E;
-    Msg -> {ok, Msg}
-  end.
-
-receive_any_forever(_Self) ->
-  do_receive(infinity).
-
-receive_system_forever() ->
+receive_system_message_forever() ->
   receive
     {system, From, Request} -> normalise_system_msg(From, Request)
   end.
 
-do_receive(Timeout) ->
-  receive
-    {system, From, Request} ->
-      #system{message = normalise_system_msg(From, Request)};
+%do_receive(Timeout) ->
+%  receive
+%    {system, From, Request} ->
+%      #system{message = normalise_system_msg(From, Request)};
+%
+%    % TODO
+%    % {'EXIT', Pid, Reason} ->
+%    %   #exit{pid = Pid, reason = Reason};
+%
+%    % TODO
+%    % {'DOWN', Ref, process, Pid, Reason} ->
+%    %   #process_down{ref = Ref, pid = Pid, reason = Reason};
+%
+%    % TODO
+%    % {'DOWN', Ref, port, Port, Reason} ->
+%    %   #port_down{ref = Ref, port = Port, reason = Reason};
+%
+%    Msg when ?is_gleam_special_msg(Msg) ->
+%      unexpected_msg(Msg);
+%
+%    Msg ->
+%      #message{message = Msg}
+%  after
+%    Timeout -> {error, nil}
+%  end.
 
-    % TODO
-    % {'EXIT', Pid, Reason} ->
-    %   #exit{pid = Pid, reason = Reason};
-
-    % TODO
-    % {'DOWN', Ref, process, Pid, Reason} ->
-    %   #process_down{ref = Ref, pid = Pid, reason = Reason};
-
-    % TODO
-    % {'DOWN', Ref, port, Port, Reason} ->
-    %   #port_down{ref = Ref, port = Port, reason = Reason};
-
-    Msg when ?is_gleam_special_msg(Msg) ->
-      unexpected_msg(Msg);
-
-    Msg ->
-      #message{message = Msg}
-  after
-    Timeout -> {error, nil}
-  end.
-
-unexpected_msg(Msg) ->
-  % TODO: make Msg into a binary
-  exit({abnormal, {gleam_unexpected_message, Msg}}).
+%unexpected_msg(Msg) ->
+%  % TODO: make Msg into a binary
+%  exit({abnormal, {gleam_unexpected_message, Msg}}).
 
 normalise_system_msg(From, Msg) when Msg =:= get_state orelse Msg =:= get_status ->
   {Msg, gen_from_to_gleam_from(From)};
@@ -157,6 +108,3 @@ gen_from_to_gleam_from({Pid, RequestRef}) ->
     nil
   end,
   #from{reply = Reply}.
-
-reply(Replier, Msg) ->
-  Replier(Msg).
