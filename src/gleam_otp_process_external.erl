@@ -1,11 +1,8 @@
 -module(gleam_otp_process_external).
 
 % Receivers
--export([make_receiver/0, add_channel/3, add_system_channel/2,
-         run_receiver/2, flush_receiver/1]).
-
-% Channels
--export([channel_send/2]).
+-export([make_receiver/0, add_channel/3, add_system_channel/2, set_timeout/2,
+         run_receiver/1, flush_receiver/1]).
 
 % Monitoring
 -export([monitor_process/1, demonitor_process/1]).
@@ -19,10 +16,10 @@
 % Receivers
 %
 
--record(receiver, {system, map}).
+-record(receiver, {system, map, timeout}).
 
 make_receiver() ->
-    #receiver{system = undefined, map = #{}}.
+    #receiver{timeout = 5000, system = undefined, map = #{}}.
 
 add_channel(Receiver, Channel, Fn) ->
     Ref = Channel#channel.reference,
@@ -33,8 +30,8 @@ channel_msg(Map, Ref, Msg) ->
     Fn = maps:get(Ref, Map),
     {ok, Fn(Msg)}.
 
-run_receiver(Receiver, Timeout) ->
-    #receiver{system = System, map = Map} = Receiver,
+run_receiver(Receiver) ->
+    #receiver{timeout = Timeout, system = System, map = Map} = Receiver,
     receive
         {Ref, Msg} when is_map_key(Ref, Map) ->
             channel_msg(Map, Ref, Msg);
@@ -63,6 +60,9 @@ flush_receiver(Receiver, N) ->
         0 -> N
     end.
 
+set_timeout(Receiver, Timeout) ->
+    Receiver#receiver{timeout = Timeout}.
+
 flush_receiver(Receiver) ->
     flush_receiver(Receiver, 0).
 
@@ -72,9 +72,6 @@ add_system_channel(Receiver, Fn) ->
 %
 % Channels
 %
-
-channel_send(#channel{pid = Pid, reference = Ref}, Msg) ->
-    erlang:send(Pid, {Ref, Msg}).
 
 monitor_process(Pid) ->
     erlang:monitor(process, Pid).
