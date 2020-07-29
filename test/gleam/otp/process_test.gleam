@@ -39,17 +39,17 @@ pub fn channel_receive_test() {
   )
 
   // Assert all the messages arrived
-  process.channel_receive(channel, 0)
+  process.receive(channel, 0)
   |> should.equal(Ok(0))
-  process.channel_receive(channel, 50)
+  process.receive(channel, 50)
   |> should.equal(Ok(1))
-  process.channel_receive(channel, 0)
+  process.receive(channel, 0)
   |> should.equal(Ok(2))
-  process.channel_receive(channel, 0)
+  process.receive(channel, 0)
   |> should.equal(Error(Nil))
 }
 
-pub fn flush_channel_messages_test() {
+pub fn flush_channel_test() {
   let c1 = process.make_channel()
   let c2 = process.make_channel()
   process.channel_send(c1, 1)
@@ -57,108 +57,35 @@ pub fn flush_channel_messages_test() {
   process.channel_send(c2, 3)
 
   // Flush c2
-  process.flush_channel_messages([c2])
+  process.flush_channel(c2)
   |> should.equal(2)
 
   // c2 messages have been dropped
-  process.channel_receive(c2, 0)
+  process.receive(c2, 0)
   |> should.equal(Error(Nil))
 
   // c1 still has messages
-  process.channel_receive(c1, 0)
+  process.receive(c1, 0)
   |> should.equal(Ok(1))
 }
 
-pub fn channels_receive_test() {
-  let c1 = process.make_channel()
-  let c2 = process.make_channel()
-  process.channel_send(c1, 1)
-  process.channels_receive([c1, c2], 0)
-  |> should.equal(Ok(tuple(c1, 1)))
+pub fn make_reference_test() {
+  let r1 = process.make_reference()
+  let r2 = process.make_reference()
+  r1
+  |> should.not_equal(r2)
 }
 
-//pub fn async_send_test() {
-//  assert Ok(
-//    pid,
-//  ) = process.start(
-//    fn() {
-//      self
-//      |> process.receive(50)
-//      |> should.equal(Ok(Message(1)))
-//      self
-//      |> process.receive(50)
-//      |> should.equal(Ok(Message(2)))
-//      self
-//      |> process.receive(50)
-//      |> should.equal(Ok(Message(3)))
-//      Normal
-//    },
-//  )
-//  let resp = process.async_send(pid, 1)
-//  should.equal(resp, Nil)
-//  let resp = process.async_send(pid, 2)
-//  should.equal(resp, Nil)
-//  let resp = process.async_send(pid, 3)
-//  should.equal(resp, Nil)
-//}
-// type EchoMessage(x) {
-//   EchoMessage(From(x), x)
-// }
-//pub fn sync_send_test() {
-//  assert Ok(
-//    pid,
-//  ) = process.start(
-//    fn() {
-//      assert Ok(Message(EchoMessage(from, x))) = process.receive(self, 50)
-//      assert Nil = process.reply(from, x)
-//      assert Ok(Message(EchoMessage(from, x))) = process.receive(self, 50)
-//      assert Nil = process.reply(from, x)
-//      assert Ok(Message(EchoMessage(from, x))) = process.receive(self, 50)
-//      assert Nil = process.reply(from, x)
-//      Normal
-//    },
-//  )
-//  let resp = process.sync_send(pid, EchoMessage(_, 1), 50)
-//  should.equal(resp, 1)
-//  let resp = process.sync_send(pid, EchoMessage(_, 2), 50)
-//  should.equal(resp, 2)
-//  let resp = process.sync_send(pid, EchoMessage(_, 2.0), 50)
-//  should.equal(resp, 2.0)
-//}
-//pub fn unsafe_downcast_send() {
-//  let f = fn(handle: fn(x) -> x) {
-//    fn() {
-//      let Message(msg) = process.receive(self, 1000)
-//      handle(msg)
-//    }
-//  }
-//  assert Ok(float_pid) = process.start(f(fn(x) { x +. 1. }))
-//  assert Ok(int_pid) = process.start(f(fn(x) { x + 1 }))
-//  let opaque_pid = process.make_opaque(int_pid)
-//  let fake_float_pid = process.unsafe_downcast(opaque_pid)
-//  // They can be compared now, they are the same type
-//  should.equal(float_pid, fake_float_pid)
-//}
-type HandleExit {
-  HandleExit(exited: process.Pid, reason: ExitReason)
-  Ping
+pub fn self_test() {
+  let channel = process.make_channel()
+  let child_pid1 = process.start(
+    fn() { process.channel_send(channel, process.self()) },
+  )
+  assert Ok(child_pid2) = process.receive(channel, 100)
+
+  child_pid1
+  |> should.equal(child_pid2)
+
+  process.self()
+  |> should.not_equal(child_pid2)
 }
-// pub fn trap_exit_test() {
-//   let linkee_routine = fn() { process.receive(self, 150) }
-//   let linkee = process.start(linkee_routine)
-//
-//   let routine = fn(self) {
-//     process.started(self)
-//     let expected_exit_signal = HandleExit(process.make_opaque(linkee), Normal)
-//     self
-//     |> process.receive_forever
-//     |> should.equal(Message(expected_exit_signal))
-//     Normal
-//   }
-//
-//   let spec = Spec(routine: routine, exit_trapper: Some(HandleExit))
-//   assert Ok(_) = process.start_spec(spec)
-//
-//   process.async_send(linkee, Ping)
-//   sleep(20)
-// }

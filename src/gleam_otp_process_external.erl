@@ -1,85 +1,104 @@
 -module(gleam_otp_process_external).
 
--export([receive_system_message_forever/0]).
+% Receivers
+-export([make_receiver/0, add_channel/3, add_system_channel/2,
+         run_receiver/2, flush_receiver/1]).
 
 % Channels
--export([channel_send/2, channels_receive/2, flush_channel_messages/1]).
+-export([channel_send/2]).
+
+% Monitoring
+-export([monitor_process/1, demonitor_process/1]).
 
 -include("gen/src/gleam@otp@process_Channel.hrl").
 -include("gen/src/gleam@otp@process_Message.hrl").
+-include("gen/src/gleam@otp@process_ProcessDown.hrl").
 -include("gen/src/gleam@otp@process_System.hrl").
 
--define(is_n_tuple(Term, N), is_tuple(Term) andalso tuple_size(Term) =:= N).
--define(is_record(Tag, Arity, Term),
-        is_n_tuple(Term, Arity + 1) andalso element(1, Term) =:= Tag).
--define(is_system_msg(Term), ?is_record(system, 2, Term)).
--define(is_monitor_msg(Term), ?is_record('DOWN', 4, Term)).
--define(is_exit_msg(Term), ?is_record('EXIT', 2, Term)).
--define(is_gen_reply(Term),
-        is_tuple(Term) andalso tuple_size(Term) =:= 2 andalso
-        is_reference(element(1, Term))).
+%
+% Receivers
+%
 
--define(is_special_msg(Term),
-        (?is_system_msg(Term) orelse ?is_monitor_msg(Term) orelse
-         ?is_exit_msg(Term) orelse ?is_gen_reply(Term))).
+-record(receiver, {system, map}).
 
-channel_send(#channel{pid = Pid, reference = Ref}, Msg) ->
-    erlang:send(Pid, {Ref, Msg}).
+make_receiver() ->
+    #receiver{system = undefined, map = #{}}.
 
-channel_map(Channels) ->
-    Insert = fun(C, Refs) -> maps:put(C#channel.reference, C, Refs) end,
-    lists:foldl(Insert, #{}, Channels).
+add_channel(Receiver, Channel, Fn) ->
+    Ref = Channel#channel.reference,
+    Map = maps:put(Ref, Fn, Receiver#receiver.map),
+    Receiver#receiver{map = Map}.
 
-channels_receive(Channels, Timeout) ->
-    Map = channel_map(Channels),
+channel_msg(Map, Ref, Msg) ->
+    Fn = maps:get(Ref, Map),
+    {ok, Fn(Msg)}.
+
+run_receiver(Receiver, Timeout) ->
+    #receiver{system = System, map = Map} = Receiver,
     receive
         {Ref, Msg} when is_map_key(Ref, Map) ->
-            {ok, {maps:get(Ref, Map), Msg}}
+            channel_msg(Map, Ref, Msg);
+
+        {'DOWN', Ref, process, Pid, Reason} when is_map_key(Ref, Map) ->
+            channel_msg(Map, Ref, #process_down{pid = Pid, reason = Reason});
+
+        {system, From, Request} when is_function(System) ->
+            system_msg(From, Request)
     after
         Timeout -> {error, nil}
     end.
 
-flush_channel_messages(Channels, N) ->
+flush_receiver(Receiver, N) ->
+    #receiver{system = System, map = Map} = Receiver,
     receive
-        {Ref, _} when is_map_key(Ref, Channels) ->
-            flush_channel_messages(Channels, N + 1)
+        {Ref, _} when is_map_key(Ref, Map) ->
+            flush_receiver(Receiver, N + 1);
+
+        {'DOWN', Ref, process, _, _} when is_map_key(Ref, Map) ->
+            flush_receiver(Receiver, N + 1);
+
+        {system, _, _} when is_function(System) ->
+            flush_receiver(Receiver, N + 1)
     after
         0 -> N
     end.
 
-flush_channel_messages(Channels) ->
-    flush_channel_messages(channel_map(Channels), 0).
+flush_receiver(Receiver) ->
+    flush_receiver(Receiver, 0).
 
-receive_system_message_forever() ->
-    receive
-        {system, From, Request} -> normalise_system_msg(From, Request)
-    end.
+add_system_channel(Receiver, Fn) ->
+    Receiver#receiver{system = Fn}.
+
+%
+% Channels
+%
+
+channel_send(#channel{pid = Pid, reference = Ref}, Msg) ->
+    erlang:send(Pid, {Ref, Msg}).
+
+monitor_process(Pid) ->
+    erlang:monitor(process, Pid).
+
+demonitor_process(Monitor) ->
+    erlang:demonitor(Monitor, [flush]),
+    nil.
 
 %do_receive(Timeout) ->
 %  receive
 %    {system, From, Request} ->
-%      #system{message = normalise_system_msg(From, Request)};
+%      #system{message = system_msg(From, Request)};
 %
 %    % TODO
 %    % {'EXIT', Pid, Reason} ->
 %    %   #exit{pid = Pid, reason = Reason};
 %
 %    % TODO
-%    % {'DOWN', Ref, process, Pid, Reason} ->
-%    %   #process_down{ref = Ref, pid = Pid, reason = Reason};
-%
-%    % TODO
 %    % {'DOWN', Ref, port, Port, Reason} ->
 %    %   #port_down{ref = Ref, port = Port, reason = Reason};
-%
-%    Msg ->
-%      #message{message = Msg}
-%  after
-%    Timeout -> {error, nil}
 %  end.
 
-normalise_system_msg(From, Msg) when is_atom(Msg) ->
-    {Msg, gen_from_to_channel(From)}.
+system_msg(Msg, {Pid, Ref}) when is_atom(Msg) ->
+    {Msg, #channel{pid = Pid, reference = Ref}}.
 
 % This function is implemented in Erlang as it requires selective receives.
 % It is based off of gen:do_call/4.
@@ -102,6 +121,3 @@ normalise_system_msg(From, Msg) when is_atom(Msg) ->
 %       erlang:demonitor(RequestRef, [flush]),
 %       exit(timeout)
 %   end.
-
-gen_from_to_channel({Pid, Ref}) ->
-  #channel{pid = Pid, reference = Ref}.

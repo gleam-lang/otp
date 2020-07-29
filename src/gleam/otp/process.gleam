@@ -4,6 +4,7 @@
 //
 import gleam/atom
 import gleam/result
+import gleam/map.{Map}
 import gleam/dynamic.{Dynamic}
 import gleam/option.{None, Option}
 
@@ -40,17 +41,14 @@ pub external fn unsafe_send(to: Pid, msg: msg) -> msg =
 pub external type Reference
 
 // TODO: document
-// TODO: test
 pub external fn make_reference() -> Reference =
   "erlang" "make_ref"
 
-// TODO: test
 // TODO: document
 pub external fn self() -> Pid =
   "erlang" "self"
 
 // TODO: document
-// TODO: test
 pub opaque type Channel(msg) {
   Channel(pid: Pid, reference: Reference)
 }
@@ -64,35 +62,51 @@ pub fn make_channel() -> Channel(msg) {
 pub external fn channel_send(Channel(msg), msg) -> Channel(msg) =
   "gleam_otp_process_external" "channel_send"
 
-// TODO: document
-pub external fn channels_receive(
-  List(Channel(msg)),
-  Int,
-) -> Result(tuple(Channel(msg), msg), Nil) =
-  "gleam_otp_process_external" "channels_receive"
+pub external type ProcessMonitor
 
-// TODO: document
-pub fn channel_receive(
-  channel: Channel(msg),
-  timeout: Int,
-) -> Result(msg, Nil) {
-  try tuple(_, msg) = channels_receive([channel], timeout)
-  Ok(msg)
-}
-
-// TODO: implement
 // TODO: test
 // TODO: document
-pub fn channel_call(
-  _channel: Channel(tuple(request, Channel(response))),
-  _timeout: Int,
-) -> Result(response, Nil) {
-  todo("Channel call")
-}
+pub external fn monitor_process(Pid) -> ProcessMonitor =
+  "gleam_otp_process_external" "monitor_process"
+
+// TODO: test
+// TODO: document
+pub external fn demonitor_process(ProcessMonitor) -> Nil =
+  "gleam_otp_process_external" "demonitor_process"
 
 // TODO: document
-pub external fn flush_channel_messages(List(Channel(msg))) -> Int =
-  "gleam_otp_process_external" "flush_channel_messages"
+pub type ProcessDown {
+  ProcessDown(pid: Pid, reason: Dynamic)
+}
+
+// TODO: test
+// TODO: document
+pub external fn process_monitor_receive(
+  ProcessMonitor,
+  Int,
+) -> Result(ProcessDown, Nil) =
+  "gleam_otp_process_external" "process_monitor_receive"
+
+pub external type Receiver(message)
+
+pub external fn make_receiver() -> Receiver(message) =
+  "gleam_otp_process_external" "make_receiver"
+
+pub external fn run_receiver(Receiver(msg), Int) -> Result(msg, Nil) =
+  "gleam_otp_process_external" "run_receiver"
+
+pub external fn flush_receiver(Receiver(msg)) -> Int =
+  "gleam_otp_process_external" "flush_receiver"
+
+pub external fn add_channel(
+  to: Receiver(b),
+  add: Channel(a),
+  mapping: fn(a) -> b,
+) -> Receiver(b) =
+  "gleam_otp_process_external" "add_channel"
+
+pub external fn receieve_system_messages(Receiver(a)) -> Receiver(a) =
+  "gleam_otp_process_external" "receive_system_messages"
 
 pub type ExitReason {
   // The process is stopping due to normal and expected reasons. This is not
@@ -196,3 +210,27 @@ pub external fn start_unlinked(fn() -> anything) -> Pid =
 // TODO: document
 pub external fn receive_system_message_forever() -> SystemMessage =
   "gleam_otp_process_external" "receive_system_message_forever"
+
+// TODO: document
+pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
+  make_receiver()
+  |> add_channel(channel, fn(x) { x })
+  |> run_receiver(timeout)
+}
+
+// TODO: document
+pub fn flush_channel(channel: Channel(msg)) -> Int {
+  make_receiver()
+  |> add_channel(channel, fn(x) { x })
+  |> flush_receiver
+}
+
+// TODO: implement
+// TODO: test
+// TODO: document
+pub fn channel_call(
+  _channel: Channel(tuple(request, Channel(response))),
+  _timeout: Int,
+) -> Result(response, Nil) {
+  todo("Channel call")
+}
