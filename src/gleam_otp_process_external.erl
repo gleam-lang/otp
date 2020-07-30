@@ -2,7 +2,8 @@
 
 % Receivers
 -export([make_receiver/0, include_channel/3, include_system/2, include_bare/2,
-         remove_timeout/1, set_timeout/2, run_receiver/1, flush_receiver/1]).
+         remove_timeout/1, set_timeout/2, run_receiver/1, flush_receiver/1,
+         flush_other/2]).
 
 %
 % import Gleam records
@@ -35,10 +36,11 @@
 % Receivers
 %
 
--record(receiver, {system, bare, map, timeout}).
+-record(receiver, {system, bare, map, timeout, flush_other}).
 
 make_receiver() ->
-    #receiver{timeout = 5000, system = undefined, bare = undefined, map = #{}}.
+    #receiver{timeout = 5000, system = undefined, bare = undefined,
+              flush_other = false, map = #{}}.
 
 include_channel(Receiver, Channel, Fn) ->
     Ref = Channel#channel.reference,
@@ -50,7 +52,8 @@ channel_msg(Map, Ref, Msg) ->
     {ok, Fn(Msg)}.
 
 run_receiver(Receiver) ->
-    #receiver{timeout = Timeout, system = System, bare = Bare, map = Map} = Receiver,
+    #receiver{timeout = Timeout, system = System, bare = Bare, map = Map,
+              flush_other = FlushOther} = Receiver,
     receive
         {Ref, Msg} when is_map_key(Ref, Map) ->
             channel_msg(Map, Ref, Msg);
@@ -62,7 +65,11 @@ run_receiver(Receiver) ->
             system_msg(From, Request);
 
         Msg when (not ?is_special_msg(Msg)) andalso is_function(Bare) ->
-            {ok, Bare(Msg)}
+            {ok, Bare(Msg)};
+
+        _ when FlushOther ->
+            % TODO: shrink timeout if time has passed
+            run_receiver(Receiver)
     after
         Timeout -> {error, nil}
     end.
@@ -99,6 +106,9 @@ include_system(Receiver, Fn) ->
 
 include_bare(Receiver, Fn) ->
     Receiver#receiver{bare = Fn}.
+
+flush_other(Receiver, FlushOther) ->
+    Receiver#receiver{flush_other = FlushOther}.
 
 system_msg(Msg, {Pid, Ref}) when is_atom(Msg) ->
     {Msg, #channel{pid = Pid, reference = Ref}}.
