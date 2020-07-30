@@ -164,3 +164,18 @@ pub fn try_call_timeout_test() {
   |> result.is_error
   |> should.be_true
 }
+
+pub fn message_queue_size() {
+  let self = process.self()
+
+  self
+  |> process.message_queue_size
+  |> should.equal(0)
+
+  process.unsafe_send(self, 1)
+  process.unsafe_send(self, 1)
+
+  self
+  |> process.message_queue_size
+  |> should.equal(2)
+}

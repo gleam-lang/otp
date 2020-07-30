@@ -4,6 +4,7 @@
 //
 import gleam/atom
 import gleam/result
+import gleam/atom.{Atom}
 import gleam/map.{Map}
 import gleam/dynamic.{Dynamic}
 import gleam/option.{None, Option}
@@ -331,4 +332,20 @@ pub fn call(
 ) -> response {
   assert Ok(resp) = try_call(channel, request, timeout)
   resp
+}
+
+type MessageQueueLenFlag {
+  MessageQueueLen
+}
+
+external fn process_info_message_queue_length(
+  Pid,
+  MessageQueueLenFlag,
+) -> tuple(Atom, Int) =
+  "erlang" "process_info"
+
+// TODO: test
+// TODO: document
+pub fn message_queue_size(pid: Pid) -> Int {
+  process_info_message_queue_length(pid, MessageQueueLen).1
 }
