@@ -1,5 +1,4 @@
 // TODO: README
-// TODO: monitor
 // TODO: link
 //
 import gleam/atom
@@ -54,6 +53,11 @@ pub opaque type Channel(msg) {
 }
 
 // TODO: document
+pub fn pid(channel: Channel(msg)) -> Pid {
+  channel.pid
+}
+
+// TODO: document
 pub fn make_channel() -> Channel(msg) {
   Channel(pid: self(), reference: make_reference())
 }
@@ -66,15 +70,35 @@ pub fn send(channel: Channel(msg), msg: msg) -> Channel(msg) {
 
 pub external type ProcessMonitor
 
-// TODO: test
-// TODO: document
-pub external fn monitor_process(Pid) -> ProcessMonitor =
-  "gleam_otp_process_external" "monitor_process"
+type ProcessMonitorFlag {
+  Process
+}
+
+external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> ProcessMonitor =
+  "erlang" "monitor"
 
 // TODO: test
 // TODO: document
-pub external fn demonitor_process(ProcessMonitor) -> Nil =
-  "gleam_otp_process_external" "demonitor_process"
+pub fn monitor_process(pid: Pid) -> ProcessMonitor {
+  erlang_monitor_process(Process, pid)
+}
+
+type DemonitorOption {
+  Flush
+}
+
+external fn erlang_demonitor_process(
+  ProcessMonitor,
+  List(DemonitorOption),
+) -> Bool =
+  "erlang" "demonitor"
+
+// TODO: test
+// TODO: document
+pub fn demonitor_process(monitor: ProcessMonitor) -> Nil {
+  erlang_demonitor_process(monitor, [Flush])
+  Nil
+}
 
 // TODO: document
 pub type ProcessDown {
@@ -89,29 +113,51 @@ pub external fn process_monitor_receive(
 ) -> Result(ProcessDown, Nil) =
   "gleam_otp_process_external" "process_monitor_receive"
 
+// TODO: document
 pub external type Receiver(message)
 
+// TODO: document
 pub external fn make_receiver() -> Receiver(message) =
   "gleam_otp_process_external" "make_receiver"
 
+// TODO: document
 pub external fn run_receiver(Receiver(msg)) -> Result(msg, Nil) =
   "gleam_otp_process_external" "run_receiver"
 
+// TODO: document
 pub external fn flush_receiver(Receiver(msg)) -> Int =
   "gleam_otp_process_external" "flush_receiver"
 
-pub external fn add_channel(
+// TODO: document
+pub external fn include_channel(
   to: Receiver(b),
   add: Channel(a),
   mapping: fn(a) -> b,
 ) -> Receiver(b) =
-  "gleam_otp_process_external" "add_channel"
+  "gleam_otp_process_external" "include_channel"
 
+// TODO: test
+// TODO: document
 pub external fn set_timeout(Receiver(a), Int) -> Receiver(a) =
   "gleam_otp_process_external" "set_timeout"
 
-pub external fn receieve_system_messages(Receiver(a)) -> Receiver(a) =
-  "gleam_otp_process_external" "receive_system_messages"
+// TODO: test
+// TODO: document
+pub external fn remove_timeout(Receiver(a)) -> Receiver(a) =
+  "gleam_otp_process_external" "remove_timeout"
+
+// TODO: test for receiver flushing
+// TODO: document
+pub external fn include_system(
+  Receiver(a),
+  fn(SystemMessage) -> a,
+) -> Receiver(a) =
+  "gleam_otp_process_external" "include_system"
+
+// TODO: test
+// TODO: document
+pub external fn include_bare(Receiver(a), fn(Dynamic) -> a) -> Receiver(a) =
+  "gleam_otp_process_external" "include_bare"
 
 pub type ExitReason {
   // The process is stopping due to normal and expected reasons. This is not
@@ -124,7 +170,7 @@ pub type ExitReason {
 
   // The process is stopping due to an unexpected problem. This is considered
   // and error and should be reported and logged appropriately.
-  Abnormal(String)
+  Abnormal(Dynamic)
 }
 
 // TODO: document
@@ -169,18 +215,6 @@ pub type Message(msg) {
   System(message: SystemMessage)
 }
 
-// TODO
-//pub fn async_send(to receiever: Pid(msg), msg msg: msg) -> Nil {
-//  erl_async_send(receiever, msg)
-//  Nil
-//}
-// TODO: document
-//pub external fn sync_send(
-//  to: Pid(msg),
-//  message: fn(From(reply)) -> msg,
-//  timeout: Int,
-//) -> reply =
-//  "gleam_otp_process_external" "sync_send"
 /// Check to see whether the process for a given Pid is alive.
 ///
 /// See the [Erlang documentation][erl] for more information.
@@ -213,13 +247,9 @@ pub external fn start_unlinked(fn() -> anything) -> Pid =
   "erlang" "spawn"
 
 // TODO: document
-pub external fn receive_system_message_forever() -> SystemMessage =
-  "gleam_otp_process_external" "receive_system_message_forever"
-
-// TODO: document
 pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
   make_receiver()
-  |> add_channel(channel, fn(x) { x })
+  |> include_channel(channel, fn(x) { x })
   |> set_timeout(timeout)
   |> run_receiver
 }
@@ -227,14 +257,14 @@ pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
 // TODO: document
 pub fn flush(channel: Channel(msg)) -> Int {
   make_receiver()
-  |> add_channel(channel, fn(x) { x })
+  |> include_channel(channel, fn(x) { x })
   |> flush_receiver
 }
 
 // TODO: implement
 // TODO: test
 // TODO: document
-pub fn channel_call(
+pub fn call(
   _channel: Channel(tuple(request, Channel(response))),
   _timeout: Int,
 ) -> Result(response, Nil) {
