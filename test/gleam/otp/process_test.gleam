@@ -234,3 +234,26 @@ pub fn demonitor_test_test() {
   |> process.run_receiver
   |> should.equal(Error(Nil))
 }
+
+pub fn set_timeout_test() {
+  let channel = process.make_channel()
+  process.start(
+    fn() {
+      sleep(10)
+      process.send(channel, Nil)
+    },
+  )
+
+  let receiver = process.make_receiver()
+    |> process.include_channel(channel, fn(x) { x })
+    |> process.set_timeout(0)
+
+  receiver
+  |> process.run_receiver
+  |> should.equal(Error(Nil))
+
+  receiver
+  |> process.set_timeout(20)
+  |> process.run_receiver
+  |> should.equal(Ok(Nil))
+}

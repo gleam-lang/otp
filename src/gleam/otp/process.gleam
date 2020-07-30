@@ -86,7 +86,6 @@ pub opaque type ProcessMonitor {
 external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> Reference =
   "erlang" "monitor"
 
-// TODO: test
 // TODO: document
 pub fn monitor_process(pid: Pid) -> ProcessMonitor {
   ProcessMonitor(reference: erlang_monitor_process(Process, pid))
@@ -99,7 +98,6 @@ type DemonitorOption {
 external fn erlang_demonitor_process(Reference, List(DemonitorOption)) -> Bool =
   "erlang" "demonitor"
 
-// TODO: test
 // TODO: document
 pub fn demonitor_process(monitor: ProcessMonitor) -> Nil {
   erlang_demonitor_process(monitor.reference, [Flush])
@@ -134,7 +132,6 @@ pub external fn include_channel(
 ) -> Receiver(b) =
   "gleam_otp_process_external" "include_channel"
 
-// TODO: test
 // TODO: document
 pub external fn include_process_monitor(
   to: Receiver(b),
@@ -143,7 +140,6 @@ pub external fn include_process_monitor(
 ) -> Receiver(b) =
   "gleam_otp_process_external" "include_process_monitor"
 
-// TODO: test
 // TODO: document
 pub external fn set_timeout(Receiver(a), Int) -> Receiver(a) =
   "gleam_otp_process_external" "set_timeout"
