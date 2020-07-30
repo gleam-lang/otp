@@ -143,6 +143,11 @@ pub external fn set_timeout(Receiver(a), Int) -> Receiver(a) =
 
 // TODO: test
 // TODO: document
+pub external fn flush_other(Receiver(a), Bool) -> Receiver(a) =
+  "gleam_otp_process_external" "flush_other"
+
+// TODO: test
+// TODO: document
 pub external fn remove_timeout(Receiver(a)) -> Receiver(a) =
   "gleam_otp_process_external" "remove_timeout"
 
