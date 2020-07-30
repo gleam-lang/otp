@@ -87,3 +87,29 @@ pub fn self_test() {
   process.self()
   |> should.not_equal(child_pid2)
 }
+
+pub fn bare_receive_test() {
+  let channel = process.make_channel()
+  process.send(channel, 0)
+  process.unsafe_send(process.self(), 1)
+
+  let receiver = process.make_receiver()
+    |> process.include_bare(fn(x) { x })
+    |> process.set_timeout(0)
+
+  // The channel message is skipped over for the bare message
+  receiver
+  |> process.run_receiver()
+  |> should.equal(Ok(dynamic.from(1)))
+  receiver
+  |> process.run_receiver()
+  |> should.equal(Error(Nil))
+}
+
+pub fn pid_test() {
+  let channel = process.make_channel()
+  let self = process.self()
+  channel
+  |> process.pid
+  |> should.equal(self)
+}
