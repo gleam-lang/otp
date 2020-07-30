@@ -248,12 +248,16 @@ pub fn flush(channel: Channel(msg)) -> Int {
   |> flush_receiver
 }
 
-pub type CallError {
+// TODO: document
+pub type CallError(msg) {
+  // TODO: document
   CalleeDown(reason: Dynamic)
-  CallTimeout
+  // TODO: document (i.e. the receiver is so that you can clean up the message
+  // if it arrives later, to avoid a memory leak)
+  CallTimeout(reciever: Channel(msg))
 }
 
-fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError) {
+fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError(a)) {
   Error(CalleeDown(reason: down.reason))
 }
 
@@ -264,7 +268,7 @@ pub fn call(
   channel: Channel(tuple(request, Channel(response))),
   request: request,
   timeout: Int,
-) -> Result(response, CallError) {
+) -> Result(response, CallError(response)) {
   let reply_channel = make_channel()
 
   // Monitor the callee process so we can tell if it goes down (meaning we
@@ -288,7 +292,7 @@ pub fn call(
 
   // Prepare an appropriate error (if present) for the caller
   case res {
-    Error(Nil) -> Error(CallTimeout)
+    Error(Nil) -> Error(CallTimeout(reply_channel))
     Ok(res) -> res
   }
 }
