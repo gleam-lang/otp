@@ -8,6 +8,7 @@ import gleam/atom.{Atom}
 import gleam/map.{Map}
 import gleam/dynamic.{Dynamic}
 import gleam/option.{None, Option}
+import gleam/otp/port.{Port}
 
 external type DoNotLeak
 
@@ -91,22 +92,51 @@ pub fn monitor_process(pid: Pid) -> ProcessMonitor {
   ProcessMonitor(reference: erlang_monitor_process(Process, pid))
 }
 
+type PortMonitorFlag {
+  Port
+}
+
+pub opaque type PortMonitor {
+  PortMonitor(reference: Reference)
+}
+
+external fn erlang_port_monitor(PortMonitorFlag, Port) -> Reference =
+  "erlang" "monitor"
+
+// TODO: test
+// TODO: document
+pub fn monitor_port(port: Port) -> PortMonitor {
+  PortMonitor(reference: erlang_port_monitor(Port, port))
+}
+
 type DemonitorOption {
   Flush
 }
 
-external fn erlang_demonitor_process(Reference, List(DemonitorOption)) -> Bool =
+external fn erlang_demonitor(Reference, List(DemonitorOption)) -> Bool =
   "erlang" "demonitor"
 
 // TODO: document
 pub fn demonitor_process(monitor: ProcessMonitor) -> Nil {
-  erlang_demonitor_process(monitor.reference, [Flush])
+  erlang_demonitor(monitor.reference, [Flush])
+  Nil
+}
+
+// TODO: test
+// TODO: document
+pub fn demonitor_port(monitor: PortMonitor) -> Nil {
+  erlang_demonitor(monitor.reference, [Flush])
   Nil
 }
 
 // TODO: document
 pub type ProcessDown {
   ProcessDown(pid: Pid, reason: Dynamic)
+}
+
+// TODO: document
+pub type PortDown {
+  PortDown(port: Port, reason: Dynamic)
 }
 
 // TODO: document
@@ -141,6 +171,14 @@ pub external fn include_process_monitor(
   "gleam_otp_process_external" "include_process_monitor"
 
 // TODO: document
+pub external fn include_port_monitor(
+  to: Receiver(b),
+  add: PortMonitor,
+  mapping: fn(PortDown) -> b,
+) -> Receiver(b) =
+  "gleam_otp_process_external" "include_port_monitor"
+
+// TODO: document
 pub external fn set_timeout(Receiver(a), Int) -> Receiver(a) =
   "gleam_otp_process_external" "set_timeout"
 
@@ -153,7 +191,7 @@ pub external fn flush_other(Receiver(a), Bool) -> Receiver(a) =
 pub external fn remove_timeout(Receiver(a)) -> Receiver(a) =
   "gleam_otp_process_external" "remove_timeout"
 
-// TODO: test for receiver flushing
+// TODO: test flushing
 // TODO: document
 pub external fn include_system(
   Receiver(a),

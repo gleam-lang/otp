@@ -2,8 +2,9 @@
 
 % Receivers
 -export([make_receiver/0, include_channel/3, include_process_monitor/3,
-         include_system/2, include_bare/2, remove_timeout/1, set_timeout/2,
-         run_receiver/1, flush_receiver/1, flush_other/2]).
+         include_port_monitor/3, include_system/2, include_bare/2,
+         remove_timeout/1, set_timeout/2, run_receiver/1, flush_receiver/1,
+         flush_other/2]).
 
 %
 % import Gleam records
@@ -11,6 +12,8 @@
 
 -include("gen/src/gleam@otp@process_Channel.hrl").
 -include("gen/src/gleam@otp@process_Message.hrl").
+-include("gen/src/gleam@otp@process_PortDown.hrl").
+-include("gen/src/gleam@otp@process_PortMonitor.hrl").
 -include("gen/src/gleam@otp@process_ProcessDown.hrl").
 -include("gen/src/gleam@otp@process_ProcessMonitor.hrl").
 -include("gen/src/gleam@otp@process_System.hrl").
@@ -53,6 +56,9 @@ include_channel(Receiver, Channel, Fn) ->
 include_process_monitor(Receiver, Monitor, Fn) ->
     receiver_include(Receiver, Monitor#process_monitor.reference, Fn).
 
+include_port_monitor(Receiver, Monitor, Fn) ->
+    receiver_include(Receiver, Monitor#port_monitor.reference, Fn).
+
 channel_msg(Map, Ref, Msg) ->
     Fn = maps:get(Ref, Map),
     {ok, Fn(Msg)}.
@@ -66,6 +72,9 @@ run_receiver(Receiver) ->
 
         {'DOWN', Ref, process, Pid, Reason} when is_map_key(Ref, Map) ->
             channel_msg(Map, Ref, #process_down{pid = Pid, reason = Reason});
+
+        {'DOWN', Ref, port, Port, Reason} when is_map_key(Ref, Map) ->
+            channel_msg(Map, Ref, #port_down{port = Port, reason = Reason});
 
         {system, From, Request} when is_function(System) ->
             system_msg(From, Request);
@@ -86,7 +95,7 @@ flush_receiver(Receiver, N) ->
         {Ref, _} when is_map_key(Ref, Map) ->
             flush_receiver(Receiver, N + 1);
 
-        {'DOWN', Ref, process, _, _} when is_map_key(Ref, Map) ->
+        {'DOWN', Ref, _, _, _} when is_map_key(Ref, Map) ->
             flush_receiver(Receiver, N + 1);
 
         {system, _, _} when is_function(System) ->
