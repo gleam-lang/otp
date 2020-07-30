@@ -114,7 +114,7 @@ pub fn pid_test() {
   |> should.equal(self)
 }
 
-pub fn channel_call_test() {
+pub fn call_test() {
   let to_parent_channel = process.make_channel()
 
   process.start(
@@ -136,4 +136,31 @@ pub fn channel_call_test() {
   call_channel
   |> process.call(1, 50)
   |> should.equal(Ok(2))
+}
+
+pub fn call_timeout_test() {
+  let to_parent_channel = process.make_channel()
+
+  process.start(
+    fn() {
+      // Send the call channel to the parent
+      let call_channel = process.make_channel()
+      process.send(to_parent_channel, call_channel)
+      // Wait for the channel to be called
+      assert Ok(tup) = process.receive(call_channel, 50)
+      let tuple(x, reply_channel) = tup
+
+      // Reply, after a delay
+      sleep(20)
+      process.send(reply_channel, x + 1)
+    },
+  )
+
+  assert Ok(call_channel) = process.receive(to_parent_channel, 50)
+
+  // Call the child process over the channel
+  call_channel
+  |> process.call(1, 10)
+  |> result.is_error
+  |> should.be_true
 }
