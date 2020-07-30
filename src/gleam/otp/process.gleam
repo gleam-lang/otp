@@ -1,5 +1,6 @@
 // TODO: README
 // TODO: link
+// TODO: map_channel
 //
 import gleam/atom
 import gleam/result
@@ -49,7 +50,7 @@ pub external fn self() -> Pid =
 
 // TODO: document
 pub opaque type Channel(msg) {
-  Channel(pid: Pid, reference: Reference)
+  Channel(pid: Pid, reference: Reference, send: fn(msg) -> Nil)
 }
 
 // TODO: document
@@ -59,12 +60,18 @@ pub fn pid(channel: Channel(msg)) -> Pid {
 
 // TODO: document
 pub fn make_channel() -> Channel(msg) {
-  Channel(pid: self(), reference: make_reference())
+  let self = self()
+  let ref = make_reference()
+  let send = fn(msg) {
+    unsafe_send(self, tuple(ref, msg))
+    Nil
+  }
+  Channel(pid: self, reference: ref, send: send)
 }
 
 // TODO: document
 pub fn send(channel: Channel(msg), msg: msg) -> Channel(msg) {
-  unsafe_send(channel.pid, tuple(channel.reference, msg))
+  channel.send(msg)
   channel
 }
 
@@ -75,10 +82,16 @@ type ProcessMonitorFlag {
 external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> Reference =
   "erlang" "monitor"
 
+// TODO: make this not a channel- we don't want people to be able to send on it
 // TODO: test
 // TODO: document
 pub fn monitor_process(pid: Pid) -> Channel(ProcessDown) {
-  Channel(pid: pid, reference: erlang_monitor_process(Process, pid))
+  let self = pid
+  Channel(
+    pid: self,
+    reference: erlang_monitor_process(Process, pid),
+    send: fn(_) { Nil },
+  )
 }
 
 type DemonitorOption {
