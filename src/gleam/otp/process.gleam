@@ -263,7 +263,7 @@ fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError) {
 pub fn call(
   channel: Channel(tuple(request, Channel(response))),
   request: request,
-  _timeout: Int,
+  timeout: Int,
 ) -> Result(response, CallError) {
   let reply_channel = make_channel()
 
@@ -280,6 +280,7 @@ pub fn call(
   let res = make_receiver()
     |> include(reply_channel, Ok)
     |> include(monitor_channel, process_down_to_call_error)
+    |> set_timeout(timeout)
     |> run_receiver
 
   // Demonitor the process as we're done
