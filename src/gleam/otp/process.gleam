@@ -26,7 +26,6 @@ pub fn system_ok() -> SystemOk {
 pub external type Pid
 
 // TODO: document that this doesn't get type checked etc
-// TODO: test
 /// Send a message to a process.
 ///
 /// Message sending is asynchronous and this function will likely return before

@@ -179,3 +179,58 @@ pub fn message_queue_size() {
   |> process.message_queue_size
   |> should.equal(2)
 }
+
+pub fn monitor_test_test() {
+  // Spawn child
+  let to_parent_channel = process.make_channel()
+  let pid = process.start(
+    fn() {
+      let channel = process.make_channel()
+      process.send(to_parent_channel, channel)
+      process.receive(channel, 150)
+    },
+  )
+
+  // Monitor child
+  let monitor = process.monitor_process(pid)
+
+  // Shutdown child to trigger monitor
+  assert Ok(channel) = process.receive(to_parent_channel, 50)
+  process.send(channel, Nil)
+
+  // We get a process down message!
+  process.make_receiver()
+  |> process.include_process_monitor(monitor, fn(x) { x })
+  |> process.set_timeout(5)
+  |> process.run_receiver
+  |> should.equal(Ok(process.ProcessDown(pid, dynamic.from(process.Normal))))
+}
+
+pub fn demonitor_test_test() {
+  // Spawn child
+  let to_parent_channel = process.make_channel()
+  let pid = process.start(
+    fn() {
+      let channel = process.make_channel()
+      process.send(to_parent_channel, channel)
+      process.receive(channel, 150)
+    },
+  )
+
+  // Monitor child
+  let monitor = process.monitor_process(pid)
+
+  // Shutdown child to trigger monitor
+  assert Ok(channel) = process.receive(to_parent_channel, 50)
+  process.send(channel, Nil)
+
+  // Demonitor, which will flush the messages
+  process.demonitor_process(monitor)
+
+  // We don't get a process down message as we demonitored the child
+  process.make_receiver()
+  |> process.include_process_monitor(monitor, fn(x) { x })
+  |> process.set_timeout(5)
+  |> process.run_receiver
+  |> should.equal(Error(Nil))
+}
