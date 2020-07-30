@@ -68,35 +68,30 @@ pub fn send(channel: Channel(msg), msg: msg) -> Channel(msg) {
   channel
 }
 
-pub external type ProcessMonitor
-
 type ProcessMonitorFlag {
   Process
 }
 
-external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> ProcessMonitor =
+external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> Reference =
   "erlang" "monitor"
 
 // TODO: test
 // TODO: document
-pub fn monitor_process(pid: Pid) -> ProcessMonitor {
-  erlang_monitor_process(Process, pid)
+pub fn monitor_process(pid: Pid) -> Channel(ProcessDown) {
+  Channel(pid: pid, reference: erlang_monitor_process(Process, pid))
 }
 
 type DemonitorOption {
   Flush
 }
 
-external fn erlang_demonitor_process(
-  ProcessMonitor,
-  List(DemonitorOption),
-) -> Bool =
+external fn erlang_demonitor_process(Reference, List(DemonitorOption)) -> Bool =
   "erlang" "demonitor"
 
 // TODO: test
 // TODO: document
-pub fn demonitor_process(monitor: ProcessMonitor) -> Nil {
-  erlang_demonitor_process(monitor, [Flush])
+pub fn demonitor_process(monitor_channel: Channel(ProcessDown)) -> Nil {
+  erlang_demonitor_process(monitor_channel.reference, [Flush])
   Nil
 }
 
@@ -104,14 +99,6 @@ pub fn demonitor_process(monitor: ProcessMonitor) -> Nil {
 pub type ProcessDown {
   ProcessDown(pid: Pid, reason: Dynamic)
 }
-
-// TODO: test
-// TODO: document
-pub external fn process_monitor_receive(
-  ProcessMonitor,
-  Int,
-) -> Result(ProcessDown, Nil) =
-  "gleam_otp_process_external" "process_monitor_receive"
 
 // TODO: document
 pub external type Receiver(message)
@@ -129,7 +116,7 @@ pub external fn flush_receiver(Receiver(msg)) -> Int =
   "gleam_otp_process_external" "flush_receiver"
 
 // TODO: document
-pub external fn include_channel(
+pub external fn include(
   to: Receiver(b),
   add: Channel(a),
   mapping: fn(a) -> b,
@@ -249,7 +236,7 @@ pub external fn start_unlinked(fn() -> anything) -> Pid =
 // TODO: document
 pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
   make_receiver()
-  |> include_channel(channel, fn(x) { x })
+  |> include(channel, fn(x) { x })
   |> set_timeout(timeout)
   |> run_receiver
 }
@@ -257,16 +244,50 @@ pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
 // TODO: document
 pub fn flush(channel: Channel(msg)) -> Int {
   make_receiver()
-  |> include_channel(channel, fn(x) { x })
+  |> include(channel, fn(x) { x })
   |> flush_receiver
 }
 
-// TODO: implement
-// TODO: test
+pub type CallError {
+  CalleeDown(reason: Dynamic)
+  CallTimeout
+}
+
+fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError) {
+  Error(CalleeDown(reason: down.reason))
+}
+
+// TODO: test error paths
 // TODO: document
+// This function is based off of Erlang's gen:do_call/4.
 pub fn call(
-  _channel: Channel(tuple(request, Channel(response))),
+  channel: Channel(tuple(request, Channel(response))),
+  request: request,
   _timeout: Int,
-) -> Result(response, Nil) {
-  todo("Channel call")
+) -> Result(response, CallError) {
+  let reply_channel = make_channel()
+
+  // Monitor the callee process so we can tell if it goes down (meaning we
+  // won't get a reply)
+  let monitor_channel = channel
+    |> pid
+    |> monitor_process
+
+  // Send the request to the process over the channel
+  send(channel, tuple(request, reply_channel))
+
+  // Await a reply or handle failure modes (timeout, process down, etc)
+  let res = make_receiver()
+    |> include(reply_channel, Ok)
+    |> include(monitor_channel, process_down_to_call_error)
+    |> run_receiver
+
+  // Demonitor the process as we're done
+  demonitor_process(monitor_channel)
+
+  // Prepare an appropriate error (if present) for the caller
+  case res {
+    Error(Nil) -> Error(CallTimeout)
+    Ok(res) -> res
+  }
 }
