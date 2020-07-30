@@ -144,7 +144,6 @@ pub external fn include_process_monitor(
 pub external fn set_timeout(Receiver(a), Int) -> Receiver(a) =
   "gleam_otp_process_external" "set_timeout"
 
-// TODO: test
 // TODO: document
 pub external fn flush_other(Receiver(a), Bool) -> Receiver(a) =
   "gleam_otp_process_external" "flush_other"

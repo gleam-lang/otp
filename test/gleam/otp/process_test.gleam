@@ -257,3 +257,26 @@ pub fn set_timeout_test() {
   |> process.run_receiver
   |> should.equal(Ok(Nil))
 }
+
+pub fn flush_other_test() {
+  let c1 = process.make_channel()
+  let c2 = process.make_channel()
+
+  process.send(c1, 0)
+  process.send(c2, 0)
+
+  let receiver = process.make_receiver()
+    |> process.flush_other(True)
+    |> process.include_channel(c2, fn(x) { x })
+    |> process.set_timeout(0)
+
+  receiver
+  |> process.run_receiver()
+  |> should.equal(Ok(0))
+
+  // The other message was also dropped
+  receiver
+  |> process.include_channel(c1, fn(x) { x })
+  |> process.run_receiver()
+  |> should.equal(Error(Nil))
+}
