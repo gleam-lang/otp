@@ -1,9 +1,9 @@
 -module(gleam_otp_process_external).
 
 % Receivers
--export([make_receiver/0, include_channel/3, include_system/2, include_bare/2,
-         remove_timeout/1, set_timeout/2, run_receiver/1, flush_receiver/1,
-         flush_other/2]).
+-export([make_receiver/0, include_channel/3, include_process_monitor/3,
+         include_system/2, include_bare/2, remove_timeout/1, set_timeout/2,
+         run_receiver/1, flush_receiver/1, flush_other/2]).
 
 %
 % import Gleam records
@@ -12,6 +12,7 @@
 -include("gen/src/gleam@otp@process_Channel.hrl").
 -include("gen/src/gleam@otp@process_Message.hrl").
 -include("gen/src/gleam@otp@process_ProcessDown.hrl").
+-include("gen/src/gleam@otp@process_ProcessMonitor.hrl").
 -include("gen/src/gleam@otp@process_System.hrl").
 
 %
@@ -42,10 +43,15 @@ make_receiver() ->
     #receiver{timeout = 5000, system = undefined, bare = undefined,
               flush_other = false, map = #{}}.
 
-include_channel(Receiver, Channel, Fn) ->
-    Ref = Channel#channel.reference,
+receiver_include(Receiver, Ref, Fn) ->
     Map = maps:put(Ref, Fn, Receiver#receiver.map),
     Receiver#receiver{map = Map}.
+
+include_channel(Receiver, Channel, Fn) ->
+    receiver_include(Receiver, Channel#channel.reference, Fn).
+
+include_process_monitor(Receiver, Monitor, Fn) ->
+    receiver_include(Receiver, Monitor#process_monitor.reference, Fn).
 
 channel_msg(Map, Ref, Msg) ->
     Fn = maps:get(Ref, Map),
