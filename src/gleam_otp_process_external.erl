@@ -100,41 +100,5 @@ include_system(Receiver, Fn) ->
 include_bare(Receiver, Fn) ->
     Receiver#receiver{bare = Fn}.
 
-%do_receive(Timeout) ->
-%  receive
-%    {system, From, Request} ->
-%      #system{message = system_msg(From, Request)};
-%
-%    % TODO
-%    % {'EXIT', Pid, Reason} ->
-%    %   #exit{pid = Pid, reason = Reason};
-%
-%    % TODO
-%    % {'DOWN', Ref, port, Port, Reason} ->
-%    %   #port_down{ref = Ref, port = Port, reason = Reason};
-%  end.
-
 system_msg(Msg, {Pid, Ref}) when is_atom(Msg) ->
     {Msg, #channel{pid = Pid, reference = Ref}}.
-
-% This function is implemented in Erlang as it requires selective receives.
-% It is based off of gen:do_call/4.
-% sync_send(Process, MakeMsg, Timeout) ->
-%   {RequestRef, Replier} = new_from(Process),
-%   erlang:send(Process, MakeMsg(Replier), [noconnect]),
-%   receive
-%     {RequestRef, Reply} ->
-%       erlang:demonitor(RequestRef, [flush]),
-%       Reply;
-%
-%     {'DOWN', RequestRef, _, _, noconnection} ->
-%       Node = node(Process),
-%       exit({nodedown, Node});
-%
-%     {'DOWN', RequestRef, _, _, Reason} ->
-%       exit(Reason)
-%   after
-%     Timeout ->
-%       erlang:demonitor(RequestRef, [flush]),
-%       exit(timeout)
-%   end.
