@@ -1,6 +1,6 @@
 // TODO: README
 // TODO: link
-// TODO: map_channel
+// TODO: wrap_channel: fn(Channel(a), fn(b) -> a) -> Channel(b)
 //
 import gleam/atom
 import gleam/result
@@ -79,19 +79,17 @@ type ProcessMonitorFlag {
   Process
 }
 
+pub opaque type ProcessMonitor {
+  ProcessMonitor(reference: Reference)
+}
+
 external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> Reference =
   "erlang" "monitor"
 
-// TODO: make this not a channel- we don't want people to be able to send on it
 // TODO: test
 // TODO: document
-pub fn monitor_process(pid: Pid) -> Channel(ProcessDown) {
-  let self = pid
-  Channel(
-    pid: self,
-    reference: erlang_monitor_process(Process, pid),
-    send: fn(_) { Nil },
-  )
+pub fn monitor_process(pid: Pid) -> ProcessMonitor {
+  ProcessMonitor(reference: erlang_monitor_process(Process, pid))
 }
 
 type DemonitorOption {
@@ -103,8 +101,8 @@ external fn erlang_demonitor_process(Reference, List(DemonitorOption)) -> Bool =
 
 // TODO: test
 // TODO: document
-pub fn demonitor_process(monitor_channel: Channel(ProcessDown)) -> Nil {
-  erlang_demonitor_process(monitor_channel.reference, [Flush])
+pub fn demonitor_process(monitor: ProcessMonitor) -> Nil {
+  erlang_demonitor_process(monitor.reference, [Flush])
   Nil
 }
 
@@ -129,12 +127,21 @@ pub external fn flush_receiver(Receiver(msg)) -> Int =
   "gleam_otp_process_external" "flush_receiver"
 
 // TODO: document
-pub external fn include(
+pub external fn include_channel(
   to: Receiver(b),
   add: Channel(a),
   mapping: fn(a) -> b,
 ) -> Receiver(b) =
   "gleam_otp_process_external" "include_channel"
+
+// TODO: test
+// TODO: document
+pub external fn include_process_monitor(
+  to: Receiver(b),
+  add: ProcessMonitor,
+  mapping: fn(ProcessDown) -> b,
+) -> Receiver(b) =
+  "gleam_otp_process_external" "include_process_monitor"
 
 // TODO: test
 // TODO: document
@@ -254,7 +261,7 @@ pub external fn start_unlinked(fn() -> anything) -> Pid =
 // TODO: document
 pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
   make_receiver()
-  |> include(channel, fn(x) { x })
+  |> include_channel(channel, fn(x) { x })
   |> set_timeout(timeout)
   |> run_receiver
 }
@@ -262,7 +269,7 @@ pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
 // TODO: document
 pub fn flush(channel: Channel(msg)) -> Int {
   make_receiver()
-  |> include(channel, fn(x) { x })
+  |> include_channel(channel, fn(x) { x })
   |> flush_receiver
 }
 
@@ -291,7 +298,7 @@ pub fn try_call(
 
   // Monitor the callee process so we can tell if it goes down (meaning we
   // won't get a reply)
-  let monitor_channel = channel
+  let monitor = channel
     |> pid
     |> monitor_process
 
@@ -300,13 +307,13 @@ pub fn try_call(
 
   // Await a reply or handle failure modes (timeout, process down, etc)
   let res = make_receiver()
-    |> include(reply_channel, Ok)
-    |> include(monitor_channel, process_down_to_call_error)
+    |> include_channel(reply_channel, Ok)
+    |> include_process_monitor(monitor, process_down_to_call_error)
     |> set_timeout(timeout)
     |> run_receiver
 
   // Demonitor the process as we're done
-  demonitor_process(monitor_channel)
+  demonitor_process(monitor)
 
   // Prepare an appropriate error (if present) for the caller
   case res {
