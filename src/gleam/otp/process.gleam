@@ -264,7 +264,7 @@ fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError(a)) {
 // TODO: test error paths
 // TODO: document
 // This function is based off of Erlang's gen:do_call/4.
-pub fn call(
+pub fn try_call(
   channel: Channel(tuple(request, Channel(response))),
   request: request,
   timeout: Int,
@@ -295,4 +295,15 @@ pub fn call(
     Error(Nil) -> Error(CallTimeout(reply_channel))
     Ok(res) -> res
   }
+}
+
+// TODO: test error paths
+// TODO: document
+pub fn call(
+  channel: Channel(tuple(request, Channel(response))),
+  request: request,
+  timeout: Int,
+) -> response {
+  assert Ok(resp) = try_call(channel, request, timeout)
+  resp
 }
