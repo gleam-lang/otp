@@ -2,15 +2,16 @@
 
 % Receivers
 -export([make_receiver/0, include_channel/3, include_process_monitor/3,
-         include_port_monitor/3, include_system/2, include_bare/2,
-         include_all/2, remove_timeout/1, set_timeout/2, run_receiver/1,
-         flush_receiver/1, flush_other/2]).
+         include_port_monitor/3, include_process_exit/3, include_system/2,
+         include_bare/2, include_all_exits/2, include_all/2, remove_timeout/1,
+         set_timeout/2, run_receiver/1, flush_receiver/1, flush_other/2]).
 
 %
 % import Gleam records
 %
 
 -include("gen/src/gleam@otp@process_Channel.hrl").
+-include("gen/src/gleam@otp@process_Exit.hrl").
 -include("gen/src/gleam@otp@process_PortDown.hrl").
 -include("gen/src/gleam@otp@process_PortMonitor.hrl").
 -include("gen/src/gleam@otp@process_ProcessDown.hrl").
@@ -38,15 +39,17 @@
 % Receivers
 %
 
--record(receiver, {system, bare, all, map, timeout, flush_other}).
+-record(receiver, {system, bare, all, all_exits, exit_pids, refs, timeout,
+                   flush_other}).
 
 make_receiver() ->
     #receiver{timeout = 5000, system = undefined, bare = undefined,
-              all = undefined, flush_other = false, map = #{}}.
+              all = undefined, flush_other = false, all_exits = undefined,
+              exit_pids = #{}, refs = #{}}.
 
 receiver_include(Receiver, Ref, Fn) ->
-    Map = maps:put(Ref, Fn, Receiver#receiver.map),
-    Receiver#receiver{map = Map}.
+    Refs = maps:put(Ref, Fn, Receiver#receiver.refs),
+    Receiver#receiver{refs = Refs}.
 
 include_channel(Receiver, Channel, Fn) ->
     receiver_include(Receiver, Channel#channel.reference, Fn).
@@ -57,22 +60,29 @@ include_process_monitor(Receiver, Monitor, Fn) ->
 include_port_monitor(Receiver, Monitor, Fn) ->
     receiver_include(Receiver, Monitor#port_monitor.reference, Fn).
 
-channel_msg(Map, Ref, Msg) ->
-    Fn = maps:get(Ref, Map),
+include_process_exit(Receiver, Pid, Fn) ->
+    Pids = maps:put(Pid, Fn, Receiver#receiver.exit_pids),
+    Receiver#receiver{exit_pids = Pids}.
+
+get_map_msg(Map, Key, Msg) ->
+    Fn = maps:get(Key, Map),
     {ok, Fn(Msg)}.
 
 run_receiver(Receiver) ->
-    #receiver{timeout = Timeout, system = System, bare = Bare, map = Map,
-              all = All, flush_other = FlushOther} = Receiver,
+    #receiver{timeout = Timeout, system = System, bare = Bare, refs = Refs,
+              all = All, flush_other = FlushOther, exit_pids = ExitPids} = Receiver,
     receive
-        {Ref, Msg} when is_map_key(Ref, Map) ->
-            channel_msg(Map, Ref, Msg);
+        {Ref, Msg} when is_map_key(Ref, Refs) ->
+            get_map_msg(Refs, Ref, Msg);
 
-        {'DOWN', Ref, process, Pid, Reason} when is_map_key(Ref, Map) ->
-            channel_msg(Map, Ref, #process_down{pid = Pid, reason = Reason});
+        {'DOWN', Ref, process, Pid, Reason} when is_map_key(Ref, Refs) ->
+            get_map_msg(Refs, Ref, #process_down{pid = Pid, reason = Reason});
 
-        {'DOWN', Ref, port, Port, Reason} when is_map_key(Ref, Map) ->
-            channel_msg(Map, Ref, #port_down{port = Port, reason = Reason});
+        {'DOWN', Ref, port, Port, Reason} when is_map_key(Ref, Refs) ->
+            get_map_msg(Refs, Ref, #port_down{port = Port, reason = Reason});
+
+        {'EXIT', Pid, Reason} when is_map_key(Pid, ExitPids) ->
+            get_map_msg(ExitPids, Pid, #exit{pid = Pid, reason = Reason});
 
         {system, From, Request} when is_function(System) ->
             {ok, System(system_msg(From, Request))};
@@ -91,12 +101,16 @@ run_receiver(Receiver) ->
     end.
 
 flush_receiver(Receiver, N) ->
-    #receiver{system = System, all = All, bare = Bare, map = Map} = Receiver,
+    #receiver{system = System, all = All, bare = Bare, refs = Refs,
+              exit_pids = ExitPids} = Receiver,
     receive
-        {Ref, _} when is_map_key(Ref, Map) ->
+        {Ref, _} when is_map_key(Ref, Refs) ->
             flush_receiver(Receiver, N + 1);
 
-        {'DOWN', Ref, _, _, _} when is_map_key(Ref, Map) ->
+        {'DOWN', Ref, _, _, _} when is_map_key(Ref, Refs) ->
+            flush_receiver(Receiver, N + 1);
+
+        {'EXIT', Pid, _} when is_map_key(Pid, ExitPids) ->
             flush_receiver(Receiver, N + 1);
 
         {system, _, _} when is_function(System) ->
@@ -128,6 +142,9 @@ include_bare(Receiver, Fn) ->
 
 include_all(Receiver, Fn) ->
     Receiver#receiver{all = Fn}.
+
+include_all_exits(Receiver, Fn) ->
+    Receiver#receiver{all_exits = Fn}.
 
 flush_other(Receiver, FlushOther) ->
     Receiver#receiver{flush_other = FlushOther}.

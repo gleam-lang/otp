@@ -1,6 +1,7 @@
 // TODO: README
 // TODO: We need a way to discard future messages on a channel
 // TODO: link
+// TODO: trap exit
 // TODO: wrap_channel: fn(Channel(a), fn(b) -> a) -> Channel(b)
 //
 import gleam/atom
@@ -161,6 +162,27 @@ pub external fn include_process_monitor(
   mapping: fn(ProcessDown) -> b,
 ) -> Receiver(b) =
   "gleam_otp_process_external" "include_process_monitor"
+
+pub type Exit {
+  Exit(pid: Pid, reason: Dynamic)
+}
+
+// TODO: test
+// TODO: document
+pub external fn include_process_exit(
+  to: Receiver(b),
+  add: Pid,
+  mapping: fn(Exit) -> b,
+) -> Receiver(b) =
+  "gleam_otp_process_external" "include_process_exit"
+
+// TODO: test
+// TODO: document
+pub external fn include_all_exits(
+  to: Receiver(b),
+  mapping: fn(Exit) -> b,
+) -> Receiver(b) =
+  "gleam_otp_process_external" "include_all_exits"
 
 // TODO: document
 pub external fn include_port_monitor(
