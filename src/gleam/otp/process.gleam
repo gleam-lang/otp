@@ -251,15 +251,6 @@ pub external fn debug_state(List(DebugOption)) -> DebugState =
 pub type StartResult =
   Result(Pid, ExitReason)
 
-// TODO: document
-pub type Message(msg) {
-  /// A regular message excepted by the process
-  Message(message: msg)
-
-  /// An OTP system message, for debugging or maintenance
-  System(message: SystemMessage)
-}
-
 /// Check to see whether the process for a given Pid is alive.
 ///
 /// See the [Erlang documentation][erl] for more information.
@@ -323,8 +314,8 @@ fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError(a)) {
 // TODO: document
 // This function is based off of Erlang's gen:do_call/4.
 pub fn try_call(
-  channel: Channel(tuple(request, Channel(response))),
-  request: request,
+  channel: Channel(request),
+  make_request: fn(Channel(response)) -> request,
   timeout: Int,
 ) -> Result(response, CallError(response)) {
   let reply_channel = make_channel()
@@ -336,7 +327,7 @@ pub fn try_call(
     |> monitor_process
 
   // Send the request to the process over the channel
-  send(channel, tuple(request, reply_channel))
+  send(channel, make_request(reply_channel))
 
   // Await a reply or handle failure modes (timeout, process down, etc)
   let res = make_receiver()
@@ -358,11 +349,11 @@ pub fn try_call(
 // TODO: test error paths
 // TODO: document
 pub fn call(
-  channel: Channel(tuple(request, Channel(response))),
-  request: request,
+  channel: Channel(request),
+  make_request: fn(Channel(response)) -> request,
   timeout: Int,
 ) -> response {
-  assert Ok(resp) = try_call(channel, request, timeout)
+  assert Ok(resp) = try_call(channel, make_request, timeout)
   resp
 }
 
@@ -376,7 +367,6 @@ external fn process_info_message_queue_length(
 ) -> tuple(Atom, Int) =
   "erlang" "process_info"
 
-// TODO: test
 // TODO: document
 pub fn message_queue_size(pid: Pid) -> Int {
   process_info_message_queue_length(pid, MessageQueueLen).1

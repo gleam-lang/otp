@@ -11,12 +11,10 @@
 %
 
 -include("gen/src/gleam@otp@process_Channel.hrl").
--include("gen/src/gleam@otp@process_Message.hrl").
 -include("gen/src/gleam@otp@process_PortDown.hrl").
 -include("gen/src/gleam@otp@process_PortMonitor.hrl").
 -include("gen/src/gleam@otp@process_ProcessDown.hrl").
 -include("gen/src/gleam@otp@process_ProcessMonitor.hrl").
--include("gen/src/gleam@otp@process_System.hrl").
 
 %
 % Guards
@@ -77,7 +75,7 @@ run_receiver(Receiver) ->
             channel_msg(Map, Ref, #port_down{port = Port, reason = Reason});
 
         {system, From, Request} when is_function(System) ->
-            system_msg(From, Request);
+            {ok, System(system_msg(From, Request))};
 
         Msg when (not ?is_special_msg(Msg)) andalso is_function(Bare) ->
             {ok, Bare(Msg)};
@@ -125,5 +123,7 @@ include_bare(Receiver, Fn) ->
 flush_other(Receiver, FlushOther) ->
     Receiver#receiver{flush_other = FlushOther}.
 
-system_msg(Msg, {Pid, Ref}) when is_atom(Msg) ->
-    {Msg, #channel{pid = Pid, reference = Ref}}.
+system_msg({Pid, Ref}, Msg) when is_atom(Msg) ->
+    Send = fun(Reply) -> erlang:send(Pid, {Ref, Reply}) end,
+    Channel = #channel{pid = Pid, reference = Ref, send = Send},
+    {Msg, Channel}.

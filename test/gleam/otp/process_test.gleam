@@ -1,4 +1,4 @@
-import gleam/otp/process.{ExitReason, Message, Normal}
+import gleam/otp/process.{ExitReason, Normal}
 import gleam/should
 import gleam/io
 import gleam/result
@@ -114,6 +114,10 @@ pub fn pid_test() {
   |> should.equal(self)
 }
 
+fn call_message(value) {
+  fn(reply_channel) { tuple(value, reply_channel) }
+}
+
 pub fn try_call_test() {
   let to_parent_channel = process.make_channel()
 
@@ -134,7 +138,7 @@ pub fn try_call_test() {
 
   // Call the child process over the channel
   call_channel
-  |> process.try_call(1, 50)
+  |> process.try_call(call_message(1), 50)
   |> should.equal(Ok(2))
 }
 
@@ -160,24 +164,24 @@ pub fn try_call_timeout_test() {
 
   // Call the child process over the channel
   call_channel
-  |> process.try_call(1, 10)
+  |> process.try_call(call_message(1), 10)
   |> result.is_error
   |> should.be_true
 }
 
-pub fn message_queue_size() {
+pub fn message_queue_size_test() {
   let self = process.self()
 
   self
   |> process.message_queue_size
-  |> should.equal(0)
+  |> should.equal(1)
 
   process.unsafe_send(self, 1)
   process.unsafe_send(self, 1)
 
   self
   |> process.message_queue_size
-  |> should.equal(2)
+  |> should.equal(3)
 }
 
 pub fn monitor_test_test() {
