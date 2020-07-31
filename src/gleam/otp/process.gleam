@@ -405,3 +405,17 @@ external fn process_info_message_queue_length(
 pub fn message_queue_size(pid: Pid) -> Int {
   process_info_message_queue_length(pid, MessageQueueLen).1
 }
+
+type TrapExit {
+  TrapExit
+}
+
+external fn erlang_trap_exit(TrapExit, Bool) -> Bool =
+  "erlang" "process_flag"
+
+// TODO: test
+// TODO: document
+pub fn trap_exit(bool: Bool) -> Nil {
+  erlang_trap_exit(TrapExit, bool)
+  Nil
+}
