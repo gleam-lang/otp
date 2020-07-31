@@ -16,6 +16,7 @@
 -include("gen/src/gleam@otp@process_PortMonitor.hrl").
 -include("gen/src/gleam@otp@process_ProcessDown.hrl").
 -include("gen/src/gleam@otp@process_ProcessMonitor.hrl").
+-include("gen/src/gleam@otp@process_StatusInfo.hrl").
 
 %
 % Guards
@@ -24,6 +25,7 @@
 -define(is_n_tuple(Term, N), (is_tuple(Term) andalso tuple_size(Term) =:= N)).
 -define(is_record(Tag, Arity, Term),
         (?is_n_tuple(Term, Arity + 1) andalso element(1, Term) =:= Tag)).
+
 -define(is_system_msg(Term), ?is_record(system, 2, Term)).
 -define(is_monitor_msg(Term), ?is_record('DOWN', 4, Term)).
 -define(is_exit_msg(Term), ?is_record('EXIT', 2, Term)).
@@ -158,5 +160,15 @@ system_reply(Msg, From, Reply) ->
         resume -> gen:reply(From, ok);
         suspend -> gen:reply(From, ok);
         get_state -> gen:reply(From, Reply);
-        get_status -> gen:reply(From, Reply)
+        get_status -> gen:reply(From, process_status(Reply))
     end.
+
+process_status(Status) ->
+    #status_info{mode = Mode, parent = Parent, debug_state = Debug,
+                 state = State, mod = Mod} = Status,
+    Data = [
+        get(), Mode, Parent, Debug,
+        [{header, "Status for Gleam actor " ++ pid_to_list(self())},
+         {data, [{'Status', Mode}, {'Parent', Parent}, {'State', State}]}]
+    ],
+    {status, self(), {module, Mod}, Data}.

@@ -237,6 +237,30 @@ pub type ExitReason {
   Abnormal(Dynamic)
 }
 
+pub type Mode {
+  Running
+  Suspended
+}
+
+pub type DebugOption {
+  NoDebug
+}
+
+pub external type DebugState
+
+pub external fn debug_state(List(DebugOption)) -> DebugState =
+  "sys" "debug_options"
+
+pub type StatusInfo {
+  StatusInfo(
+    mod: Atom,
+    parent: Pid,
+    mode: Mode,
+    debug_state: DebugState,
+    state: Dynamic,
+  )
+}
+
 // TODO: document
 // TODO: implement remaining messages
 // TODO: better abstraction around this to make it more type safe
@@ -252,20 +276,11 @@ pub type SystemMessage {
   // {debug, {install, {Func, FuncState}}}
   // {debug, {install, {FuncId, Func, FuncState}}}
   // {debug, {remove, FuncOrId}}
-  GetStatus(Channel(Dynamic))
+  GetStatus(Channel(StatusInfo))
   Suspend(Channel(Nil))
   Resume(Channel(Nil))
   GetState(Channel(Dynamic))
 }
-
-pub type DebugOption {
-  NoDebug
-}
-
-pub external type DebugState
-
-pub external fn debug_state(List(DebugOption)) -> DebugState =
-  "sys" "debug_options"
 
 pub type StartResult =
   Result(Pid, ExitReason)

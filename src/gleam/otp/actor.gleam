@@ -1,6 +1,7 @@
 import gleam/otp/process.{
-  Channel, DebugState, ExitReason, GetState, GetStatus, Normal, Pid, ProcessDown,
-  Reference, Resume, StartResult, Suspend, SystemMessage,
+  Channel, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid,
+  ProcessDown, Reference, Resume, Running, StartResult, Suspend, Suspended,
+  SystemMessage,
 }
 import gleam/otp/port.{Port}
 import gleam/result
@@ -19,11 +20,6 @@ pub type Message(msg) {
 pub type Next(state) {
   Continue(state)
   Stop(ExitReason)
-}
-
-type Mode {
-  Running
-  Suspended
 }
 
 type Self(state, msg) {
@@ -49,25 +45,6 @@ pub type Spec(state, msg) {
 fn exit_process(reason: ExitReason) -> ExitReason {
   // TODO
   reason
-}
-
-fn actor_status(self: Self(state, msg)) -> Dynamic {
-  tuple(
-    atom.create_from_string("status"),
-    self.pid,
-    tuple(
-      atom.create_from_string("module"),
-      atom.create_from_string("gleam@otp@actor"),
-    ),
-    [
-      dynamic.from([]),
-      dynamic.from(self.mode),
-      dynamic.from(self.parent),
-      dynamic.from(self.debug_state),
-      dynamic.from(tuple(atom.create_from_string("state"), self.state)),
-    ],
-  )
-  |> dynamic.from
 }
 
 fn receive_message(self: Self(state, msg)) -> Message(msg) {
@@ -111,6 +88,16 @@ fn set_state(self: Self(state, msg), state: state) -> Self(state, msg) {
   )
 }
 
+fn process_status_info(self: Self(state, msg)) -> process.StatusInfo {
+  process.StatusInfo(
+    mod: atom.create_from_string("gleam@otp@actor"),
+    parent: self.parent,
+    mode: self.mode,
+    debug_state: self.debug_state,
+    state: dynamic.from(self.state),
+  )
+}
+
 fn loop(self: Self(state, msg)) -> ExitReason {
   case receive_message(self) {
     System(GetState(caller)) -> {
@@ -133,7 +120,7 @@ fn loop(self: Self(state, msg)) -> ExitReason {
     }
 
     System(GetStatus(caller)) -> {
-      process.send(caller, actor_status(self))
+      process.send(caller, process_status_info(self))
       loop(self)
     }
 
