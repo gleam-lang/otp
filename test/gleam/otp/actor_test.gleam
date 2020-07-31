@@ -3,6 +3,7 @@ import gleam/otp/process.{Pid}
 import gleam/otp/system
 import gleam/dynamic.{Dynamic}
 import gleam/should
+import gleam/result
 
 pub fn get_state_test() {
   let spec = Spec(
@@ -26,6 +27,16 @@ pub fn get_status_test() {
   )
   assert Ok(pid) = actor.start(spec)
   get_status(pid)
+}
+
+pub fn failed_init_test() {
+  Spec(
+    init: fn() { Error(process.Normal) },
+    loop: fn(_msg, state) { Continue(state) },
+  )
+  |> actor.start
+  |> result.is_error
+  |> should.be_true
 }
 
 pub fn suspend_resume_test() {

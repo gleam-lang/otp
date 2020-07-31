@@ -170,18 +170,23 @@ pub fn try_call_timeout_test() {
 }
 
 pub fn message_queue_size_test() {
+  // Empty inbox
+  process.make_receiver()
+  |> process.include_all(fn(x) { x })
+  |> process.flush_receiver
+
   let self = process.self()
 
   self
   |> process.message_queue_size
-  |> should.equal(1)
+  |> should.equal(0)
 
   process.unsafe_send(self, 1)
   process.unsafe_send(self, 1)
 
   self
   |> process.message_queue_size
-  |> should.equal(3)
+  |> should.equal(2)
 }
 
 pub fn monitor_test_test() {

@@ -1,4 +1,5 @@
 // TODO: README
+// TODO: We need a way to discard future messages on a channel
 // TODO: link
 // TODO: wrap_channel: fn(Channel(a), fn(b) -> a) -> Channel(b)
 //
@@ -192,6 +193,11 @@ pub external fn include_system(
 
 // TODO: test
 // TODO: document
+pub external fn include_all(Receiver(a), fn(Dynamic) -> a) -> Receiver(a) =
+  "gleam_otp_process_external" "include_all"
+
+// TODO: test
+// TODO: document
 pub external fn include_bare(Receiver(a), fn(Dynamic) -> a) -> Receiver(a) =
   "gleam_otp_process_external" "include_bare"
 
@@ -250,17 +256,32 @@ pub type StartResult =
 pub external fn is_alive(Pid) -> Bool =
   "erlang" "is_process_alive"
 
-pub external fn erlang_send_exit(to: Pid, because: ExitReason) -> Bool =
+type KillFlag {
+  Kill
+}
+
+external fn erlang_kill(to: Pid, because: KillFlag) -> Bool =
+  "erlang" "exit"
+
+// TODO: document
+// TODO: test
+pub fn kill(pid: Pid) -> Bool {
+  erlang_kill(pid, Kill)
+}
+
+external fn erlang_send_exit(to: Pid, because: whatever) -> Bool =
   "erlang" "exit"
 
 // TODO: test
+// TODO: refine exit reason. Maybe make dedicated functions for each type to
+// match kill
 /// Sends an exit signal to a process, indicating that that process is to shut
 /// down.
 ///
 /// See the [Erlang documentation][erl] for more information.
 /// [erl]: http://erlang.org/doc/man/erlang.html#exit-2
 ///
-pub fn send_exit(to pid: Pid, because reason: ExitReason) -> Nil {
+pub fn send_exit(to pid: Pid, because reason: whatever) -> Nil {
   erlang_send_exit(pid, reason)
   Nil
 }

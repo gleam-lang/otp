@@ -1,6 +1,6 @@
 import gleam/otp/process.{
-  Channel, DebugState, ExitReason, GetState, GetStatus, Normal, Pid, Reference,
-  Resume, StartResult, Suspend, SystemMessage,
+  Channel, DebugState, ExitReason, GetState, GetStatus, Normal, Pid, ProcessDown,
+  Reference, Resume, StartResult, Suspend, SystemMessage,
 }
 import gleam/otp/port.{Port}
 import gleam/result
@@ -146,16 +146,20 @@ fn loop(self: Self(state, msg)) -> ExitReason {
   }
 }
 
-fn initialise_actor(spec: Spec(state, msg), parent: Pid) {
+fn initialise_actor(
+  spec: Spec(state, msg),
+  ack_channel: Channel(Result(Nil, ExitReason)),
+) {
   let channel = process.make_channel()
   case spec.init() {
     Ok(state) -> {
-      // TODO
-      // process.started(self)
+      // Signal to parent that the process has initialised successfully
+      process.send(ack_channel, Ok(Nil))
+      // Start message receive loop
       let self = Self(
         pid: process.self(),
         state: state,
-        parent: parent,
+        parent: process.pid(ack_channel),
         channel: channel,
         message_handler: spec.loop,
         debug_state: process.debug_state([]),
@@ -163,16 +167,56 @@ fn initialise_actor(spec: Spec(state, msg), parent: Pid) {
       )
       loop(self)
     }
-    Error(reason) -> exit_process(reason)
+    Error(reason) -> {
+      process.send(ack_channel, Error(reason))
+      exit_process(reason)
+    }
   }
 }
 
+pub type StartError {
+  Timeout
+  InitFailed(Dynamic)
+}
+
+type StartInitMessage {
+  Ack(Result(Nil, ExitReason))
+  Mon(ProcessDown)
+}
+
 // TODO: document
-pub fn start(spec: Spec(state, msg)) -> StartResult {
-  let parent = process.self()
-  let routine = fn() { initialise_actor(spec, parent) }
-  // TODO: ensure init succeeds
-  Ok(process.start(routine))
+pub fn start(spec: Spec(state, msg)) -> Result(Pid, StartError) {
+  let ack = process.make_channel()
+  let child = process.start(fn() { initialise_actor(spec, ack) })
+  let monitor = process.monitor_process(child)
+
+  // TODO: configurable timeout
+  let receiver = process.make_receiver()
+    |> process.set_timeout(5000)
+    |> process.include_channel(ack, Ack)
+    |> process.include_process_monitor(monitor, Mon)
+
+  case process.run_receiver(receiver) {
+    // Child started OK
+    Ok(Ack(Ok(Nil))) -> Ok(child)
+
+    // Child initialiser returned an error
+    Ok(Ack(Error(reason))) -> Error(InitFailed(dynamic.from(reason)))
+
+    // Child when down while initialising
+    Ok(Mon(down)) -> {
+      process.demonitor_process(monitor)
+      Error(InitFailed(down.reason))
+    }
+
+    // Child did not finish initialising in time
+    Error(Nil) -> {
+      process.demonitor_process(monitor)
+      process.kill(child)
+      // TODO: Flush exit signals (in case we were trapping exits) + ack channel
+      Error(Timeout)
+    }
+  }
 }
 
 // TODO: document

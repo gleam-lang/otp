@@ -3,8 +3,8 @@
 % Receivers
 -export([make_receiver/0, include_channel/3, include_process_monitor/3,
          include_port_monitor/3, include_system/2, include_bare/2,
-         remove_timeout/1, set_timeout/2, run_receiver/1, flush_receiver/1,
-         flush_other/2]).
+         include_all/2, remove_timeout/1, set_timeout/2, run_receiver/1,
+         flush_receiver/1, flush_other/2]).
 
 %
 % import Gleam records
@@ -38,11 +38,11 @@
 % Receivers
 %
 
--record(receiver, {system, bare, map, timeout, flush_other}).
+-record(receiver, {system, bare, all, map, timeout, flush_other}).
 
 make_receiver() ->
     #receiver{timeout = 5000, system = undefined, bare = undefined,
-              flush_other = false, map = #{}}.
+              all = undefined, flush_other = false, map = #{}}.
 
 receiver_include(Receiver, Ref, Fn) ->
     Map = maps:put(Ref, Fn, Receiver#receiver.map),
@@ -63,7 +63,7 @@ channel_msg(Map, Ref, Msg) ->
 
 run_receiver(Receiver) ->
     #receiver{timeout = Timeout, system = System, bare = Bare, map = Map,
-              flush_other = FlushOther} = Receiver,
+              all = All, flush_other = FlushOther} = Receiver,
     receive
         {Ref, Msg} when is_map_key(Ref, Map) ->
             channel_msg(Map, Ref, Msg);
@@ -80,6 +80,9 @@ run_receiver(Receiver) ->
         Msg when (not ?is_special_msg(Msg)) andalso is_function(Bare) ->
             {ok, Bare(Msg)};
 
+        Msg when is_function(All) ->
+            {ok, All(Msg)};
+
         _ when FlushOther ->
             % TODO: shrink timeout if time has passed
             run_receiver(Receiver)
@@ -88,7 +91,7 @@ run_receiver(Receiver) ->
     end.
 
 flush_receiver(Receiver, N) ->
-    #receiver{system = System, bare = Bare, map = Map} = Receiver,
+    #receiver{system = System, all = All, bare = Bare, map = Map} = Receiver,
     receive
         {Ref, _} when is_map_key(Ref, Map) ->
             flush_receiver(Receiver, N + 1);
@@ -100,6 +103,9 @@ flush_receiver(Receiver, N) ->
             flush_receiver(Receiver, N + 1);
 
         Msg when (not ?is_special_msg(Msg)) andalso is_function(Bare) ->
+            flush_receiver(Receiver, N + 1);
+
+        _ when is_function(All) ->
             flush_receiver(Receiver, N + 1)
     after
         0 -> N
@@ -120,6 +126,9 @@ include_system(Receiver, Fn) ->
 include_bare(Receiver, Fn) ->
     Receiver#receiver{bare = Fn}.
 
+include_all(Receiver, Fn) ->
+    Receiver#receiver{all = Fn}.
+
 flush_other(Receiver, FlushOther) ->
     Receiver#receiver{flush_other = FlushOther}.
 
@@ -129,8 +138,8 @@ system_msg(From = {Pid, Ref}, Msg) ->
 
 system_reply(Msg, From, Reply) ->
     case Msg of
+        resume -> gen:reply(From, ok);
         suspend -> gen:reply(From, ok);
-        result -> gen:reply(From, ok);
-        get_status -> gen:reply(From, Reply);
-        get_state -> gen:reply(From, Reply)
+        get_state -> gen:reply(From, Reply);
+        get_status -> gen:reply(From, Reply)
     end.
