@@ -289,3 +289,12 @@ pub fn flush_other_test() {
   |> process.run_receiver()
   |> should.equal(Error(Nil))
 }
+
+pub fn wrap_channel_test() {
+  let channel = process.make_channel()
+  let wrapped = process.wrap_channel(channel, fn(x) { tuple(x, x) })
+  process.send(wrapped, "Wot")
+  channel
+  |> process.receive(0)
+  |> should.equal(Ok(tuple("Wot", "Wot")))
+}

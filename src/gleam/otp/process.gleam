@@ -434,3 +434,15 @@ pub fn trap_exit(bool: Bool) -> Nil {
   erlang_trap_exit(TrapExit, bool)
   Nil
 }
+
+// TODO: document
+pub fn wrap_channel(
+  channel: Channel(a),
+  with preprocessor: fn(b) -> a,
+) -> Channel(b) {
+  Channel(
+    pid: channel.pid,
+    reference: channel.reference,
+    send: fn(b) { channel.send(preprocessor(b)) },
+  )
+}
