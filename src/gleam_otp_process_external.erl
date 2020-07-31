@@ -123,7 +123,14 @@ include_bare(Receiver, Fn) ->
 flush_other(Receiver, FlushOther) ->
     Receiver#receiver{flush_other = FlushOther}.
 
-system_msg({Pid, Ref}, Msg) when is_atom(Msg) ->
-    Send = fun(Reply) -> erlang:send(Pid, {Ref, Reply}) end,
-    Channel = #channel{pid = Pid, reference = Ref, send = Send},
-    {Msg, Channel}.
+system_msg(From = {Pid, Ref}, Msg) ->
+    Send = fun(X) -> system_reply(Msg, From, X) end,
+    {Msg, #channel{pid = Pid, reference = Ref, send = Send}}.
+
+system_reply(Msg, From, Reply) ->
+    case Msg of
+        suspend -> gen:reply(From, ok);
+        result -> gen:reply(From, ok);
+        get_status -> gen:reply(From, Reply);
+        get_state -> gen:reply(From, Reply)
+    end.

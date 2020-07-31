@@ -119,14 +119,14 @@ fn loop(self: Self(state, msg)) -> ExitReason {
     }
 
     System(Resume(caller)) -> {
-      process.send(caller, process.system_ok())
+      process.send(caller, Nil)
       self
       |> set_mode(Running)
       |> loop
     }
 
     System(Suspend(caller)) -> {
-      process.send(caller, process.system_ok())
+      process.send(caller, Nil)
       self
       |> set_mode(Suspended)
       |> loop

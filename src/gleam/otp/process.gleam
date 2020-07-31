@@ -12,15 +12,6 @@ import gleam/otp/port.{Port}
 
 external type DoNotLeak
 
-pub external type SystemOk
-
-pub fn system_ok() -> SystemOk {
-  "ok"
-  |> atom.from_string
-  |> dynamic.from
-  |> dynamic.unsafe_coerce
-}
-
 /// A Pid (or Process identifier) is a reference to an OTP process, which is a
 /// lightweight thread that communicates by sending and receiving messages.
 ///
@@ -234,8 +225,8 @@ pub type SystemMessage {
   // {debug, {install, {FuncId, Func, FuncState}}}
   // {debug, {remove, FuncOrId}}
   GetStatus(Channel(Dynamic))
-  Suspend(Channel(SystemOk))
-  Resume(Channel(SystemOk))
+  Suspend(Channel(Nil))
+  Resume(Channel(Nil))
   GetState(Channel(Dynamic))
 }
 
