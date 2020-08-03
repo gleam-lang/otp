@@ -4,22 +4,41 @@
 <a href="https://webchat.freenode.net/#gleam-lang"><img src="https://img.shields.io/badge/freenode%20chat-%23gleam--lang-blue" alt="IRC: #gleam-lang on chat.freenode.net"></a>
 ![CI](https://github.com/gleam-lang/otp/workflows/test/badge.svg?branch=master)
 
-A Gleam library for working with Erlang/OTP processes in a (mostly) type safe
-fashion.
+A Gleam library for building fault tolerant multi-core programs using the
+actor model. It is compatible with Erlang's OTP framework.
 
 This library is experimental and will likely have many breaking changes in the
 future!
 
 
-## Quick start
+## Actor hierarchy
 
-```sh
-# Build the project
-rebar3 compile
+This library defines several different types of actor that can be used in
+Gleam programs.
 
-# Run the eunit tests
-rebar3 eunit
-
-# Run the Erlang REPL
-rebar3 shell
 ```
+   Process
+      ↓
+    Actor
+   ↙    ↘
+Task    Supervisor
+```
+
+### Process
+
+The process is the lowest level building block of OTP, all other actors are
+built on top of processes either directly or indirectly. Typically this
+abstraction would be not be used very often in Gleam applications, favour
+other actor types that provide more functionality.
+
+### Actor
+
+TODO
+
+### Task
+
+TODO
+
+### Supervisor
+
+TODO
