@@ -59,3 +59,21 @@ pub fn suspend_resume_test() {
   system.resume(pid)
   |> should.equal(Nil)
 }
+
+pub fn channel_test() {
+  let spec = Spec(
+    init: fn() { Ok("Test state") },
+    loop: fn(msg, _state) { Continue(msg) },
+  )
+
+  assert Ok(tuple(pid, channel)) = actor.start(spec)
+  let pre_status = get_status(pid)
+  assert pre_status = "Test state"
+
+  process.send(channel, "testing")
+
+  let post_status = get_status(pid)
+  assert post_status = "testing"
+
+  get_status(pid)
+}
