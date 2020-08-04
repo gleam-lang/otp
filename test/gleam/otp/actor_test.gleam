@@ -11,7 +11,7 @@ pub fn get_state_test() {
     loop: fn(_msg, state) { Continue(state) },
   )
 
-  assert Ok(pid) = actor.start(spec)
+  assert Ok(tuple(pid, _channel)) = actor.start(spec)
 
   system.get_state(pid)
   |> should.equal(dynamic.from("Test state"))
@@ -25,7 +25,7 @@ pub fn get_status_test() {
     init: fn() { Ok("Test state") },
     loop: fn(_msg, state) { Continue(state) },
   )
-  assert Ok(pid) = actor.start(spec)
+  assert Ok(tuple(pid, _channel)) = actor.start(spec)
   get_status(pid)
 }
 
@@ -44,7 +44,7 @@ pub fn suspend_resume_test() {
     init: fn() { Ok("Test state") },
     loop: fn(_msg, state) { Continue(state) },
   )
-  assert Ok(pid) = actor.start(spec)
+  assert Ok(tuple(pid, _channel)) = actor.start(spec)
 
   // Suspend process
   system.suspend(pid)

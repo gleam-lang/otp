@@ -135,9 +135,9 @@ fn loop(self: Self(state, msg)) -> ExitReason {
 
 fn initialise_actor(
   spec: Spec(state, msg),
+  data_channel: Channel(msg),
   ack_channel: Channel(Result(Nil, ExitReason)),
 ) {
-  let channel = process.make_channel()
   case spec.init() {
     Ok(state) -> {
       // Signal to parent that the process has initialised successfully
@@ -147,7 +147,7 @@ fn initialise_actor(
         pid: process.self(),
         state: state,
         parent: process.pid(ack_channel),
-        channel: channel,
+        channel: data_channel,
         message_handler: spec.loop,
         debug_state: process.debug_state([]),
         mode: Running,
@@ -172,9 +172,11 @@ type StartInitMessage {
 }
 
 // TODO: document
-pub fn start(spec: Spec(state, msg)) -> Result(Pid, StartError) {
+pub fn start(spec: Spec(state, msg)) -> Result(tuple(Pid, Channel(msg)), StartError) {
   let ack = process.make_channel()
-  let child = process.start(fn() { initialise_actor(spec, ack) })
+  let data = process.make_channel()
+
+  let child = process.start(fn() { initialise_actor(spec, data, ack) })
   let monitor = process.monitor_process(child)
 
   // TODO: configurable timeout
@@ -185,7 +187,7 @@ pub fn start(spec: Spec(state, msg)) -> Result(Pid, StartError) {
 
   case process.run_receiver(receiver) {
     // Child started OK
-    Ok(Ack(Ok(Nil))) -> Ok(child)
+    Ok(Ack(Ok(Nil))) -> Ok(tuple(child, data))
 
     // Child initialiser returned an error
     Ok(Ack(Error(reason))) -> Error(InitFailed(dynamic.from(reason)))
