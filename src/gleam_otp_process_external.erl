@@ -1,5 +1,8 @@
 -module(gleam_otp_process_external).
 
+% Channels
+-export([open_channel/1, close_channel/1]).
+
 % Receivers
 -export([make_receiver/0, include_channel/3, include_process_monitor/3,
          include_port_monitor/3, include_process_exit/3, include_system/2,
@@ -38,6 +41,25 @@
          ?is_exit_msg(Term) orelse ?is_gen_reply(Term))).
 
 %
+% Channels
+%
+
+currently_open_channels() ->
+    get('$gleam_open_channels').
+
+update_channels(Fn) ->
+    case currently_open_channels() of
+        undefined -> Fn(#{});
+        Refs -> Fn(Refs)
+    end.
+
+open_channel(Ref) ->
+    update_channels(fun(Refs) -> maps:put(Ref, [], Refs) end).
+
+close_channel(Ref) ->
+    update_channels(fun(Refs) -> maps:remove(Ref, Refs) end).
+
+%
 % Receivers
 %
 
@@ -73,7 +95,13 @@ get_map_msg(Map, Key, Msg) ->
 run_receiver(Receiver) ->
     #receiver{timeout = Timeout, system = System, bare = Bare, refs = Refs,
               all = All, flush_other = FlushOther, exit_pids = ExitPids} = Receiver,
+    OpenChannels = currently_open_channels(),
     receive
+        % Message on closed channels are discarded
+        {Ref, _} when not is_map_key(Ref, OpenChannels) ->
+            % TODO: shrink timeout if time has passed
+            run_receiver(Receiver);
+
         {Ref, Msg} when is_map_key(Ref, Refs) ->
             get_map_msg(Refs, Ref, Msg);
 
@@ -105,7 +133,12 @@ run_receiver(Receiver) ->
 flush_receiver(Receiver, N) ->
     #receiver{system = System, all = All, bare = Bare, refs = Refs,
               exit_pids = ExitPids} = Receiver,
+    OpenChannels = currently_open_channels(),
     receive
+        % Messages on closed channels are _always_ discarded
+        {Ref, _} when not is_map_key(Ref, OpenChannels) ->
+            flush_receiver(Receiver, N); % Don't count these messages
+
         {Ref, _} when is_map_key(Ref, Refs) ->
             flush_receiver(Receiver, N + 1);
 

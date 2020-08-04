@@ -47,12 +47,25 @@ pub opaque type Channel(msg) {
   Channel(pid: Pid, reference: Reference, send: fn(msg) -> Nil)
 }
 
+external fn open_channel(Reference) -> Nil =
+  "gleam_otp_process_external" "open_channel"
+
+external fn close_channel_reference(Reference) -> Nil =
+  "gleam_otp_process_external" "close_channel"
+
+// TODO: document
+// TODO: test
+pub fn close_channel(channel: Channel(msg)) -> Nil {
+  close_channel_reference(channel.reference)
+}
+
 // TODO: document
 pub fn pid(channel: Channel(msg)) -> Pid {
   channel.pid
 }
 
 // TODO: document
+// TODO: document that `close_channel` should be called
 pub fn make_channel() -> Channel(msg) {
   let self = self()
   let ref = make_reference()
@@ -60,6 +73,7 @@ pub fn make_channel() -> Channel(msg) {
     unsafe_send(self, tuple(ref, msg))
     Nil
   }
+  open_channel(ref)
   Channel(pid: self, reference: ref, send: send)
 }
 
@@ -350,9 +364,8 @@ pub fn flush(channel: Channel(msg)) -> Int {
 pub type CallError(msg) {
   // TODO: document
   CalleeDown(reason: Dynamic)
-  // TODO: document (i.e. the receiver is so that you can clean up the message
-  // if it arrives later, to avoid a memory leak)
-  CallTimeout(reciever: Channel(msg))
+  // TODO: document
+  CallTimeout
 }
 
 fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError(a)) {
@@ -387,10 +400,11 @@ pub fn try_call(
 
   // Demonitor the process as we're done
   demonitor_process(monitor)
+  close_channel(channel)
 
   // Prepare an appropriate error (if present) for the caller
   case res {
-    Error(Nil) -> Error(CallTimeout(reply_channel))
+    Error(Nil) -> Error(CallTimeout)
     Ok(res) -> res
   }
 }

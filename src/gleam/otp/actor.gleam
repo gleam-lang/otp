@@ -1,7 +1,7 @@
 import gleam/otp/process.{
   Channel, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid,
   ProcessDown, Reference, Resume, Running, StartResult, Suspend, Suspended,
-  SystemMessage
+  SystemMessage,
 }
 import gleam/otp/port.{Port}
 import gleam/result
@@ -166,7 +166,7 @@ pub type StartError {
   InitFailed(Dynamic)
 }
 
-type StartInitMessage {
+type StartInitMessage(msg) {
   Ack(Result(Channel(msg), ExitReason))
   Mon(ProcessDown)
 }
@@ -188,14 +188,21 @@ pub fn start(
 
   case process.run_receiver(receiver) {
     // Child started OK
-    Ok(Ack(Ok(data_channel))) -> Ok(tuple(child, data_channel))
+    Ok(Ack(Ok(channel))) -> {
+      process.close_channel(ack)
+      Ok(tuple(child, channel))
+    }
 
     // Child initialiser returned an error
-    Ok(Ack(Error(reason))) -> Error(InitFailed(dynamic.from(reason)))
+    Ok(Ack(Error(reason))) -> {
+      process.close_channel(ack)
+      Error(InitFailed(dynamic.from(reason)))
+    }
 
     // Child when down while initialising
     Ok(Mon(down)) -> {
       process.demonitor_process(monitor)
+      process.close_channel(ack)
       Error(InitFailed(down.reason))
     }
 
@@ -203,7 +210,8 @@ pub fn start(
     Error(Nil) -> {
       process.demonitor_process(monitor)
       process.kill(child)
-      // TODO: Flush exit signals (in case we were trapping exits) + ack channel
+      process.close_channel(ack)
+      // TODO: Flush exit signals (in case we were trapping exits)
       Error(Timeout)
     }
   }
