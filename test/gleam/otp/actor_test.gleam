@@ -72,7 +72,7 @@ pub fn channel_test() {
   |> system.get_state()
   |> should.equal(dynamic.from("Test state"))
 
-  process.send(channel, "testing")
+  actor.send(channel, "testing")
 
   pid
   |> system.get_state()
