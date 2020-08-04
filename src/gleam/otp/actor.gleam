@@ -1,7 +1,7 @@
 import gleam/otp/process.{
   Channel, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid,
   ProcessDown, Reference, Resume, Running, StartResult, Suspend, Suspended,
-  SystemMessage,
+  SystemMessage
 }
 import gleam/otp/port.{Port}
 import gleam/result
@@ -172,7 +172,9 @@ type StartInitMessage {
 }
 
 // TODO: document
-pub fn start(spec: Spec(state, msg)) -> Result(tuple(Pid, Channel(msg)), StartError) {
+pub fn start(
+  spec: Spec(state, msg),
+) -> Result(tuple(Pid, Channel(msg)), StartError) {
   let ack = process.make_channel()
   let data = process.make_channel()
 
