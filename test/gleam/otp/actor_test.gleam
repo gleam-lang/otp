@@ -4,7 +4,6 @@ import gleam/otp/system
 import gleam/dynamic.{Dynamic}
 import gleam/should
 import gleam/result
-import gleam/int
 
 pub fn get_state_test() {
   let spec = Spec(
