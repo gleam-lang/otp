@@ -135,19 +135,19 @@ fn loop(self: Self(state, msg)) -> ExitReason {
 
 fn initialise_actor(
   spec: Spec(state, msg),
-  data_channel: Channel(msg),
-  ack_channel: Channel(Result(Nil, ExitReason)),
+  ack_channel: Channel(Result(Channel(msg), ExitReason)),
 ) {
+  let channel = process.make_channel()
   case spec.init() {
     Ok(state) -> {
       // Signal to parent that the process has initialised successfully
-      process.send(ack_channel, Ok(Nil))
+      process.send(ack_channel, Ok(channel))
       // Start message receive loop
       let self = Self(
         pid: process.self(),
         state: state,
         parent: process.pid(ack_channel),
-        channel: data_channel,
+        channel: channel,
         message_handler: spec.loop,
         debug_state: process.debug_state([]),
         mode: Running,
@@ -167,7 +167,7 @@ pub type StartError {
 }
 
 type StartInitMessage {
-  Ack(Result(Nil, ExitReason))
+  Ack(Result(Channel(msg), ExitReason))
   Mon(ProcessDown)
 }
 
@@ -176,9 +176,8 @@ pub fn start(
   spec: Spec(state, msg),
 ) -> Result(tuple(Pid, Channel(msg)), StartError) {
   let ack = process.make_channel()
-  let data = process.make_channel()
 
-  let child = process.start(fn() { initialise_actor(spec, data, ack) })
+  let child = process.start(fn() { initialise_actor(spec, ack) })
   let monitor = process.monitor_process(child)
 
   // TODO: configurable timeout
@@ -189,7 +188,7 @@ pub fn start(
 
   case process.run_receiver(receiver) {
     // Child started OK
-    Ok(Ack(Ok(Nil))) -> Ok(tuple(child, data))
+    Ok(Ack(Ok(data_channel))) -> Ok(tuple(child, data_channel))
 
     // Child initialiser returned an error
     Ok(Ack(Error(reason))) -> Error(InitFailed(dynamic.from(reason)))
