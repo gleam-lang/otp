@@ -1,9 +1,7 @@
 import gleam/otp/process.{
   Channel, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid,
-  ProcessDown, Reference, Resume, Running, StartResult, Suspend, Suspended,
-  SystemMessage,
+  ProcessDown, Resume, Running, Suspend, Suspended, SystemMessage,
 }
-import gleam/otp/port.{Port}
 import gleam/result
 import gleam/atom
 import gleam/dynamic.{Dynamic}

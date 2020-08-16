@@ -1,9 +1,9 @@
-import gleam/otp/process.{ExitReason, Normal}
+import gleam/otp/process.{Normal}
 import gleam/should
 import gleam/io
 import gleam/result
 import gleam/atom
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic
 import gleam/option.{Some}
 
 external fn sleep(Int) -> Nil =

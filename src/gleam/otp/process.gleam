@@ -7,12 +7,9 @@
 import gleam/atom
 import gleam/result
 import gleam/atom.{Atom}
-import gleam/map.{Map}
 import gleam/dynamic.{Dynamic}
-import gleam/option.{None, Option}
+import gleam/option.{None}
 import gleam/otp/port.{Port}
-
-external type DoNotLeak
 
 /// A Pid (or Process identifier) is a reference to an OTP process, which is a
 /// lightweight thread that communicates by sending and receiving messages.

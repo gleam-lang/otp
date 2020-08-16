@@ -1,6 +1,6 @@
 // TODO: test
 import gleam/list
-import gleam/option.{None, Option, Some}
+import gleam/option.{None, Some}
 import gleam/otp/process.{ExitReason, Pid}
 
 // API
