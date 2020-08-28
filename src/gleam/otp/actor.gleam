@@ -7,12 +7,12 @@ import gleam/atom
 import gleam/dynamic.{Dynamic}
 
 // TODO: document
-pub type Message(msg) {
+type Message(message) {
   /// A regular message excepted by the process
-  Message(message: msg)
+  Message(message)
 
   /// An OTP system message, for debugging or maintenance
-  System(message: SystemMessage)
+  System(SystemMessage)
 }
 
 pub type Next(state) {
@@ -214,7 +214,10 @@ pub fn start(spec: Spec(state, msg)) -> Result(Channel(msg), StartError) {
       process.demonitor_process(monitor)
       process.kill(child)
       process.close_channel(ack)
-      // TODO: flush exits in case we are trapping them
+      // Flush exit messages as we may be trapping exits
+      process.new_receiver()
+      |> process.include_process_exit(child, fn(x) { x })
+      |> process.flush_receiver
       Error(InitTimeout)
     }
   }
