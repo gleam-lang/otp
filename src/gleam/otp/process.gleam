@@ -298,9 +298,6 @@ pub type SystemMessage {
   GetState(Channel(Dynamic))
 }
 
-pub type StartResult =
-  Result(Pid, ExitReason)
-
 /// Check to see whether the process for a given Pid is alive.
 ///
 /// See the [Erlang documentation][erl] for more information.
