@@ -12,9 +12,11 @@ pub fn get_state_test() {
       loop: fn(_msg, state) { Continue(state) },
     )
 
-  assert Ok(tuple(pid, _channel)) = actor.start(spec)
+  assert Ok(channel) = actor.start(spec)
 
-  system.get_state(pid)
+  channel
+  |> process.pid
+  |> system.get_state
   |> should.equal(dynamic.from("Test state"))
 }
 
@@ -27,8 +29,11 @@ pub fn get_status_test() {
       init: fn() { Ok("Test state") },
       loop: fn(_msg, state) { Continue(state) },
     )
-  assert Ok(tuple(pid, _channel)) = actor.start(spec)
-  get_status(pid)
+  assert Ok(channel) = actor.start(spec)
+  channel
+  |> process.pid
+  |> get_status
+  // TODO: assert something about the response
 }
 
 pub fn failed_init_test() {
@@ -47,19 +52,25 @@ pub fn suspend_resume_test() {
       init: fn() { Ok("Test state") },
       loop: fn(_msg, state) { Continue(state) },
     )
-  assert Ok(tuple(pid, _channel)) = actor.start(spec)
+  assert Ok(channel) = actor.start(spec)
 
   // Suspend process
-  system.suspend(pid)
+  channel
+  |> process.pid
+  |> system.suspend
   |> should.equal(Nil)
 
   // System messages are still handled
-  system.get_state(pid)
+  channel
+  |> process.pid
+  |> system.get_state
   |> should.equal(dynamic.from("Test state"))
 
   // TODO: test normal messages are not handled.
   // Resume process
-  system.resume(pid)
+  channel
+  |> process.pid
+  |> system.resume
   |> should.equal(Nil)
 }
 
@@ -70,14 +81,16 @@ pub fn channel_test() {
       loop: fn(msg, _state) { Continue(msg) },
     )
 
-  assert Ok(tuple(pid, channel)) = actor.start(spec)
-  pid
+  assert Ok(channel) = actor.start(spec)
+  channel
+  |> process.pid
   |> system.get_state()
   |> should.equal(dynamic.from("Test state"))
 
   actor.send(channel, "testing")
 
-  pid
+  channel
+  |> process.pid
   |> system.get_state()
   |> should.equal(dynamic.from("testing"))
 }

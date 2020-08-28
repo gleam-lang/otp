@@ -173,9 +173,7 @@ type StartInitMessage(msg) {
 }
 
 // TODO: document
-pub fn start(
-  spec: Spec(state, msg),
-) -> Result(tuple(Pid, Channel(msg)), StartError) {
+pub fn start(spec: Spec(state, msg)) -> Result(Channel(msg), StartError) {
   let ack = process.make_channel()
 
   let child = process.start(fn() { initialise_actor(spec, ack) })
@@ -192,7 +190,7 @@ pub fn start(
     // Child started OK
     Ok(Ack(Ok(channel))) -> {
       process.close_channel(ack)
-      Ok(tuple(child, channel))
+      Ok(channel)
     }
 
     // Child initialiser returned an error
