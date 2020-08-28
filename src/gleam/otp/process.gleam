@@ -32,7 +32,7 @@ pub external fn unsafe_send(to: Pid, msg: msg) -> msg =
 pub external type Reference
 
 // TODO: document
-pub external fn make_reference() -> Reference =
+pub external fn new_reference() -> Reference =
   "erlang" "make_ref"
 
 // TODO: document
@@ -63,9 +63,9 @@ pub fn pid(channel: Channel(msg)) -> Pid {
 
 // TODO: document
 // TODO: document that `close_channel` should be called
-pub fn make_channel() -> Channel(msg) {
+pub fn new_channel() -> Channel(msg) {
   let self = self()
-  let ref = make_reference()
+  let ref = new_reference()
   let send = fn(msg) {
     unsafe_send(self, tuple(ref, msg))
     Nil
@@ -147,8 +147,8 @@ pub type PortDown {
 pub external type Receiver(message)
 
 // TODO: document
-pub external fn make_receiver() -> Receiver(message) =
-  "gleam_otp_process_external" "make_receiver"
+pub external fn new_receiver() -> Receiver(message) =
+  "gleam_otp_process_external" "new_receiver"
 
 // TODO: document
 pub external fn run_receiver(Receiver(msg)) -> Result(msg, Nil) =
@@ -344,7 +344,7 @@ pub external fn start_unlinked(fn() -> anything) -> Pid =
 
 // TODO: document
 pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
-  make_receiver()
+  new_receiver()
   |> include_channel(channel, fn(x) { x })
   |> set_timeout(timeout)
   |> run_receiver
@@ -352,7 +352,7 @@ pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
 
 // TODO: document
 pub fn flush(channel: Channel(msg)) -> Int {
-  make_receiver()
+  new_receiver()
   |> include_channel(channel, fn(x) { x })
   |> flush_receiver
 }
@@ -377,7 +377,7 @@ pub fn try_call(
   make_request: fn(Channel(response)) -> request,
   timeout: Int,
 ) -> Result(response, CallError(response)) {
-  let reply_channel = make_channel()
+  let reply_channel = new_channel()
 
   // Monitor the callee process so we can tell if it goes down (meaning we
   // won't get a reply)
@@ -391,7 +391,7 @@ pub fn try_call(
 
   // Await a reply or handle failure modes (timeout, process down, etc)
   let res =
-    make_receiver()
+    new_receiver()
     |> include_channel(reply_channel, Ok)
     |> include_process_monitor(monitor, process_down_to_call_error)
     |> set_timeout(timeout)

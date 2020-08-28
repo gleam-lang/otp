@@ -25,7 +25,7 @@ pub fn is_alive_dead_test() {
 }
 
 pub fn receive_test() {
-  let channel = process.make_channel()
+  let channel = process.new_channel()
 
   // Send message from self
   process.send(channel, 0)
@@ -48,8 +48,8 @@ pub fn receive_test() {
 }
 
 pub fn flush_test() {
-  let c1 = process.make_channel()
-  let c2 = process.make_channel()
+  let c1 = process.new_channel()
+  let c2 = process.new_channel()
   process.send(c1, 1)
   process.send(c2, 2)
   process.send(c2, 3)
@@ -67,15 +67,15 @@ pub fn flush_test() {
   |> should.equal(Ok(1))
 }
 
-pub fn make_reference_test() {
-  let r1 = process.make_reference()
-  let r2 = process.make_reference()
+pub fn new_reference_test() {
+  let r1 = process.new_reference()
+  let r2 = process.new_reference()
   r1
   |> should.not_equal(r2)
 }
 
 pub fn self_test() {
-  let channel = process.make_channel()
+  let channel = process.new_channel()
   let child_pid1 = process.start(fn() { process.send(channel, process.self()) })
   assert Ok(child_pid2) = process.receive(channel, 100)
 
@@ -87,12 +87,12 @@ pub fn self_test() {
 }
 
 pub fn bare_receive_test() {
-  let channel = process.make_channel()
+  let channel = process.new_channel()
   process.send(channel, 0)
   process.unsafe_send(process.self(), 1)
 
   let receiver =
-    process.make_receiver()
+    process.new_receiver()
     |> process.include_bare(fn(x) { x })
     |> process.set_timeout(0)
 
@@ -106,7 +106,7 @@ pub fn bare_receive_test() {
 }
 
 pub fn pid_test() {
-  let channel = process.make_channel()
+  let channel = process.new_channel()
   let self = process.self()
   channel
   |> process.pid
@@ -118,11 +118,11 @@ fn call_message(value) {
 }
 
 pub fn try_call_test() {
-  let to_parent_channel = process.make_channel()
+  let to_parent_channel = process.new_channel()
 
   process.start(fn() {
     // Send the call channel to the parent
-    let call_channel = process.make_channel()
+    let call_channel = process.new_channel()
     process.send(to_parent_channel, call_channel)
     // Wait for the channel to be called
     assert Ok(tup) = process.receive(call_channel, 50)
@@ -140,11 +140,11 @@ pub fn try_call_test() {
 }
 
 pub fn try_call_timeout_test() {
-  let to_parent_channel = process.make_channel()
+  let to_parent_channel = process.new_channel()
 
   process.start(fn() {
     // Send the call channel to the parent
-    let call_channel = process.make_channel()
+    let call_channel = process.new_channel()
     process.send(to_parent_channel, call_channel)
     // Wait for the channel to be called
     assert Ok(tup) = process.receive(call_channel, 50)
@@ -166,7 +166,7 @@ pub fn try_call_timeout_test() {
 
 pub fn message_queue_size_test() {
   // Empty inbox
-  process.make_receiver()
+  process.new_receiver()
   |> process.include_all(fn(x) { x })
   |> process.flush_receiver
 
@@ -186,10 +186,10 @@ pub fn message_queue_size_test() {
 
 pub fn monitor_test_test() {
   // Spawn child
-  let to_parent_channel = process.make_channel()
+  let to_parent_channel = process.new_channel()
   let pid =
     process.start(fn() {
-      let channel = process.make_channel()
+      let channel = process.new_channel()
       process.send(to_parent_channel, channel)
       process.receive(channel, 150)
     })
@@ -202,7 +202,7 @@ pub fn monitor_test_test() {
   process.send(channel, Nil)
 
   // We get a process down message!
-  process.make_receiver()
+  process.new_receiver()
   |> process.include_process_monitor(monitor, fn(x) { x })
   |> process.set_timeout(5)
   |> process.run_receiver
@@ -211,10 +211,10 @@ pub fn monitor_test_test() {
 
 pub fn demonitor_test_test() {
   // Spawn child
-  let to_parent_channel = process.make_channel()
+  let to_parent_channel = process.new_channel()
   let pid =
     process.start(fn() {
-      let channel = process.make_channel()
+      let channel = process.new_channel()
       process.send(to_parent_channel, channel)
       process.receive(channel, 150)
     })
@@ -230,7 +230,7 @@ pub fn demonitor_test_test() {
   process.demonitor_process(monitor)
 
   // We don't get a process down message as we demonitored the child
-  process.make_receiver()
+  process.new_receiver()
   |> process.include_process_monitor(monitor, fn(x) { x })
   |> process.set_timeout(5)
   |> process.run_receiver
@@ -238,14 +238,14 @@ pub fn demonitor_test_test() {
 }
 
 pub fn set_timeout_test() {
-  let channel = process.make_channel()
+  let channel = process.new_channel()
   process.start(fn() {
     sleep(10)
     process.send(channel, Nil)
   })
 
   let receiver =
-    process.make_receiver()
+    process.new_receiver()
     |> process.include_channel(channel, fn(x) { x })
     |> process.set_timeout(0)
 
@@ -260,14 +260,14 @@ pub fn set_timeout_test() {
 }
 
 pub fn flush_other_test() {
-  let c1 = process.make_channel()
-  let c2 = process.make_channel()
+  let c1 = process.new_channel()
+  let c2 = process.new_channel()
 
   process.send(c1, 0)
   process.send(c2, 0)
 
   let receiver =
-    process.make_receiver()
+    process.new_receiver()
     |> process.flush_other(True)
     |> process.include_channel(c2, fn(x) { x })
     |> process.set_timeout(0)
@@ -284,7 +284,7 @@ pub fn flush_other_test() {
 }
 
 pub fn wrap_channel_test() {
-  let channel = process.make_channel()
+  let channel = process.new_channel()
   let wrapped = process.wrap_channel(channel, fn(x) { tuple(x, x) })
   process.send(wrapped, "Wot")
   channel

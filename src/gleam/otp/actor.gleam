@@ -48,7 +48,7 @@ fn exit_process(reason: ExitReason) -> ExitReason {
 
 fn receive_message(self: Self(state, msg)) -> Message(msg) {
   let receiver =
-    process.make_receiver()
+    process.new_receiver()
     |> process.remove_timeout
     |> process.include_system(System)
 
@@ -138,7 +138,7 @@ fn initialise_actor(
   spec: Spec(state, msg),
   ack_channel: Channel(Result(Channel(msg), ExitReason)),
 ) {
-  let channel = process.make_channel()
+  let channel = process.new_channel()
   case spec.init() {
     Ok(state) -> {
       // Signal to parent that the process has initialised successfully
@@ -178,13 +178,13 @@ type StartInitMessage(msg) {
 // TODO: test init_timeout. Currently if we test it eunit prints an error from
 // the process death. How do we avoid this?
 pub fn start(spec: Spec(state, msg)) -> Result(Channel(msg), StartError) {
-  let ack = process.make_channel()
+  let ack = process.new_channel()
 
   let child = process.start(fn() { initialise_actor(spec, ack) })
   let monitor = process.monitor_process(child)
 
   let receiver =
-    process.make_receiver()
+    process.new_receiver()
     |> process.set_timeout(spec.init_timeout)
     |> process.include_channel(ack, Ack)
     |> process.include_process_monitor(monitor, Mon)
@@ -214,7 +214,7 @@ pub fn start(spec: Spec(state, msg)) -> Result(Channel(msg), StartError) {
       process.demonitor_process(monitor)
       process.kill(child)
       process.close_channel(ack)
-      // TODO: Flush exit signals (in case we were trapping exits)
+      // TODO: flush exits in case we are trapping them
       Error(InitTimeout)
     }
   }

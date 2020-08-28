@@ -4,7 +4,7 @@
 -export([open_channel/1, close_channel/1]).
 
 % Receivers
--export([make_receiver/0, include_channel/3, include_process_monitor/3,
+-export([new_receiver/0, include_channel/3, include_process_monitor/3,
          include_port_monitor/3, include_process_exit/3, include_system/2,
          include_bare/2, include_all_exits/2, include_all/2, remove_timeout/1,
          set_timeout/2, run_receiver/1, flush_receiver/1, flush_other/2]).
@@ -66,7 +66,7 @@ close_channel(Ref) ->
 -record(receiver, {system, bare, all, all_exits, exit_pids, refs, timeout,
                    flush_other}).
 
-make_receiver() ->
+new_receiver() ->
     #receiver{timeout = 5000, system = undefined, bare = undefined,
               all = undefined, flush_other = false, all_exits = undefined,
               exit_pids = #{}, refs = #{}}.

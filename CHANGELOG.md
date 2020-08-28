@@ -7,6 +7,7 @@
   initialising.
 - `actor.Spec` has an `init_timeout` field which specifies how long the actor
   has to initialise.
+- `process.make_*` functions have been renamed to `process.new_*`.
 
 ## v0.0.1 - 2020-08-20
 
