@@ -36,6 +36,7 @@ pub type Spec(state, msg) {
   Spec(
     init: fn() -> Result(state, ExitReason),
     loop: fn(msg, state) -> Next(state),
+    init_timeout: Int,
   )
 }
 
@@ -174,16 +175,17 @@ type StartInitMessage(msg) {
 }
 
 // TODO: document
+// TODO: test init_timeout. Currently if we test it eunit prints an error from
+// the process death. How do we avoid this?
 pub fn start(spec: Spec(state, msg)) -> Result(Channel(msg), StartError) {
   let ack = process.make_channel()
 
   let child = process.start(fn() { initialise_actor(spec, ack) })
   let monitor = process.monitor_process(child)
 
-  // TODO: configurable timeout
   let receiver =
     process.make_receiver()
-    |> process.set_timeout(5000)
+    |> process.set_timeout(spec.init_timeout)
     |> process.include_channel(ack, Ack)
     |> process.include_process_monitor(monitor, Mon)
 

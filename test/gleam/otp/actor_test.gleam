@@ -10,6 +10,7 @@ pub fn get_state_test() {
     Spec(
       init: fn() { Ok("Test state") },
       loop: fn(_msg, state) { Continue(state) },
+      init_timeout: 20,
     )
 
   assert Ok(channel) = actor.start(spec)
@@ -28,6 +29,7 @@ pub fn get_status_test() {
     Spec(
       init: fn() { Ok("Test state") },
       loop: fn(_msg, state) { Continue(state) },
+      init_timeout: 20,
     )
   assert Ok(channel) = actor.start(spec)
   channel
@@ -40,6 +42,7 @@ pub fn failed_init_test() {
   Spec(
     init: fn() { Error(process.Normal) },
     loop: fn(_msg, state) { Continue(state) },
+    init_timeout: 20,
   )
   |> actor.start
   |> result.is_error
@@ -51,6 +54,7 @@ pub fn suspend_resume_test() {
     Spec(
       init: fn() { Ok("Test state") },
       loop: fn(_msg, state) { Continue(state) },
+      init_timeout: 20,
     )
   assert Ok(channel) = actor.start(spec)
 
@@ -79,6 +83,7 @@ pub fn channel_test() {
     Spec(
       init: fn() { Ok("Test state") },
       loop: fn(msg, _state) { Continue(msg) },
+      init_timeout: 20,
     )
 
   assert Ok(channel) = actor.start(spec)
