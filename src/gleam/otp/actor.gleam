@@ -1,6 +1,6 @@
 import gleam/otp/process.{
-  Channel, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid, ProcessDown,
-  Resume, Running, Suspend, Suspended, SystemMessage,
+  Abnormal, Channel, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid,
+  ProcessDown, Resume, Running, Suspend, Suspended, SystemMessage,
 }
 import gleam/result
 import gleam/atom
@@ -163,8 +163,9 @@ fn initialise_actor(
 }
 
 pub type StartError {
-  Timeout
-  InitFailed(Dynamic)
+  InitTimeout
+  InitFailed(ExitReason)
+  InitCrashed(Dynamic)
 }
 
 type StartInitMessage(msg) {
@@ -196,14 +197,14 @@ pub fn start(spec: Spec(state, msg)) -> Result(Channel(msg), StartError) {
     // Child initialiser returned an error
     Ok(Ack(Error(reason))) -> {
       process.close_channel(ack)
-      Error(InitFailed(dynamic.from(reason)))
+      Error(InitFailed(reason))
     }
 
-    // Child when down while initialising
+    // Child went down while initialising
     Ok(Mon(down)) -> {
       process.demonitor_process(monitor)
       process.close_channel(ack)
-      Error(InitFailed(down.reason))
+      Error(InitCrashed(down.reason))
     }
 
     // Child did not finish initialising in time
@@ -212,7 +213,7 @@ pub fn start(spec: Spec(state, msg)) -> Result(Channel(msg), StartError) {
       process.kill(child)
       process.close_channel(ack)
       // TODO: Flush exit signals (in case we were trapping exits)
-      Error(Timeout)
+      Error(InitTimeout)
     }
   }
 }
