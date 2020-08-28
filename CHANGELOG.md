@@ -9,6 +9,7 @@
   has to initialise.
 - `process.make_*` functions have been renamed to `process.new_*`.
 - `actor.Message` is no longer a public type.
+- The `process` module gains the `run_receiver_forever` function.
 
 ## v0.0.1 - 2020-08-20
 

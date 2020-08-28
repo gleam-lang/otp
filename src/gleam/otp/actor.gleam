@@ -56,12 +56,7 @@ fn receive_message(self: Self(state, msg)) -> Message(msg) {
     Running -> process.include_channel(receiver, self.channel, Message)
     Suspended -> receiver
   }
-
-  // TODO: move into process receive function
-  case process.run_receiver(receiver) {
-    Ok(msg) -> msg
-    Error(Nil) -> receive_message(self)
-  }
+  process.run_receiver_forever(receiver)
 }
 
 fn set_mode(self: Self(state, msg), mode: Mode) -> Self(state, msg) {

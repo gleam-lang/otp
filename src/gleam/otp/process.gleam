@@ -1,8 +1,5 @@
 // TODO: README
-// TODO: We need a way to discard future messages on a channel
 // TODO: link
-// TODO: trap exit
-// TODO: wrap_channel: fn(Channel(a), fn(b) -> a) -> Channel(b)
 //
 import gleam/atom
 import gleam/result
@@ -16,8 +13,11 @@ import gleam/otp/port.{Port}
 ///
 pub external type Pid
 
-// TODO: document that this doesn't get type checked etc
-/// Send a message to a process.
+/// Send a bare message to a process. These bare messages are not not commonly
+/// used in Gleam as they are not typed checked, see the Channel type for a
+/// type safe and more ergonomic way of sending messages to processes. This
+/// function may still be useful for sending messages to processes implemented
+/// in Erlang or other BEAM languages.
 ///
 /// Message sending is asynchronous and this function will likely return before
 /// the message is handled by the receiving processes.
@@ -153,6 +153,11 @@ pub external fn new_receiver() -> Receiver(message) =
 // TODO: document
 pub external fn run_receiver(Receiver(msg)) -> Result(msg, Nil) =
   "gleam_otp_process_external" "run_receiver"
+
+// TODO: document
+// Be careful!
+pub external fn run_receiver_forever(Receiver(msg)) -> msg =
+  "gleam_otp_process_external" "run_receiver_forever"
 
 // TODO: document
 pub external fn flush_receiver(Receiver(msg)) -> Int =

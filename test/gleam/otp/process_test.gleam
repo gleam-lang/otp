@@ -105,6 +105,15 @@ pub fn bare_receive_test() {
   |> should.equal(Error(Nil))
 }
 
+pub fn run_receiver_forever_test() {
+  let channel = process.new_channel()
+  process.send(channel, 0)
+  process.new_receiver()
+  |> process.include_channel(channel, fn(x) { x })
+  |> process.run_receiver_forever()
+  |> should.equal(0)
+}
+
 pub fn pid_test() {
   let channel = process.new_channel()
   let self = process.self()

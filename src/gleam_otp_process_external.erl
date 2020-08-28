@@ -7,7 +7,8 @@
 -export([new_receiver/0, include_channel/3, include_process_monitor/3,
          include_port_monitor/3, include_process_exit/3, include_system/2,
          include_bare/2, include_all_exits/2, include_all/2, remove_timeout/1,
-         set_timeout/2, run_receiver/1, flush_receiver/1, flush_other/2]).
+         set_timeout/2, run_receiver_forever/1, run_receiver/1, flush_receiver/1,
+         flush_other/2]).
 
 %
 % import Gleam records
@@ -91,6 +92,12 @@ include_process_exit(Receiver, Pid, Fn) ->
 get_map_msg(Map, Key, Msg) ->
     Fn = maps:get(Key, Map),
     {ok, Fn(Msg)}.
+
+run_receiver_forever(Receiver) ->
+    % This violates the Receiver.timeout type but is OK as this value does
+    % not return to Gleam after use in Erlang.
+    {ok, Msg} = run_receiver(Receiver#receiver{timeout = infinity}),
+    Msg.
 
 run_receiver(Receiver) ->
     #receiver{timeout = Timeout, system = System, bare = Bare, refs = Refs,
