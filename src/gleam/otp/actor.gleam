@@ -1,6 +1,6 @@
 import gleam/otp/process.{
-  Channel, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid,
-  ProcessDown, Resume, Running, Suspend, Suspended, SystemMessage,
+  Channel, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid, ProcessDown,
+  Resume, Running, Suspend, Suspended, SystemMessage,
 }
 import gleam/result
 import gleam/atom
@@ -46,7 +46,8 @@ fn exit_process(reason: ExitReason) -> ExitReason {
 }
 
 fn receive_message(self: Self(state, msg)) -> Message(msg) {
-  let receiver = process.make_receiver()
+  let receiver =
+    process.make_receiver()
     |> process.remove_timeout
     |> process.include_system(System)
 
@@ -122,10 +123,11 @@ fn loop(self: Self(state, msg)) -> ExitReason {
       loop(self)
     }
 
-    Message(msg) -> case self.message_handler(msg, self.state) {
-      Stop(reason) -> exit_process(reason)
-      Continue(state) -> loop(set_state(self, state))
-    }
+    Message(msg) ->
+      case self.message_handler(msg, self.state) {
+        Stop(reason) -> exit_process(reason)
+        Continue(state) -> loop(set_state(self, state))
+      }
 
     _other -> todo("message not yet supported")
   }
@@ -141,15 +143,16 @@ fn initialise_actor(
       // Signal to parent that the process has initialised successfully
       process.send(ack_channel, Ok(channel))
       // Start message receive loop
-      let self = Self(
-        pid: process.self(),
-        state: state,
-        parent: process.pid(ack_channel),
-        channel: channel,
-        message_handler: spec.loop,
-        debug_state: process.debug_state([]),
-        mode: Running,
-      )
+      let self =
+        Self(
+          pid: process.self(),
+          state: state,
+          parent: process.pid(ack_channel),
+          channel: channel,
+          message_handler: spec.loop,
+          debug_state: process.debug_state([]),
+          mode: Running,
+        )
       loop(self)
     }
     Error(reason) -> {
@@ -179,7 +182,8 @@ pub fn start(
   let monitor = process.monitor_process(child)
 
   // TODO: configurable timeout
-  let receiver = process.make_receiver()
+  let receiver =
+    process.make_receiver()
     |> process.set_timeout(5000)
     |> process.include_channel(ack, Ack)
     |> process.include_process_monitor(monitor, Mon)

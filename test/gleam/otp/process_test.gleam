@@ -31,12 +31,10 @@ pub fn receive_test() {
   process.send(channel, 0)
 
   // Send message from another process
-  process.start(
-    fn() {
-      process.send(channel, 1)
-      process.send(channel, 2)
-    },
-  )
+  process.start(fn() {
+    process.send(channel, 1)
+    process.send(channel, 2)
+  })
 
   // Assert all the messages arrived
   process.receive(channel, 0)
@@ -93,7 +91,8 @@ pub fn bare_receive_test() {
   process.send(channel, 0)
   process.unsafe_send(process.self(), 1)
 
-  let receiver = process.make_receiver()
+  let receiver =
+    process.make_receiver()
     |> process.include_bare(fn(x) { x })
     |> process.set_timeout(0)
 
@@ -121,18 +120,16 @@ fn call_message(value) {
 pub fn try_call_test() {
   let to_parent_channel = process.make_channel()
 
-  process.start(
-    fn() {
-      // Send the call channel to the parent
-      let call_channel = process.make_channel()
-      process.send(to_parent_channel, call_channel)
-      // Wait for the channel to be called
-      assert Ok(tup) = process.receive(call_channel, 50)
-      let tuple(x, reply_channel) = tup
-      // Reply
-      process.send(reply_channel, x + 1)
-    },
-  )
+  process.start(fn() {
+    // Send the call channel to the parent
+    let call_channel = process.make_channel()
+    process.send(to_parent_channel, call_channel)
+    // Wait for the channel to be called
+    assert Ok(tup) = process.receive(call_channel, 50)
+    let tuple(x, reply_channel) = tup
+    // Reply
+    process.send(reply_channel, x + 1)
+  })
 
   assert Ok(call_channel) = process.receive(to_parent_channel, 50)
 
@@ -145,20 +142,18 @@ pub fn try_call_test() {
 pub fn try_call_timeout_test() {
   let to_parent_channel = process.make_channel()
 
-  process.start(
-    fn() {
-      // Send the call channel to the parent
-      let call_channel = process.make_channel()
-      process.send(to_parent_channel, call_channel)
-      // Wait for the channel to be called
-      assert Ok(tup) = process.receive(call_channel, 50)
-      let tuple(x, reply_channel) = tup
+  process.start(fn() {
+    // Send the call channel to the parent
+    let call_channel = process.make_channel()
+    process.send(to_parent_channel, call_channel)
+    // Wait for the channel to be called
+    assert Ok(tup) = process.receive(call_channel, 50)
+    let tuple(x, reply_channel) = tup
 
-      // Reply, after a delay
-      sleep(20)
-      process.send(reply_channel, x + 1)
-    },
-  )
+    // Reply, after a delay
+    sleep(20)
+    process.send(reply_channel, x + 1)
+  })
 
   assert Ok(call_channel) = process.receive(to_parent_channel, 50)
 
@@ -192,13 +187,12 @@ pub fn message_queue_size_test() {
 pub fn monitor_test_test() {
   // Spawn child
   let to_parent_channel = process.make_channel()
-  let pid = process.start(
-    fn() {
+  let pid =
+    process.start(fn() {
       let channel = process.make_channel()
       process.send(to_parent_channel, channel)
       process.receive(channel, 150)
-    },
-  )
+    })
 
   // Monitor child
   let monitor = process.monitor_process(pid)
@@ -218,13 +212,12 @@ pub fn monitor_test_test() {
 pub fn demonitor_test_test() {
   // Spawn child
   let to_parent_channel = process.make_channel()
-  let pid = process.start(
-    fn() {
+  let pid =
+    process.start(fn() {
       let channel = process.make_channel()
       process.send(to_parent_channel, channel)
       process.receive(channel, 150)
-    },
-  )
+    })
 
   // Monitor child
   let monitor = process.monitor_process(pid)
@@ -246,14 +239,13 @@ pub fn demonitor_test_test() {
 
 pub fn set_timeout_test() {
   let channel = process.make_channel()
-  process.start(
-    fn() {
-      sleep(10)
-      process.send(channel, Nil)
-    },
-  )
+  process.start(fn() {
+    sleep(10)
+    process.send(channel, Nil)
+  })
 
-  let receiver = process.make_receiver()
+  let receiver =
+    process.make_receiver()
     |> process.include_channel(channel, fn(x) { x })
     |> process.set_timeout(0)
 
@@ -274,7 +266,8 @@ pub fn flush_other_test() {
   process.send(c1, 0)
   process.send(c2, 0)
 
-  let receiver = process.make_receiver()
+  let receiver =
+    process.make_receiver()
     |> process.flush_other(True)
     |> process.include_channel(c2, fn(x) { x })
     |> process.set_timeout(0)

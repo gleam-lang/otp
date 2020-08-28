@@ -381,7 +381,8 @@ pub fn try_call(
 
   // Monitor the callee process so we can tell if it goes down (meaning we
   // won't get a reply)
-  let monitor = channel
+  let monitor =
+    channel
     |> pid
     |> monitor_process
 
@@ -389,7 +390,8 @@ pub fn try_call(
   send(channel, make_request(reply_channel))
 
   // Await a reply or handle failure modes (timeout, process down, etc)
-  let res = make_receiver()
+  let res =
+    make_receiver()
     |> include_channel(reply_channel, Ok)
     |> include_process_monitor(monitor, process_down_to_call_error)
     |> set_timeout(timeout)

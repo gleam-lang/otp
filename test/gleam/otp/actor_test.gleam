@@ -6,10 +6,11 @@ import gleam/should
 import gleam/result
 
 pub fn get_state_test() {
-  let spec = Spec(
-    init: fn() { Ok("Test state") },
-    loop: fn(_msg, state) { Continue(state) },
-  )
+  let spec =
+    Spec(
+      init: fn() { Ok("Test state") },
+      loop: fn(_msg, state) { Continue(state) },
+    )
 
   assert Ok(tuple(pid, _channel)) = actor.start(spec)
 
@@ -21,10 +22,11 @@ external fn get_status(Pid) -> Dynamic =
   "sys" "get_status"
 
 pub fn get_status_test() {
-  let spec = Spec(
-    init: fn() { Ok("Test state") },
-    loop: fn(_msg, state) { Continue(state) },
-  )
+  let spec =
+    Spec(
+      init: fn() { Ok("Test state") },
+      loop: fn(_msg, state) { Continue(state) },
+    )
   assert Ok(tuple(pid, _channel)) = actor.start(spec)
   get_status(pid)
 }
@@ -40,10 +42,11 @@ pub fn failed_init_test() {
 }
 
 pub fn suspend_resume_test() {
-  let spec = Spec(
-    init: fn() { Ok("Test state") },
-    loop: fn(_msg, state) { Continue(state) },
-  )
+  let spec =
+    Spec(
+      init: fn() { Ok("Test state") },
+      loop: fn(_msg, state) { Continue(state) },
+    )
   assert Ok(tuple(pid, _channel)) = actor.start(spec)
 
   // Suspend process
@@ -61,10 +64,11 @@ pub fn suspend_resume_test() {
 }
 
 pub fn channel_test() {
-  let spec = Spec(
-    init: fn() { Ok("Test state") },
-    loop: fn(msg, _state) { Continue(msg) },
-  )
+  let spec =
+    Spec(
+      init: fn() { Ok("Test state") },
+      loop: fn(msg, _state) { Continue(msg) },
+    )
 
   assert Ok(tuple(pid, channel)) = actor.start(spec)
   pid
