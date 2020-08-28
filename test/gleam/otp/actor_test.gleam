@@ -39,8 +39,7 @@ pub fn failed_init_test() {
 }
 
 pub fn suspend_resume_test() {
-  assert Ok(channel) =
-    actor.new("Test state", fn(_msg, state) { Continue(state) })
+  assert Ok(channel) = actor.new(0, fn(_msg, iter) { Continue(iter + 1) })
 
   // Suspend process
   channel
@@ -48,18 +47,26 @@ pub fn suspend_resume_test() {
   |> system.suspend
   |> should.equal(Nil)
 
+  // This normal message will not be handled yet so the state remains 0
+  actor.send(channel, "hi")
+
   // System messages are still handled
   channel
   |> process.pid
   |> system.get_state
-  |> should.equal(dynamic.from("Test state"))
+  |> should.equal(dynamic.from(0))
 
-  // TODO: test normal messages are not handled.
   // Resume process
   channel
   |> process.pid
   |> system.resume
   |> should.equal(Nil)
+
+  // The queued regular message has been handled so the state has incremented
+  channel
+  |> process.pid
+  |> system.get_state
+  |> should.equal(dynamic.from(1))
 }
 
 pub fn channel_test() {
