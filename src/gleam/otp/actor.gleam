@@ -219,6 +219,14 @@ pub fn start(spec: Spec(state, msg)) -> Result(Channel(msg), StartError) {
 }
 
 // TODO: document
+pub fn new(
+  state: state,
+  loop: fn(msg, state) -> Next(state),
+) -> Result(Channel(msg), StartError) {
+  start(Spec(init: fn() { Ok(state) }, loop: loop, init_timeout: 5000))
+}
+
+// TODO: document
 // TODO: test
 // TODO: document
 pub fn send(channel: Channel(msg), msg: msg) -> Channel(msg) {
