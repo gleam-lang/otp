@@ -4,7 +4,7 @@ import gleam/option.{None, Some}
 import gleam/otp/process.{Channel, ExitReason, Pid}
 
 pub opaque type Children(argument) {
-  Starting(pids: List(Pid), argument: argument, restarter: Restarter(argument))
+  Starting(argument: argument, starter: Starter(argument))
   Failed(ExitReason)
 }
 
@@ -15,22 +15,21 @@ pub opaque type ChildSpec(msg, argument_in, argument_out) {
   )
 }
 
-type RestartInstruction {
-  RestartAll
-  RestartFrom(Pid)
+type Instruction {
+  StartAll
+  StartFrom(Pid)
 }
 
-type StartAcc(argument) {
-  StartAcc(
+type StarterState(argument) {
+  StarterState(
     argument: argument,
-    instruction: RestartInstruction,
-    pids: List(Pid),
-    restarter: fn(RestartInstruction) -> Result(StartAcc(argument), ExitReason),
+    instruction: Instruction,
+    starter: fn(Instruction) -> Result(StarterState(argument), ExitReason),
   )
 }
 
-type Restarter(argument) =
-  fn(RestartInstruction) -> Result(StartAcc(argument), ExitReason)
+type Starter(argument) =
+  fn(Instruction) -> Result(StarterState(argument), ExitReason)
 
 type Child(argument) {
   Child(pid: Pid, argument: argument)
@@ -59,63 +58,63 @@ fn shutdown_child(
   process.send_exit(child.pid, process.Normal)
 }
 
-fn restart_child(
+fn perform_instruction_for_child(
   argument: argument_in,
-  instruction: RestartInstruction,
+  instruction: Instruction,
   child_spec: ChildSpec(msg, argument_in, argument_out),
   child: Child(argument_out),
-) -> Result(tuple(Child(argument_out), RestartInstruction), ExitReason) {
+) -> Result(tuple(Child(argument_out), Instruction), ExitReason) {
   let current = child.pid
   case instruction {
-    // This child is older than the RestartFrom target, we don't need to
+    // This child is older than the StartFrom target, we don't need to
     // restart it
-    RestartFrom(target) if target != current -> Ok(tuple(child, instruction))
+    StartFrom(target) if target != current -> Ok(tuple(child, instruction))
 
-    // This pid either is the cause of the problem, or we have the RestartAll
+    // This pid either is the cause of the problem, or we have the StartAll
     // instruction. Either way it and its younger siblings need to be restarted.
-    RestartAll -> {
+    _ -> {
       shutdown_child(child, child_spec)
       try child = start_child(child_spec, argument)
-      Ok(tuple(child, RestartAll))
+      Ok(tuple(child, StartAll))
     }
   }
 }
 
-fn add_child_to_restarter(
-  restarter: Restarter(argument_in),
+fn add_child_to_starter(
+  starter: Starter(argument_in),
   child_spec: ChildSpec(msg, argument_in, argument_out),
   child: Child(argument_out),
-) -> Restarter(argument_out) {
-  fn(instr) {
+) -> Starter(argument_out) {
+  fn(instruction) {
     // Restart the older children. We use `try` to return early if the older
     // children failed to start
-    try acc = restarter(instr)
-    let argument = acc.argument
+    try state = starter(instruction)
+    let argument = state.argument
 
-    // Restart the current child
-    try pair = restart_child(argument, instr, child_spec, child)
-    let tuple(child, instr) = pair
+    // Perform the instruction, starting or restarting the child as required
+    try tuple(child, instruction) =
+      perform_instruction_for_child(argument, instruction, child_spec, child)
 
-    // Create a new restarter for the next time the supervisor needs to restart
-    let restarter = add_child_to_restarter(acc.restarter, child_spec, child)
+    // Create a new starter for the next time the supervisor needs to restart
+    let starter = add_child_to_starter(state.starter, child_spec, child)
 
-    let pids = [child.pid, ..acc.pids]
-    let acc = StartAcc(child.argument, instr, pids, restarter)
-    Ok(acc)
+    Ok(StarterState(
+      argument: child.argument,
+      instruction: instruction,
+      starter: starter,
+    ))
   }
 }
 
 fn start_and_add_child(
-  pids: List(Pid),
   argument: argument_0,
-  restarter: Restarter(argument_0),
+  starter: Starter(argument_0),
   child_spec: ChildSpec(msg, argument_0, argument_1),
 ) -> Children(argument_1) {
   case start_child(child_spec, argument) {
     Ok(child) -> {
-      let pids = [child.pid, ..pids]
-      let restarter = add_child_to_restarter(restarter, child_spec, child)
-      Starting(pids: pids, argument: child.argument, restarter: restarter)
+      let starter = add_child_to_starter(starter, child_spec, child)
+      Starting(argument: child.argument, starter: starter)
     }
 
     Error(reason) -> Failed(reason)
@@ -131,8 +130,8 @@ pub fn add(
     Failed(fail) -> Failed(fail)
 
     // If everything is OK so far then we can add the child
-    Starting(pids: pids, argument: argument, restarter: restarter) ->
-      start_and_add_child(pids, argument, restarter, child_spec)
+    Starting(argument: argument, starter: starter) ->
+      start_and_add_child(argument, starter, child_spec)
   }
 }
 
