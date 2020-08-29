@@ -300,3 +300,11 @@ pub fn wrap_channel_test() {
   |> process.receive(0)
   |> should.equal(Ok(tuple("Wot", "Wot")))
 }
+
+pub fn null_channel_test() {
+  let channel = process.null_channel(process.self())
+  process.send(channel, 0)
+  channel
+  |> process.receive(0)
+  |> should.equal(Error(Nil))
+}

@@ -10,7 +10,7 @@
 - `process.make_*` functions have been renamed to `process.new_*`.
 - `actor.Message` is no longer a public type.
 - The `process` module gains the `run_receiver_forever` function.
-- The `actor` module gains the `new` function.
+- The `actor` module gains the `new` and `null_channel` functions.
 
 ## v0.0.1 - 2020-08-20
 

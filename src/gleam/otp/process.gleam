@@ -80,6 +80,16 @@ pub fn send(channel: Channel(msg), msg: msg) -> Channel(msg) {
   channel
 }
 
+/// Create a channel that immediately discards any messages sent on it.
+///
+/// This may be useful for wrapping Erlang processes which do not use channels,
+/// or other situations in which you need to return a channel but do not have
+/// one available.
+///
+pub fn null_channel(pid: Pid) -> Channel(msg) {
+  Channel(pid: pid, reference: new_reference(), send: fn(_) { Nil })
+}
+
 type ProcessMonitorFlag {
   Process
 }
