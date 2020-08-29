@@ -1,5 +1,5 @@
 import gleam/otp/supervisor.{add, new_children, update_argument, worker_child}
-import gleam/otp/process.{Channel, Pid}
+import gleam/otp/process.{Channel}
 import gleam/otp/actor.{StartError}
 
 // Testing

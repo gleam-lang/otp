@@ -5,7 +5,7 @@ import gleam/otp/process.{Channel, Pid}
 import gleam/otp/actor.{StartError}
 
 pub opaque type Children(argument) {
-  Starting(argument: argument, starter: Starter(argument))
+  Ready(Starter(argument))
   Failed(StartError)
 }
 
@@ -21,36 +21,19 @@ type Instruction {
   StartFrom(Pid)
 }
 
-type Next(a, b) {
-  Done(a)
-  More(b)
-}
-
-type StarterState(argument) {
-  StarterState(
+type Starter(argument) {
+  Starter(
     argument: argument,
-    instruction: Instruction,
-    starter: Next(
-      argument,
-      fn(Instruction) -> Result(StarterState(argument), StartError),
+    run: Option(
+      fn(
+        Instruction,
+      ) -> Result(tuple(Starter(argument), Instruction), StartError),
     ),
   )
 }
 
-type Starter(argument) =
-  fn(Instruction) -> Result(StarterState(argument), StartError)
-
 pub fn new_children(argument: argument) -> Children(argument) {
-  Starting(
-    argument: argument,
-    starter: fn(instruction) {
-      Ok(StarterState(
-        argument: argument,
-        instruction: instruction,
-        starter: Done(argument),
-      ))
-    },
-  )
+  Ready(Starter(argument: argument, run: None))
 }
 
 type Child(argument) {
@@ -100,52 +83,42 @@ fn perform_instruction_for_child(
 }
 
 fn add_child_to_starter(
-  starter: Next(argument_in, Starter(argument_in)),
+  starter: Starter(argument_in),
   child_spec: ChildSpec(msg, argument_in, argument_out),
   child: Child(argument_out),
 ) -> Starter(argument_out) {
-  fn(instruction) {
+  let run = fn(instruction) {
     // Restart the older children. We use `try` to return early if the older
     // children failed to start
-    try state = case starter {
-      // There are more children to start
-      More(starter) -> starter(instruction)
-      // We have reached the end of the children to start, create a new state
-      Done(argument) ->
-        Ok(StarterState(
-          argument: argument,
-          instruction: instruction,
-          starter: Done(argument),
-        ))
+    try tuple(starter, instruction) = case starter.run {
+      Some(run) -> run(instruction)
+      None -> Ok(tuple(starter, instruction))
     }
-    let argument = state.argument
 
     // Perform the instruction, starting or restarting the child as required
     try tuple(child, instruction) =
-      perform_instruction_for_child(argument, instruction, child_spec, child)
+      perform_instruction_for_child(
+        starter.argument,
+        instruction,
+        child_spec,
+        child,
+      )
 
     // Create a new starter for the next time the supervisor needs to restart
-    let starter = add_child_to_starter(state.starter, child_spec, child)
+    let starter = add_child_to_starter(starter, child_spec, child)
 
-    Ok(StarterState(
-      argument: child.argument,
-      instruction: instruction,
-      starter: More(starter),
-    ))
+    Ok(tuple(starter, instruction))
   }
+
+  Starter(run: Some(run), argument: child.argument)
 }
 
 fn start_and_add_child(
-  argument: argument_0,
-  starter: Next(argument_0, Starter(argument_0)),
+  starter: Starter(argument_0),
   child_spec: ChildSpec(msg, argument_0, argument_1),
 ) -> Children(argument_1) {
-  case start_child(child_spec, argument) {
-    Ok(child) -> {
-      let starter = add_child_to_starter(starter, child_spec, child)
-      Starting(argument: child.argument, starter: starter)
-    }
-
+  case start_child(child_spec, starter.argument) {
+    Ok(child) -> Ready(add_child_to_starter(starter, child_spec, child))
     Error(reason) -> Failed(reason)
   }
 }
@@ -159,8 +132,7 @@ pub fn add(
     Failed(fail) -> Failed(fail)
 
     // If everything is OK so far then we can add the child
-    Starting(argument: argument, starter: starter) ->
-      start_and_add_child(argument, More(starter), child_spec)
+    Ready(starter) -> start_and_add_child(starter, child_spec)
   }
 }
 
