@@ -1,5 +1,6 @@
 // TODO: test
 import gleam/list
+import gleam/dynamic
 import gleam/option.{None, Option, Some}
 import gleam/otp/process.{Channel, Pid}
 import gleam/otp/actor.{StartError}
@@ -30,10 +31,6 @@ type Starter(argument) {
       ) -> Result(tuple(Starter(argument), Instruction), StartError),
     ),
   )
-}
-
-pub fn new_children(argument: argument) -> Children(argument) {
-  Ready(Starter(argument: argument, run: None))
 }
 
 type Child(argument) {
@@ -95,7 +92,7 @@ fn add_child_to_starter(
       None -> Ok(tuple(starter, instruction))
     }
 
-    // Perform the instruction, starting or restarting the child as required
+    // Perform the instruction, restarting the child as required
     try tuple(child, instruction) =
       perform_instruction_for_child(
         starter.argument,
@@ -138,7 +135,7 @@ pub fn add(
 
 // TODO: test
 // TODO: document
-pub fn worker_child(
+pub fn worker(
   start: fn(argument) -> Result(Channel(msg), StartError),
 ) -> ChildSpec(msg, argument, argument) {
   ChildSpec(start: start, update_argument: fn(argument, _channel) { argument })
@@ -151,4 +148,37 @@ pub fn update_argument(
   updater: fn(argument_a, Channel(msg)) -> argument_c,
 ) -> ChildSpec(msg, argument_a, argument_c) {
   ChildSpec(start: child.start, update_argument: updater)
+}
+
+fn init(
+  start_children: fn(Children(Nil)) -> Children(a),
+) -> Result(Starter(a), process.ExitReason) {
+  let result =
+    Starter(argument: Nil, run: None)
+    |> Ready
+    |> start_children
+  case result {
+    Ready(starter) -> Ok(starter)
+    Failed(reason) -> {
+      // TODO: refine error type
+      let reason = process.Abnormal(dynamic.from(reason))
+      // TODO: try again
+      Error(reason)
+    }
+  }
+}
+
+fn loop(_msg: msg, starter: Starter(argument)) -> actor.Next(Starter(argument)) {
+  // TODO: restart children if they go down
+  actor.Continue(starter)
+}
+
+pub fn start(
+  start_children: fn(Children(Nil)) -> Children(a),
+) -> Result(Channel(a), StartError) {
+  actor.start(actor.Spec(
+    init: fn() { init(start_children) },
+    loop: loop,
+    init_timeout: 60_000,
+  ))
 }

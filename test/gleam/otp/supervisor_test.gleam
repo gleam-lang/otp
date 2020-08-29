@@ -1,4 +1,5 @@
-import gleam/otp/supervisor.{add, new_children, update_argument, worker_child}
+import gleam/should
+import gleam/otp/supervisor.{add, update_argument, worker}
 import gleam/otp/process.{Channel}
 import gleam/otp/actor.{StartError}
 
@@ -16,12 +17,15 @@ pub fn start_child3(x: Channel(msg)) -> Result(Channel(msg), StartError) {
 }
 
 pub fn supervisor_test() {
-  Nil
-  |> new_children
-  |> add(
-    worker_child(start_child1)
-    |> update_argument(fn(_arg, pid) { pid }),
-  )
-  |> add(worker_child(start_child2))
-  |> add(worker_child(start_child3))
+  fn(children) {
+    children
+    |> add(
+      worker(start_child1)
+      |> update_argument(fn(_arg, channel) { channel }),
+    )
+    |> add(worker(start_child2))
+    |> add(worker(start_child3))
+  }
+  |> supervisor.start
+  |> should.be_ok
 }
