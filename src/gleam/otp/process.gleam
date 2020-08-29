@@ -45,10 +45,10 @@ pub opaque type Channel(msg) {
 }
 
 external fn open_channel(Reference) -> Nil =
-  "gleam_otp_process_external" "open_channel"
+  "gleam_otp_external" "open_channel"
 
 external fn close_channel_reference(Reference) -> Nil =
-  "gleam_otp_process_external" "close_channel"
+  "gleam_otp_external" "close_channel"
 
 // TODO: document
 // TODO: test
@@ -148,20 +148,20 @@ pub external type Receiver(message)
 
 // TODO: document
 pub external fn new_receiver() -> Receiver(message) =
-  "gleam_otp_process_external" "new_receiver"
+  "gleam_otp_external" "new_receiver"
 
 // TODO: document
 pub external fn run_receiver(Receiver(msg)) -> Result(msg, Nil) =
-  "gleam_otp_process_external" "run_receiver"
+  "gleam_otp_external" "run_receiver"
 
 // TODO: document
 // Be careful!
 pub external fn run_receiver_forever(Receiver(msg)) -> msg =
-  "gleam_otp_process_external" "run_receiver_forever"
+  "gleam_otp_external" "run_receiver_forever"
 
 // TODO: document
 pub external fn flush_receiver(Receiver(msg)) -> Int =
-  "gleam_otp_process_external" "flush_receiver"
+  "gleam_otp_external" "flush_receiver"
 
 // TODO: document
 pub external fn include_channel(
@@ -169,7 +169,7 @@ pub external fn include_channel(
   add: Channel(a),
   mapping: fn(a) -> b,
 ) -> Receiver(b) =
-  "gleam_otp_process_external" "include_channel"
+  "gleam_otp_external" "include_channel"
 
 // TODO: document
 pub external fn include_process_monitor(
@@ -177,7 +177,7 @@ pub external fn include_process_monitor(
   add: ProcessMonitor,
   mapping: fn(ProcessDown) -> b,
 ) -> Receiver(b) =
-  "gleam_otp_process_external" "include_process_monitor"
+  "gleam_otp_external" "include_process_monitor"
 
 pub type Exit {
   Exit(pid: Pid, reason: Dynamic)
@@ -190,7 +190,7 @@ pub external fn include_process_exit(
   add: Pid,
   mapping: fn(Exit) -> b,
 ) -> Receiver(b) =
-  "gleam_otp_process_external" "include_process_exit"
+  "gleam_otp_external" "include_process_exit"
 
 // TODO: test
 // TODO: document
@@ -198,7 +198,7 @@ pub external fn include_all_exits(
   to: Receiver(b),
   mapping: fn(Exit) -> b,
 ) -> Receiver(b) =
-  "gleam_otp_process_external" "include_all_exits"
+  "gleam_otp_external" "include_all_exits"
 
 // TODO: document
 pub external fn include_port_monitor(
@@ -206,20 +206,20 @@ pub external fn include_port_monitor(
   add: PortMonitor,
   mapping: fn(PortDown) -> b,
 ) -> Receiver(b) =
-  "gleam_otp_process_external" "include_port_monitor"
+  "gleam_otp_external" "include_port_monitor"
 
 // TODO: document
 pub external fn set_timeout(Receiver(a), Int) -> Receiver(a) =
-  "gleam_otp_process_external" "set_timeout"
+  "gleam_otp_external" "set_timeout"
 
 // TODO: document
 pub external fn flush_other(Receiver(a), Bool) -> Receiver(a) =
-  "gleam_otp_process_external" "flush_other"
+  "gleam_otp_external" "flush_other"
 
 // TODO: test
 // TODO: document
 pub external fn remove_timeout(Receiver(a)) -> Receiver(a) =
-  "gleam_otp_process_external" "remove_timeout"
+  "gleam_otp_external" "remove_timeout"
 
 // TODO: test flushing
 // TODO: document
@@ -227,17 +227,17 @@ pub external fn include_system(
   Receiver(a),
   fn(SystemMessage) -> a,
 ) -> Receiver(a) =
-  "gleam_otp_process_external" "include_system"
+  "gleam_otp_external" "include_system"
 
 // TODO: test
 // TODO: document
 pub external fn include_all(Receiver(a), fn(Dynamic) -> a) -> Receiver(a) =
-  "gleam_otp_process_external" "include_all"
+  "gleam_otp_external" "include_all"
 
 // TODO: test
 // TODO: document
 pub external fn include_bare(Receiver(a), fn(Dynamic) -> a) -> Receiver(a) =
-  "gleam_otp_process_external" "include_bare"
+  "gleam_otp_external" "include_bare"
 
 pub type ExitReason {
   // The process is stopping due to normal and expected reasons. This is not

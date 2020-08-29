@@ -1,4 +1,4 @@
--module(gleam_otp_process_external).
+-module(gleam_otp_external).
 
 % Channels
 -export([open_channel/1, close_channel/1]).
