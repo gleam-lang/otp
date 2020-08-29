@@ -3,9 +3,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/otp/process.{Channel, ExitReason, Pid}
 
-// TODO: Rename. This type is stateful and has immediate effect so I don't
-// think Spec is good name.
-pub opaque type Spec(argument) {
+pub opaque type Children(argument) {
   Starting(pids: List(Pid), argument: argument, restarter: Restarter(argument))
   Failed(ExitReason)
 }
@@ -112,7 +110,7 @@ fn start_and_add_child(
   argument: argument_0,
   restarter: Restarter(argument_0),
   child_spec: ChildSpec(msg, argument_0, argument_1),
-) -> Spec(argument_1) {
+) -> Children(argument_1) {
   case start_child(child_spec, argument) {
     Ok(child) -> {
       let pids = [child.pid, ..pids]
@@ -125,10 +123,10 @@ fn start_and_add_child(
 }
 
 pub fn add(
-  spec: Spec(argument),
+  children: Children(argument),
   child_spec: ChildSpec(msg, argument, new_argument),
-) -> Spec(new_argument) {
-  case spec {
+) -> Children(new_argument) {
+  case children {
     // If one of the previous children has failed then we cannot continue
     Failed(fail) -> Failed(fail)
 

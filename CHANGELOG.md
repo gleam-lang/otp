@@ -13,6 +13,8 @@
 - The `actor` module gains the `new` and `null_channel` functions.
 - The `task` module has been created with the `Task` type and the `async`,
   `try_await`, and `await` functions.
+- The `supervisor` module has been created with the `add`, `worker_child`, and
+  `update_argument` functions.
 
 ## v0.0.1 - 2020-08-20
 
