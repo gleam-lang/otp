@@ -26,9 +26,8 @@ type Starter(argument) {
   Starter(
     argument: argument,
     run: Option(
-      fn(
-        Instruction,
-      ) -> Result(tuple(Starter(argument), Instruction), StartError),
+      fn(Instruction) ->
+        Result(tuple(Starter(argument), Instruction), StartError),
     ),
   )
 }
