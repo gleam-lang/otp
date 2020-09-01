@@ -161,7 +161,7 @@ fn init(
     Failed(reason) -> {
       // TODO: refine error type
       let reason = process.Abnormal(dynamic.from(reason))
-      // TODO: try again
+      // TODO: try to start them again
       Error(reason)
     }
   }

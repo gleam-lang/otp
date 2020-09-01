@@ -6,7 +6,6 @@ import gleam/result
 import gleam/atom
 import gleam/dynamic.{Dynamic}
 
-// TODO: document
 type Message(message) {
   /// A regular message excepted by the process
   Message(message)

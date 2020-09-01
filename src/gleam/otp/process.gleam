@@ -8,6 +8,7 @@ import gleam/atom.{Atom}
 import gleam/dynamic.{Dynamic}
 import gleam/option.{None}
 import gleam/otp/port.{Port}
+import gleam/function
 
 /// A Pid (or Process identifier) is a reference to an OTP process, which is a
 /// lightweight thread that communicates by sending and receiving messages.
@@ -26,7 +27,7 @@ pub external type Pid
 /// See the [Erlang documentation][erl] for more information.
 /// [erl]: http://erlang.org/doc/man/erlang.html#send-2
 ///
-pub external fn unsafe_send(to: Pid, msg: msg) -> msg =
+pub external fn untyped_send(to: Pid, msg: msg) -> msg =
   "erlang" "send"
 
 // TODO: document
@@ -42,7 +43,12 @@ pub external fn self() -> Pid =
 
 // TODO: document
 pub opaque type Channel(msg) {
-  Channel(pid: Pid, reference: Reference, send: fn(msg) -> Nil)
+  Channel(
+    pid: Pid,
+    reference: Reference,
+    send: fn(Dynamic) -> Dynamic,
+    build_message: fn(msg) -> Dynamic,
+  )
 }
 
 external fn open_channel(Reference) -> Nil =
@@ -65,19 +71,22 @@ pub fn pid(channel: Channel(msg)) -> Pid {
 // TODO: document
 // TODO: document that `close_channel` should be called
 pub fn new_channel() -> Channel(msg) {
-  let self = self()
   let ref = new_reference()
-  let send = fn(msg) {
-    unsafe_send(self, tuple(ref, msg))
-    Nil
-  }
+  let self = self()
   open_channel(ref)
-  Channel(pid: self, reference: ref, send: send)
+  Channel(
+    pid: self,
+    reference: ref,
+    send: untyped_send(self, _),
+    build_message: fn(msg) { dynamic.from(tuple(ref, msg)) },
+  )
 }
 
 // TODO: document
-pub fn send(channel: Channel(msg), msg: msg) -> Channel(msg) {
-  channel.send(msg)
+pub fn send(channel: Channel(message), message: message) -> Channel(message) {
+  message
+  |> channel.build_message
+  |> channel.send
   channel
 }
 
@@ -88,7 +97,12 @@ pub fn send(channel: Channel(msg), msg: msg) -> Channel(msg) {
 /// one available.
 ///
 pub fn null_channel(pid: Pid) -> Channel(msg) {
-  Channel(pid: pid, reference: new_reference(), send: fn(_) { Nil })
+  Channel(
+    pid: pid,
+    reference: new_reference(),
+    build_message: dynamic.from,
+    send: function.identity,
+  )
 }
 
 type ProcessMonitorFlag {
@@ -468,7 +482,12 @@ pub fn wrap_channel(
 ) -> Channel(b) {
   Channel(
     pid: channel.pid,
+    send: channel.send,
     reference: channel.reference,
-    send: fn(b) { channel.send(preprocessor(b)) },
+    build_message: fn(b) {
+      b
+      |> preprocessor
+      |> channel.build_message
+    },
   )
 }

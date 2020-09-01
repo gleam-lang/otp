@@ -89,7 +89,7 @@ pub fn self_test() {
 pub fn bare_receive_test() {
   let channel = process.new_channel()
   process.send(channel, 0)
-  process.unsafe_send(process.self(), 1)
+  process.untyped_send(process.self(), 1)
 
   let receiver =
     process.new_receiver()
@@ -185,8 +185,8 @@ pub fn message_queue_size_test() {
   |> process.message_queue_size
   |> should.equal(0)
 
-  process.unsafe_send(self, 1)
-  process.unsafe_send(self, 1)
+  process.untyped_send(self, 1)
+  process.untyped_send(self, 1)
 
   self
   |> process.message_queue_size

@@ -8,6 +8,7 @@
 - `actor.Spec` has an `init_timeout` field which specifies how long the actor
   has to initialise.
 - `process.make_*` functions have been renamed to `process.new_*`.
+- `process.unsafe_send` has been renamed to `process.untyped_send`.
 - `actor.Message` is no longer a public type.
 - The `process` module gains the `run_receiver_forever` function.
 - The `actor` module gains the `new` and `null_channel` functions.

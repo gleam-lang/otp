@@ -191,16 +191,18 @@ include_all_exits(Receiver, Fn) ->
 flush_other(Receiver, FlushOther) ->
     Receiver#receiver{flush_other = FlushOther}.
 
-system_msg(From = {Pid, Ref}, Msg) ->
-    Send = fun(X) -> system_reply(Msg, From, X) end,
-    {Msg, #channel{pid = Pid, reference = Ref, send = Send}}.
+system_msg({Pid, Ref}, Msg) ->
+    Build = fun(X) -> system_reply(Msg, Ref, X) end,
+    Send = fun(M) -> erlang:send(Pid, M) end,
+    Channel = #channel{pid = Pid, reference = Ref, build_message = Build, send = Send},
+    {Msg, Channel}.
 
-system_reply(Msg, From, Reply) ->
+system_reply(Msg, Ref, Reply) ->
     case Msg of
-        resume -> gen:reply(From, ok);
-        suspend -> gen:reply(From, ok);
-        get_state -> gen:reply(From, Reply);
-        get_status -> gen:reply(From, process_status(Reply))
+        resume -> {Ref, ok};
+        suspend -> {Ref, ok};
+        get_state -> {Ref, Reply};
+        get_status -> {Ref, process_status(Reply)}
     end.
 
 process_status(Status) ->
