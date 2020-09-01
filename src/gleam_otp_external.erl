@@ -193,8 +193,7 @@ flush_other(Receiver, FlushOther) ->
 
 system_msg({Pid, Ref}, Msg) ->
     Build = fun(X) -> system_reply(Msg, Ref, X) end,
-    Send = fun(M) -> erlang:send(Pid, M) end,
-    Channel = #channel{pid = Pid, reference = Ref, build_message = Build, send = Send},
+    Channel = #channel{pid = Pid, reference = Ref, build_message = Build, send = true},
     {Msg, Channel}.
 
 system_reply(Msg, Ref, Reply) ->

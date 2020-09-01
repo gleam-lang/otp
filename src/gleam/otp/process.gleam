@@ -45,8 +45,8 @@ pub external fn self() -> Pid =
 pub opaque type Channel(msg) {
   Channel(
     pid: Pid,
+    send: Bool,
     reference: Reference,
-    send: fn(Dynamic) -> Dynamic,
     build_message: fn(msg) -> Dynamic,
   )
 }
@@ -76,17 +76,19 @@ pub fn new_channel() -> Channel(msg) {
   open_channel(ref)
   Channel(
     pid: self,
+    send: True,
     reference: ref,
-    send: untyped_send(self, _),
     build_message: fn(msg) { dynamic.from(tuple(ref, msg)) },
   )
 }
 
 // TODO: document
-pub fn send(channel: Channel(message), message: message) -> Channel(message) {
-  message
-  |> channel.build_message
-  |> channel.send
+pub fn send(channel: Channel(msg), message: msg) -> Channel(msg) {
+  let message = channel.build_message(message)
+  case channel.send {
+    True -> untyped_send(channel.pid, message)
+    False -> dynamic.from(Nil)
+  }
   channel
 }
 
@@ -99,9 +101,9 @@ pub fn send(channel: Channel(message), message: message) -> Channel(message) {
 pub fn null_channel(pid: Pid) -> Channel(msg) {
   Channel(
     pid: pid,
+    send: False,
     reference: new_reference(),
     build_message: dynamic.from,
-    send: function.identity,
   )
 }
 
@@ -169,10 +171,10 @@ pub type PortDown {
 }
 
 // TODO: document
-pub external type Receiver(message)
+pub external type Receiver(msg)
 
 // TODO: document
-pub external fn new_receiver() -> Receiver(message) =
+pub external fn new_receiver() -> Receiver(msg) =
   "gleam_otp_external" "new_receiver"
 
 // TODO: document
@@ -490,4 +492,16 @@ pub fn wrap_channel(
       |> channel.build_message
     },
   )
+}
+
+pub external type Timer
+
+external fn erlang_send_after(Int, Pid, msg) -> Timer =
+  "erlang" "send_after"
+
+// TODO: document
+pub fn send_after(channel: Channel(msg), delay: Int, message: msg) -> Timer {
+  message
+  |> channel.build_message
+  |> erlang_send_after(delay, channel.pid, _)
 }

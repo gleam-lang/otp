@@ -308,3 +308,30 @@ pub fn null_channel_test() {
   |> process.receive(0)
   |> should.equal(Error(Nil))
 }
+
+pub fn send_after_test() {
+  let channel = process.new_channel()
+
+  // 0 is received immediately, though asynchronously
+  process.send_after(channel, 0, "a")
+  channel
+  |> process.receive(5)
+  |> should.equal(Ok("a"))
+
+  // With a delay it is sent later
+  process.send_after(channel, 5, "b")
+  channel
+  |> process.receive(0)
+  |> should.equal(Error(Nil))
+  channel
+  |> process.receive(10)
+  |> should.equal(Ok("b"))
+}
+
+pub fn null_channel_send_after_test() {
+  let channel = process.null_channel(process.self())
+  process.send_after(channel, 0, "a")
+  channel
+  |> process.receive(20)
+  |> should.equal(Error(Nil))
+}
