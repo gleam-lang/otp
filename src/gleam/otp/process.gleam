@@ -31,6 +31,9 @@ pub external fn untyped_send(to: Pid, msg: msg) -> msg =
   "erlang" "send"
 
 // TODO: document
+pub external type Reference
+
+// TODO: document
 pub external fn new_reference() -> Reference =
   "erlang" "make_ref"
 
@@ -518,6 +521,3 @@ pub fn cancel_timer(timer: Timer) -> Cancelled {
     Error(_) -> AlreadySent
   }
 }
-
-// TODO: document
-pub external type Reference
