@@ -29,9 +29,14 @@ pub type AwaitError {
 // We can only wait on a task if we are the owner of it so crash if we are
 // waiting on a task we don't own.
 fn assert_owner(task: Task(a)) -> Nil {
-  case task.owner == process.self() {
+  let self = process.self()
+  case task.owner == self {
     True -> Nil
-    False -> todo
+    False ->
+      process.send_exit(
+        to: self,
+        because: "awaited on a task that does not belong to this process",
+      )
   }
 }
 
@@ -57,12 +62,14 @@ pub fn try_await(task: Task(value), timeout: Int) -> Result(value, AwaitError) {
       process.demonitor_process(task.monitor)
       Ok(x)
     }
+
     // The task process crashed without sending a value
     Ok(Mon(process.ProcessDown(reason: reason, ..))) -> {
       process.close_channel(task.await_channel)
       process.demonitor_process(task.monitor)
       Error(Exit(reason))
     }
+
     // The task process is alive but has not sent a value yet
     Error(Nil) -> Error(Timeout)
   }

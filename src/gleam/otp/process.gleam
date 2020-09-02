@@ -31,9 +31,6 @@ pub external fn untyped_send(to: Pid, msg: msg) -> msg =
   "erlang" "send"
 
 // TODO: document
-pub external type Reference
-
-// TODO: document
 pub external fn new_reference() -> Reference =
   "erlang" "make_ref"
 
@@ -505,3 +502,22 @@ pub fn send_after(channel: Channel(msg), delay: Int, message: msg) -> Timer {
   |> channel.build_message
   |> erlang_send_after(delay, channel.pid, _)
 }
+
+external fn erlang_cancel_timer(Timer) -> Dynamic =
+  "erlang" "cancel_timer"
+
+pub type Cancelled {
+  AlreadySent
+  Cancelled(time_remaining: Int)
+}
+
+// TODO: document
+pub fn cancel_timer(timer: Timer) -> Cancelled {
+  case dynamic.int(erlang_cancel_timer(timer)) {
+    Ok(i) -> Cancelled(i)
+    Error(_) -> AlreadySent
+  }
+}
+
+// TODO: document
+pub external type Reference
