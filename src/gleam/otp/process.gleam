@@ -43,12 +43,13 @@ pub external fn self() -> Pid =
 
 // TODO: document
 pub opaque type Channel(msg) {
-  Channel(
-    pid: Pid,
-    send: Bool,
-    reference: Reference,
-    build_message: fn(msg) -> Dynamic,
-  )
+  Channel(pid: Pid, kind: ChannelKind)
+}
+
+type ChannelKind {
+  MessageChannel(reference: Reference)
+  SystemChannel(reference: Reference, build: fn(Dynamic) -> Dynamic)
+  NullChannel
 }
 
 external fn open_channel(Reference) -> Nil =
@@ -60,7 +61,9 @@ external fn close_channel_reference(Reference) -> Nil =
 // TODO: document
 // TODO: test
 pub fn close_channel(channel: Channel(msg)) -> Nil {
-  close_channel_reference(channel.reference)
+  case channel.kind {
+    MessageChannel(reference) -> close_channel_reference(reference)
+  }
 }
 
 // TODO: document
@@ -74,22 +77,24 @@ pub fn new_channel() -> Channel(msg) {
   let ref = new_reference()
   let self = self()
   open_channel(ref)
-  Channel(
-    pid: self,
-    send: True,
-    reference: ref,
-    build_message: fn(msg) { dynamic.from(tuple(ref, msg)) },
-  )
+  Channel(pid: self, kind: MessageChannel(ref))
 }
 
 // TODO: document
 pub fn send(channel: Channel(msg), message: msg) -> Channel(msg) {
-  let message = channel.build_message(message)
-  case channel.send {
-    True -> untyped_send(channel.pid, message)
-    False -> dynamic.from(Nil)
+  case channel.kind {
+    MessageChannel(ref) -> {
+      untyped_send(channel.pid, tuple(ref, message))
+      channel
+    }
+
+    SystemChannel(_, build) -> {
+      untyped_send(channel.pid, build(dynamic.from(message)))
+      channel
+    }
+
+    NullChannel -> channel
   }
-  channel
 }
 
 /// Create a channel that immediately discards any messages sent on it.
@@ -99,12 +104,7 @@ pub fn send(channel: Channel(msg), message: msg) -> Channel(msg) {
 /// one available.
 ///
 pub fn null_channel(pid: Pid) -> Channel(msg) {
-  Channel(
-    pid: pid,
-    send: False,
-    reference: new_reference(),
-    build_message: dynamic.from,
-  )
+  Channel(pid: pid, kind: NullChannel)
 }
 
 type ProcessMonitorFlag {
@@ -482,18 +482,27 @@ pub external type Timer
 external fn erlang_send_after(Int, Pid, msg) -> Timer =
   "erlang" "send_after"
 
+external fn fake_timer() -> Timer =
+  "erlang" "make_ref"
+
 // TODO: document
 pub fn send_after(channel: Channel(msg), delay: Int, message: msg) -> Timer {
-  message
-  |> channel.build_message
-  |> erlang_send_after(delay, channel.pid, _)
+  case channel.kind {
+    MessageChannel(ref) ->
+      erlang_send_after(delay, channel.pid, tuple(ref, message))
+
+    SystemChannel(_, build) ->
+      erlang_send_after(delay, channel.pid, build(dynamic.from(message)))
+
+    _ -> fake_timer()
+  }
 }
 
 external fn erlang_cancel_timer(Timer) -> Dynamic =
   "erlang" "cancel_timer"
 
 pub type Cancelled {
-  AlreadySent
+  TimerNotFound
   Cancelled(time_remaining: Int)
 }
 
@@ -501,6 +510,6 @@ pub type Cancelled {
 pub fn cancel_timer(timer: Timer) -> Cancelled {
   case dynamic.int(erlang_cancel_timer(timer)) {
     Ok(i) -> Cancelled(i)
-    Error(_) -> AlreadySent
+    Error(_) -> TimerNotFound
   }
 }
