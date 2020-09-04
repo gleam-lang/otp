@@ -477,23 +477,6 @@ pub fn trap_exit(bool: Bool) -> Nil {
   Nil
 }
 
-// TODO: document
-pub fn wrap_channel(
-  channel: Channel(a),
-  with preprocessor: fn(b) -> a,
-) -> Channel(b) {
-  Channel(
-    pid: channel.pid,
-    send: channel.send,
-    reference: channel.reference,
-    build_message: fn(b) {
-      b
-      |> preprocessor
-      |> channel.build_message
-    },
-  )
-}
-
 pub external type Timer
 
 external fn erlang_send_after(Int, Pid, msg) -> Timer =
