@@ -1,6 +1,12 @@
 // TODO: README
 // TODO: link
-// TODO: timers
+// TODO: process monitor
+// TODO: port monitor
+// TODO: trap exits
+// TODO: flush_other ?
+// TODO: wrap_sender
+// TODO: wrap_receiver
+// TODO: receive system messages
 //
 import gleam/atom
 import gleam/result
@@ -9,6 +15,7 @@ import gleam/dynamic.{Dynamic}
 import gleam/option.{None}
 import gleam/otp/port.{Port}
 import gleam/function
+import gleam/option.{None, Option, Some}
 
 /// A Pid (or Process identifier) is a reference to an OTP process, which is a
 /// lightweight thread that communicates by sending and receiving messages.
@@ -42,230 +49,141 @@ pub external fn self() -> Pid =
   "erlang" "self"
 
 // TODO: document
-pub opaque type Channel(msg) {
-  Channel(pid: Pid, kind: ChannelKind)
+pub type Sender(msg) {
+  Sender(pid: Pid, reference: Reference, prepare: Option(fn(msg) -> Dynamic))
 }
 
-type ChannelKind {
-  MessageChannel(reference: Reference)
-  SystemChannel(reference: Reference, build: fn(Dynamic) -> Dynamic)
-  NullChannel
+// TODO: document
+pub external type Receiver(msg)
+
+pub external fn new_receiver(Reference) -> Receiver(msg) =
+  "gleam_otp_external" "new_receiver"
+
+// TODO: document
+// TODO: test
+pub fn new_channel() -> tuple(Sender(msg), Receiver(msg)) {
+  let self = self()
+  let reference = new_reference()
+  let prepare = fn(msg) { dynamic.from(tuple(reference, msg)) }
+  let sender = Sender(pid: self, reference: reference, prepare: Some(prepare))
+  let receiver = new_receiver(reference)
+  open_channel(reference)
+  tuple(sender, receiver)
 }
 
 external fn open_channel(Reference) -> Nil =
   "gleam_otp_external" "open_channel"
 
-external fn close_channel_reference(Reference) -> Nil =
+// TODO: document
+// TODO: test
+pub external fn close_channel(Receiver(msg)) -> Nil =
   "gleam_otp_external" "close_channel"
 
 // TODO: document
-// TODO: test
-pub fn close_channel(channel: Channel(msg)) -> Nil {
-  case channel.kind {
-    MessageChannel(reference) -> close_channel_reference(reference)
+pub fn pid(sender: Sender(msg)) -> Pid {
+  sender.pid
+}
+
+// TODO: document
+pub fn send(sender: Sender(msg), message: msg) -> Sender(msg) {
+  case sender.prepare {
+    Some(prepare) -> {
+      message
+      |> prepare
+      |> untyped_send(sender.pid, _)
+      sender
+    }
+    None -> sender
   }
 }
 
-// TODO: document
-pub fn pid(channel: Channel(msg)) -> Pid {
-  channel.pid
-}
-
-// TODO: document
-// TODO: document that `close_channel` should be called
-pub fn new_channel() -> Channel(msg) {
-  let ref = new_reference()
-  let self = self()
-  open_channel(ref)
-  Channel(pid: self, kind: MessageChannel(ref))
-}
-
-// TODO: document
-pub fn send(channel: Channel(msg), message: msg) -> Channel(msg) {
-  case channel.kind {
-    MessageChannel(ref) -> {
-      untyped_send(channel.pid, tuple(ref, message))
-      channel
-    }
-
-    SystemChannel(_, build) -> {
-      untyped_send(channel.pid, build(dynamic.from(message)))
-      channel
-    }
-
-    NullChannel -> channel
-  }
-}
-
-/// Create a channel that immediately discards any messages sent on it.
+/// Create a sender that immediately discards any messages sent on it.
 ///
 /// This may be useful for wrapping Erlang processes which do not use channels,
-/// or other situations in which you need to return a channel but do not have
+/// or other situations in which you need to return a sender but do not have
 /// one available.
 ///
-pub fn null_channel(pid: Pid) -> Channel(msg) {
-  Channel(pid: pid, kind: NullChannel)
+pub fn null_sender(pid: Pid) -> Sender(msg) {
+  Sender(pid: pid, reference: new_reference(), prepare: None)
 }
 
 type ProcessMonitorFlag {
   Process
 }
 
-pub opaque type ProcessMonitor {
-  ProcessMonitor(reference: Reference)
-}
-
 external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> Reference =
   "erlang" "monitor"
 
-// TODO: document
-pub fn monitor_process(pid: Pid) -> ProcessMonitor {
-  ProcessMonitor(reference: erlang_monitor_process(Process, pid))
-}
-
+// // TODO: document
+// pub fn monitor_process(pid: Pid) -> ProcessMonitor {
+//   ProcessMonitor(reference: erlang_monitor_process(Process, pid))
+// }
+//
 type PortMonitorFlag {
   Port
-}
-
-pub opaque type PortMonitor {
-  PortMonitor(reference: Reference)
 }
 
 external fn erlang_port_monitor(PortMonitorFlag, Port) -> Reference =
   "erlang" "monitor"
 
-// TODO: test
-// TODO: document
-pub fn monitor_port(port: Port) -> PortMonitor {
-  PortMonitor(reference: erlang_port_monitor(Port, port))
-}
-
-type DemonitorOption {
-  Flush
-}
-
-external fn erlang_demonitor(Reference, List(DemonitorOption)) -> Bool =
-  "erlang" "demonitor"
-
-// TODO: document
-pub fn demonitor_process(monitor: ProcessMonitor) -> Nil {
-  erlang_demonitor(monitor.reference, [Flush])
-  Nil
-}
-
-// TODO: test
-// TODO: document
-pub fn demonitor_port(monitor: PortMonitor) -> Nil {
-  erlang_demonitor(monitor.reference, [Flush])
-  Nil
-}
-
-// TODO: document
-pub type ProcessDown {
-  ProcessDown(pid: Pid, reason: Dynamic)
-}
-
-// TODO: document
-pub type PortDown {
-  PortDown(port: Port, reason: Dynamic)
-}
-
-// TODO: document
-pub external type Receiver(msg)
-
-// TODO: document
-pub external fn new_receiver() -> Receiver(msg) =
-  "gleam_otp_external" "new_receiver"
-
-// TODO: document
-pub external fn run_receiver(Receiver(msg)) -> Result(msg, Nil) =
-  "gleam_otp_external" "run_receiver"
-
+// // TODO: test
+// // TODO: document
+// pub fn monitor_port(port: Port) -> PortMonitor {
+//   PortMonitor(reference: erlang_port_monitor(Port, port))
+// }
+//
+// type DemonitorOption {
+//   Flush
+// }
+//
+// external fn erlang_demonitor(Reference, List(DemonitorOption)) -> Bool =
+//   "erlang" "demonitor"
+//
+// // TODO: document
+// pub fn demonitor_process(monitor: ProcessMonitor) -> Nil {
+//   erlang_demonitor(monitor.reference, [Flush])
+//   Nil
+// }
+//
+// // TODO: test
+// // TODO: document
+// pub fn demonitor_port(monitor: PortMonitor) -> Nil {
+//   erlang_demonitor(monitor.reference, [Flush])
+//   Nil
+// }
+//
+// // TODO: document
+// pub type ProcessDown {
+//   ProcessDown(pid: Pid, reason: Dynamic)
+// }
+//
+// // TODO: document
+// pub type PortDown {
+//   PortDown(port: Port, reason: Dynamic)
+// }
+//
 // TODO: document
 // Be careful!
-pub external fn run_receiver_forever(Receiver(msg)) -> msg =
+pub external fn receive_forever(Receiver(msg)) -> msg =
   "gleam_otp_external" "run_receiver_forever"
 
 // TODO: document
-pub external fn flush_receiver(Receiver(msg)) -> Int =
+pub external fn flush(Receiver(msg)) -> Int =
   "gleam_otp_external" "flush_receiver"
 
 // TODO: document
-pub external fn include_channel(
-  to: Receiver(b),
-  add: Channel(a),
-  mapping: fn(a) -> b,
-) -> Receiver(b) =
-  "gleam_otp_external" "include_channel"
-
-// TODO: document
-pub external fn include_process_monitor(
-  to: Receiver(b),
-  add: ProcessMonitor,
-  mapping: fn(ProcessDown) -> b,
-) -> Receiver(b) =
-  "gleam_otp_external" "include_process_monitor"
+// TODO: test
+pub external fn merge_receiver(Receiver(a), Receiver(a)) -> Receiver(a) =
+  "gleam_otp_external" "merge_receiver"
 
 pub type Exit {
   Exit(pid: Pid, reason: Dynamic)
 }
 
-// TODO: test
-// TODO: document
-pub external fn include_process_exit(
-  to: Receiver(b),
-  add: Pid,
-  mapping: fn(Exit) -> b,
-) -> Receiver(b) =
-  "gleam_otp_external" "include_process_exit"
-
-// TODO: test
-// TODO: document
-pub external fn include_all_exits(
-  to: Receiver(b),
-  mapping: fn(Exit) -> b,
-) -> Receiver(b) =
-  "gleam_otp_external" "include_all_exits"
-
-// TODO: document
-pub external fn include_port_monitor(
-  to: Receiver(b),
-  add: PortMonitor,
-  mapping: fn(PortDown) -> b,
-) -> Receiver(b) =
-  "gleam_otp_external" "include_port_monitor"
-
-// TODO: document
-pub external fn set_timeout(Receiver(a), Int) -> Receiver(a) =
-  "gleam_otp_external" "set_timeout"
-
-// TODO: document
-pub external fn flush_other(Receiver(a), Bool) -> Receiver(a) =
-  "gleam_otp_external" "flush_other"
-
-// TODO: test
-// TODO: document
-pub external fn remove_timeout(Receiver(a)) -> Receiver(a) =
-  "gleam_otp_external" "remove_timeout"
-
-// TODO: test flushing
-// TODO: document
-pub external fn include_system(
-  Receiver(a),
-  fn(SystemMessage) -> a,
-) -> Receiver(a) =
-  "gleam_otp_external" "include_system"
-
-// TODO: test
-// TODO: document
-pub external fn include_all(Receiver(a), fn(Dynamic) -> a) -> Receiver(a) =
-  "gleam_otp_external" "include_all"
-
-// TODO: test
-// TODO: document
-pub external fn include_bare(Receiver(a), fn(Dynamic) -> a) -> Receiver(a) =
-  "gleam_otp_external" "include_bare"
-
+// // TODO: test
+// // TODO: document
+// pub external fn include_bare(ReceiverOld(a), fn(Dynamic) -> a) -> ReceiverOld(a) =
+//   "gleam_otp_external" "include_bare"
 pub type ExitReason {
   // The process is stopping due to normal and expected reasons. This is not
   // considered an error.
@@ -319,10 +237,10 @@ pub type SystemMessage {
   // {debug, {install, {Func, FuncState}}}
   // {debug, {install, {FuncId, Func, FuncState}}}
   // {debug, {remove, FuncOrId}}
-  GetStatus(Channel(StatusInfo))
-  Suspend(Channel(Nil))
-  Resume(Channel(Nil))
-  GetState(Channel(Dynamic))
+  GetStatus(Sender(StatusInfo))
+  Suspend(Sender(Nil))
+  Resume(Sender(Nil))
+  GetState(Sender(Dynamic))
 }
 
 /// Check to see whether the process for a given Pid is alive.
@@ -372,82 +290,73 @@ pub external fn start_unlinked(fn() -> anything) -> Pid =
   "erlang" "spawn"
 
 // TODO: document
-pub fn receive(channel: Channel(msg), timeout: Int) -> Result(msg, Nil) {
-  new_receiver()
-  |> include_channel(channel, fn(x) { x })
-  |> set_timeout(timeout)
-  |> run_receiver
-}
-
-// TODO: document
-pub fn flush(channel: Channel(msg)) -> Int {
-  new_receiver()
-  |> include_channel(channel, fn(x) { x })
-  |> flush_receiver
-}
-
-// TODO: document
-pub type CallError(msg) {
-  // TODO: document
-  CalleeDown(reason: Dynamic)
-  // TODO: document
-  CallTimeout
-}
-
-fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError(a)) {
-  Error(CalleeDown(reason: down.reason))
-}
-
-// TODO: test error paths
-// TODO: document
-// This function is based off of Erlang's gen:do_call/4.
-pub fn try_call(
-  channel: Channel(request),
-  make_request: fn(Channel(response)) -> request,
+pub external fn receive(
+  receiver: Receiver(msg),
   timeout: Int,
-) -> Result(response, CallError(response)) {
-  let reply_channel = new_channel()
+) -> Result(msg, Nil) =
+  "gleam_otp_external" "run_receiver"
 
-  // Monitor the callee process so we can tell if it goes down (meaning we
-  // won't get a reply)
-  let monitor =
-    channel
-    |> pid
-    |> monitor_process
-
-  // Send the request to the process over the channel
-  send(channel, make_request(reply_channel))
-
-  // Await a reply or handle failure modes (timeout, process down, etc)
-  let res =
-    new_receiver()
-    |> include_channel(reply_channel, Ok)
-    |> include_process_monitor(monitor, process_down_to_call_error)
-    |> set_timeout(timeout)
-    |> run_receiver
-
-  // Demonitor the process as we're done
-  demonitor_process(monitor)
-  close_channel(channel)
-
-  // Prepare an appropriate error (if present) for the caller
-  case res {
-    Error(Nil) -> Error(CallTimeout)
-    Ok(res) -> res
-  }
-}
-
-// TODO: test error paths
-// TODO: document
-pub fn call(
-  channel: Channel(request),
-  make_request: fn(Channel(response)) -> request,
-  timeout: Int,
-) -> response {
-  assert Ok(resp) = try_call(channel, make_request, timeout)
-  resp
-}
-
+// // TODO: document
+// pub type CallError(msg) {
+//   // TODO: document
+//   CalleeDown(reason: Dynamic)
+//   // TODO: document
+//   CallTimeout
+// }
+//
+// fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError(a)) {
+//   Error(CalleeDown(reason: down.reason))
+// }
+//
+// // TODO: test error paths
+// // TODO: document
+// // This function is based off of Erlang's gen:do_call/4.
+// pub fn try_call(
+//   channel: Channel(request),
+//   make_request: fn(Channel(response)) -> request,
+//   timeout: Int,
+// ) -> Result(response, CallError(response)) {
+//   let reply_channel = old_new_channel()
+//
+//   // Monitor the callee process so we can tell if it goes down (meaning we
+//   // won't get a reply)
+//   let monitor =
+//     channel
+//     |> pid
+//     |> monitor_process
+//
+//   // Send the request to the process over the channel
+//   send(channel, make_request(reply_channel))
+//
+//   // Await a reply or handle failure modes (timeout, process down, etc)
+//   let res =
+//     new_receiver()
+//     |> include_channel(reply_channel, Ok)
+//     |> include_process_monitor(monitor, process_down_to_call_error)
+//     |> set_timeout(timeout)
+//     |> run_receiver
+//
+//   // Demonitor the process as we're done
+//   demonitor_process(monitor)
+//   close_channel_old(channel)
+//
+//   // Prepare an appropriate error (if present) for the caller
+//   case res {
+//     Error(Nil) -> Error(CallTimeout)
+//     Ok(res) -> res
+//   }
+// }
+//
+// // TODO: test error paths
+// // TODO: document
+// pub fn call(
+//   channel: Channel(request),
+//   make_request: fn(Channel(response)) -> request,
+//   timeout: Int,
+// ) -> response {
+//   assert Ok(resp) = try_call(channel, make_request, timeout)
+//   resp
+// }
 type MessageQueueLenFlag {
   MessageQueueLen
 }
@@ -463,20 +372,20 @@ pub fn message_queue_size(pid: Pid) -> Int {
   process_info_message_queue_length(pid, MessageQueueLen).1
 }
 
-type TrapExit {
-  TrapExit
-}
-
-external fn erlang_trap_exit(TrapExit, Bool) -> Bool =
-  "erlang" "process_flag"
-
-// TODO: test
-// TODO: document
-pub fn trap_exit(bool: Bool) -> Nil {
-  erlang_trap_exit(TrapExit, bool)
-  Nil
-}
-
+//
+// type TrapExit {
+//   TrapExit
+// }
+//
+// external fn erlang_trap_exit(TrapExit, Bool) -> Bool =
+//   "erlang" "process_flag"
+//
+// // TODO: test
+// // TODO: document
+// pub fn trap_exit(bool: Bool) -> Nil {
+//   erlang_trap_exit(TrapExit, bool)
+//   Nil
+// }
 pub external type Timer
 
 external fn erlang_send_after(Int, Pid, msg) -> Timer =
@@ -486,15 +395,10 @@ external fn fake_timer() -> Timer =
   "erlang" "make_ref"
 
 // TODO: document
-pub fn send_after(channel: Channel(msg), delay: Int, message: msg) -> Timer {
-  case channel.kind {
-    MessageChannel(ref) ->
-      erlang_send_after(delay, channel.pid, tuple(ref, message))
-
-    SystemChannel(_, build) ->
-      erlang_send_after(delay, channel.pid, build(dynamic.from(message)))
-
-    _ -> fake_timer()
+pub fn send_after(sender: Sender(msg), delay: Int, message: msg) -> Timer {
+  case sender.prepare {
+    Some(prepare) -> erlang_send_after(delay, sender.pid, prepare(message))
+    None -> fake_timer()
   }
 }
 
