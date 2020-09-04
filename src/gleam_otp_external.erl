@@ -77,7 +77,11 @@ receiver_include(Receiver, Ref, Fn) ->
     Receiver#receiver{refs = Refs}.
 
 include_channel(Receiver, Channel, Fn) ->
-    receiver_include(Receiver, Channel#channel.reference, Fn).
+    case Channel#channel.kind of
+        {message_channel, Ref} -> receiver_include(Receiver, Ref, Fn);
+        {system_channel, Ref, _} -> receiver_include(Receiver, Ref, Fn);
+        null_channel -> Receiver
+    end.
 
 include_process_monitor(Receiver, Monitor, Fn) ->
     receiver_include(Receiver, Monitor#process_monitor.reference, Fn).
@@ -193,16 +197,18 @@ flush_other(Receiver, FlushOther) ->
 
 system_msg({Pid, Ref}, Msg) ->
     Build = fun(X) -> system_reply(Msg, Ref, X) end,
-    Channel = #channel{pid = Pid, reference = Ref, build_message = Build, send = true},
+    Kind = {system_channel, Ref, Build},
+    Channel = #channel{pid = Pid, kind = Kind},
     {Msg, Channel}.
 
 system_reply(Msg, Ref, Reply) ->
-    case Msg of
-        resume -> {Ref, ok};
-        suspend -> {Ref, ok};
-        get_state -> {Ref, Reply};
-        get_status -> {Ref, process_status(Reply)}
-    end.
+    Msg1 = case Msg of
+        resume -> ok;
+        suspend -> ok;
+        get_state -> Reply;
+        get_status -> process_status(Reply)
+    end,
+    {Ref, Msg1}.
 
 process_status(Status) ->
     #status_info{mode = Mode, parent = Parent, debug_state = Debug,

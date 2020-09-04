@@ -328,11 +328,11 @@ pub fn null_channel_send_after_test() {
 }
 
 pub fn cancel_timer_test() {
-  let channel = process.null_channel(process.self())
+  let channel = process.new_channel()
   let instant_timer = process.send_after(channel, 0, "a")
   let later_timer = process.send_after(channel, 100, "a")
   sleep(5)
-  assert process.AlreadySent = process.cancel_timer(instant_timer)
+  assert process.TimerNotFound = process.cancel_timer(instant_timer)
   assert process.Cancelled(i) = process.cancel_timer(later_timer)
   should.be_true(i > 0)
   should.be_true(i < 100)
