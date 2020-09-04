@@ -67,17 +67,13 @@ pub fn new_channel() -> tuple(Sender(msg), Receiver(msg)) {
   let prepare = fn(msg) { dynamic.from(tuple(reference, msg)) }
   let sender = Sender(pid: self, reference: reference, prepare: Some(prepare))
   let receiver = new_receiver(reference)
-  open_channel(reference)
   tuple(sender, receiver)
 }
 
-external fn open_channel(Reference) -> Nil =
-  "gleam_otp_external" "open_channel"
-
 // TODO: document
 // TODO: test
-pub external fn close_channel(Receiver(msg)) -> Nil =
-  "gleam_otp_external" "close_channel"
+pub external fn close_channels(Receiver(msg)) -> Nil =
+  "gleam_otp_external" "close_channels"
 
 // TODO: document
 pub fn pid(sender: Sender(msg)) -> Pid {
@@ -114,11 +110,14 @@ type ProcessMonitorFlag {
 external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> Reference =
   "erlang" "monitor"
 
-// // TODO: document
-// pub fn monitor_process(pid: Pid) -> ProcessMonitor {
-//   ProcessMonitor(reference: erlang_monitor_process(Process, pid))
-// }
-//
+// TODO: document
+// TODO: test
+// TODO: test closing
+pub fn monitor_process(pid: Pid) -> Receiver(ProcessDown) {
+  let reference = erlang_monitor_process(Process, pid)
+  new_receiver(reference)
+}
+
 type PortMonitorFlag {
   Port
 }
@@ -132,31 +131,11 @@ external fn erlang_port_monitor(PortMonitorFlag, Port) -> Reference =
 //   PortMonitor(reference: erlang_port_monitor(Port, port))
 // }
 //
-// type DemonitorOption {
-//   Flush
-// }
-//
-// external fn erlang_demonitor(Reference, List(DemonitorOption)) -> Bool =
-//   "erlang" "demonitor"
-//
-// // TODO: document
-// pub fn demonitor_process(monitor: ProcessMonitor) -> Nil {
-//   erlang_demonitor(monitor.reference, [Flush])
-//   Nil
-// }
-//
-// // TODO: test
-// // TODO: document
-// pub fn demonitor_port(monitor: PortMonitor) -> Nil {
-//   erlang_demonitor(monitor.reference, [Flush])
-//   Nil
-// }
-//
-// // TODO: document
-// pub type ProcessDown {
-//   ProcessDown(pid: Pid, reason: Dynamic)
-// }
-//
+// TODO: document
+pub type ProcessDown {
+  ProcessDown(pid: Pid, reason: Dynamic)
+}
+
 // // TODO: document
 // pub type PortDown {
 //   PortDown(port: Port, reason: Dynamic)
@@ -180,10 +159,11 @@ pub type Exit {
   Exit(pid: Pid, reason: Dynamic)
 }
 
-// // TODO: test
-// // TODO: document
-// pub external fn include_bare(ReceiverOld(a), fn(Dynamic) -> a) -> ReceiverOld(a) =
-//   "gleam_otp_external" "include_bare"
+// TODO: test
+// TODO: document
+pub external fn bare_message_receiver() -> Receiver(Dynamic) =
+  "gleam_otp_external" "bare_message_receiver"
+
 pub type ExitReason {
   // The process is stopping due to normal and expected reasons. This is not
   // considered an error.

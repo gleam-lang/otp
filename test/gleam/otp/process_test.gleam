@@ -86,24 +86,26 @@ pub fn self_test() {
   |> should.not_equal(child_pid2)
 }
 
-// pub fn bare_receive_test() {
-//   let channel = process.old_new_channel()
-//   process.send(channel, 0)
-//   process.untyped_send(process.self(), 1)
-//
-//   let receiver =
-//     process.new_receiver()
-//     |> process.include_bare(fn(x) { x })
-//     |> process.set_timeout(0)
-//
-//   // The channel message is skipped over for the bare message
-//   receiver
-//   |> process.run_receiver()
-//   |> should.equal(Ok(dynamic.from(1)))
-//   receiver
-//   |> process.run_receiver()
-//   |> should.equal(Error(Nil))
-// }
+pub fn bare_receive_test() {
+  let tuple(sender, receiver) = process.new_channel()
+  process.send(sender, 0)
+  process.untyped_send(process.self(), 1)
+
+  // The channel message is skipped over for the bare message
+  process.bare_message_receiver()
+  |> process.receive(0)
+  |> should.equal(Ok(dynamic.from(1)))
+
+  process.bare_message_receiver()
+  |> process.receive(0)
+  |> should.equal(Error(Nil))
+
+  // The channel message is still in the queue
+  receiver
+  |> process.receive(0)
+  |> should.equal(Ok(0))
+}
+
 pub fn run_receiver_forever_test() {
   let tuple(sender, receiver) = process.new_channel()
   process.send(sender, 0)
