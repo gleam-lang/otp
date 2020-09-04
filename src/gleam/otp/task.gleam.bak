@@ -15,7 +15,7 @@ pub opaque type Task(value) {
 // TODO: document
 pub fn async(work: fn() -> value) -> Task(value) {
   let owner = process.self()
-  let await_channel = process.new_channel()
+  let await_channel = process.old_new_channel()
   let pid = process.start(fn() { process.send(await_channel, work()) })
   let mon = process.monitor_process(pid)
   Task(owner: owner, pid: pid, await_channel: await_channel, monitor: mon)
@@ -58,14 +58,14 @@ pub fn try_await(task: Task(value), timeout: Int) -> Result(value, AwaitError) {
   case result {
     // The task process has sent back a value
     Ok(Chan(x)) -> {
-      process.close_channel(task.await_channel)
+      process.close_channel_old(task.await_channel)
       process.demonitor_process(task.monitor)
       Ok(x)
     }
 
     // The task process crashed without sending a value
     Ok(Mon(process.ProcessDown(reason: reason, ..))) -> {
-      process.close_channel(task.await_channel)
+      process.close_channel_old(task.await_channel)
       process.demonitor_process(task.monitor)
       Error(Exit(reason))
     }
