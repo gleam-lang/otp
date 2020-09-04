@@ -12,6 +12,7 @@
 - `actor.Message` is no longer a public type.
 - The `process` module gains the `send_after`, `cancel_timer`, and
   `run_receiver_forever` functions.
+- The `process.wrap_channel` function has been removed.
 - The `actor` module gains the `new` and `null_channel` functions.
 - The `task` module has been created with the `Task` type and the `async`,
   `try_await`, and `await` functions.
