@@ -120,65 +120,63 @@ pub fn trap_exits_test() {
   process.close_channels(receiver)
   // TODO: test that exit signals are not trapped
 }
-// pub fn pid_test() {
-//   let channel = process.old_new_channel()
-//   let self = process.self()
-//   channel
-//   |> process.pid
-//   |> should.equal(self)
-// }
-//
-// fn call_message(value) {
-//   fn(reply_channel) { tuple(value, reply_channel) }
-// }
-//
-// pub fn try_call_test() {
-//   let to_parent_channel = process.old_new_channel()
-//
-//   process.start(fn() {
-//     // Send the call channel to the parent
-//     let call_channel = process.old_new_channel()
-//     process.send(to_parent_channel, call_channel)
-//     // Wait for the channel to be called
-//     assert Ok(tup) = process.receive(call_channel, 50)
-//     let tuple(x, reply_channel) = tup
-//     // Reply
-//     process.send(reply_channel, x + 1)
-//   })
-//
-//   assert Ok(call_channel) = process.receive(to_parent_channel, 50)
-//
-//   // Call the child process over the channel
-//   call_channel
-//   |> process.try_call(call_message(1), 50)
-//   |> should.equal(Ok(2))
-// }
-//
-// pub fn try_call_timeout_test() {
-//   let to_parent_channel = process.old_new_channel()
-//
-//   process.start(fn() {
-//     // Send the call channel to the parent
-//     let call_channel = process.old_new_channel()
-//     process.send(to_parent_channel, call_channel)
-//     // Wait for the channel to be called
-//     assert Ok(tup) = process.receive(call_channel, 50)
-//     let tuple(x, reply_channel) = tup
-//
-//     // Reply, after a delay
-//     sleep(20)
-//     process.send(reply_channel, x + 1)
-//   })
-//
-//   assert Ok(call_channel) = process.receive(to_parent_channel, 50)
-//
-//   // Call the child process over the channel
-//   call_channel
-//   |> process.try_call(call_message(1), 10)
-//   |> result.is_error
-//   |> should.be_true
-// }
-//
+
+pub fn pid_test() {
+  let tuple(sender, _) = process.new_channel()
+  let self = process.self()
+  sender
+  |> process.pid
+  |> should.equal(self)
+}
+
+fn call_message(value) {
+  fn(reply_channel) { tuple(value, reply_channel) }
+}
+
+pub fn try_call_test() {
+  let tuple(parent_sender, parent_receiver) = process.new_channel()
+
+  process.start(fn() {
+    // Send the call channel to the parent
+    let tuple(call_sender, call_receiver) = process.new_channel()
+    process.send(parent_sender, call_sender)
+    // Wait for the channel to be called
+    assert Ok(tuple(x, reply_channel)) = process.receive(call_receiver, 50)
+    // Reply
+    process.send(reply_channel, x + 1)
+  })
+
+  assert Ok(call_sender) = process.receive(parent_receiver, 50)
+
+  // Call the child process over the channel
+  call_sender
+  |> process.try_call(call_message(1), 50)
+  |> should.equal(Ok(2))
+}
+
+pub fn try_call_timeout_test() {
+  let tuple(parent_sender, parent_receiver) = process.new_channel()
+
+  process.start(fn() {
+    // Send the call channel to the parent
+    let tuple(call_sender, call_receiver) = process.new_channel()
+    process.send(parent_sender, call_sender)
+    // Wait for the channel to be called
+    assert Ok(tuple(x, reply_channel)) = process.receive(call_receiver, 50)
+    // Reply, after a delay
+    sleep(20)
+    process.send(reply_channel, x + 1)
+  })
+
+  assert Ok(call_sender) = process.receive(parent_receiver, 50)
+
+  // Call the child process over the channel
+  call_sender
+  |> process.try_call(call_message(1), 10)
+  |> result.is_error
+  |> should.be_true
+}
+
 // pub fn message_queue_size_test() {
 //   // Empty inbox
 //   process.new_receiver()
@@ -201,10 +199,10 @@ pub fn trap_exits_test() {
 //
 // pub fn monitor_test_test() {
 //   // Spawn child
-//   let to_parent_channel = process.old_new_channel()
+//   let to_parent_channel = process.new_channel()
 //   let pid =
 //     process.start(fn() {
-//       let channel = process.old_new_channel()
+//       let channel = process.new_channel()
 //       process.send(to_parent_channel, channel)
 //       process.receive(channel, 150)
 //     })
@@ -226,10 +224,10 @@ pub fn trap_exits_test() {
 //
 // pub fn demonitor_test_test() {
 //   // Spawn child
-//   let to_parent_channel = process.old_new_channel()
+//   let to_parent_channel = process.new_channel()
 //   let pid =
 //     process.start(fn() {
-//       let channel = process.old_new_channel()
+//       let channel = process.new_channel()
 //       process.send(to_parent_channel, channel)
 //       process.receive(channel, 150)
 //     })
@@ -253,8 +251,8 @@ pub fn trap_exits_test() {
 // }
 //
 // pub fn flush_other_test() {
-//   let c1 = process.old_new_channel()
-//   let c2 = process.old_new_channel()
+//   let c1 = process.new_channel()
+//   let c2 = process.new_channel()
 //
 //   process.send(c1, 0)
 //   process.send(c2, 0)
@@ -276,48 +274,48 @@ pub fn trap_exits_test() {
 //   |> should.equal(Error(Nil))
 // }
 //
-// pub fn null_channel_test() {
-//   let channel = process.null_channel(process.self())
-//   process.send(channel, 0)
-//   channel
-//   |> process.receive(0)
-//   |> should.equal(Error(Nil))
-// }
-//
-// pub fn send_after_test() {
-//   let channel = process.old_new_channel()
-//
-//   // 0 is received immediately, though asynchronously
-//   process.send_after(channel, 0, "a")
-//   channel
-//   |> process.receive(5)
-//   |> should.equal(Ok("a"))
-//
-//   // With a delay it is sent later
-//   process.send_after(channel, 5, "b")
-//   channel
-//   |> process.receive(0)
-//   |> should.equal(Error(Nil))
-//   channel
-//   |> process.receive(10)
-//   |> should.equal(Ok("b"))
-// }
-//
-// pub fn null_channel_send_after_test() {
-//   let channel = process.null_channel(process.self())
-//   process.send_after(channel, 0, "a")
-//   channel
-//   |> process.receive(20)
-//   |> should.equal(Error(Nil))
-// }
-//
-// pub fn cancel_timer_test() {
-//   let channel = process.old_new_channel()
-//   let instant_timer = process.send_after(channel, 0, "a")
-//   let later_timer = process.send_after(channel, 100, "a")
-//   sleep(5)
-//   assert process.TimerNotFound = process.cancel_timer(instant_timer)
-//   assert process.Cancelled(i) = process.cancel_timer(later_timer)
-//   should.be_true(i > 0)
-//   should.be_true(i < 100)
-// }
+pub fn null_channel_test() {
+  let queue_size = process.message_queue_size(process.self())
+  process.self()
+  |> process.null_sender
+  |> process.send(100)
+  process.self()
+  |> process.message_queue_size()
+  |> should.equal(queue_size)
+}
+
+pub fn send_after_test() {
+  let tuple(sender, receiver) = process.new_channel()
+
+  // 0 is received immediately, though asynchronously
+  process.send_after(sender, 0, "a")
+  receiver
+  |> process.receive(5)
+  |> should.equal(Ok("a"))
+
+  // With a delay it is sent later
+  process.send_after(sender, 5, "b")
+  receiver
+  |> process.receive(0)
+  |> should.equal(Error(Nil))
+  receiver
+  |> process.receive(10)
+  |> should.equal(Ok("b"))
+}
+
+pub fn null_channel_send_after_test() {
+  process.self()
+  |> process.null_sender
+  |> process.send_after(0, "a")
+}
+
+pub fn cancel_timer_test() {
+  let tuple(sender, _receiver) = process.new_channel()
+  let instant_timer = process.send_after(sender, 0, "a")
+  let later_timer = process.send_after(sender, 100, "a")
+  sleep(5)
+  assert process.TimerNotFound = process.cancel_timer(instant_timer)
+  assert process.Cancelled(i) = process.cancel_timer(later_timer)
+  should.be_true(i > 0)
+  should.be_true(i < 100)
+}

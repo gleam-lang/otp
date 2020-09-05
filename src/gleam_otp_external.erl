@@ -5,7 +5,8 @@
 
 % Receivers
 -export([new_receiver/1, flush_receiver/1, run_receiver/2, merge_receiver/2,
-         run_receiver_forever/1, bare_message_receiver/0, trap_exits/0]).
+         run_receiver_forever/1, bare_message_receiver/0, trap_exits/0,
+         map_receiver/2]).
 
 % import Gleam records
 
@@ -165,18 +166,13 @@ flush_receiver(Receiver, N) ->
         0 -> N
     end.
 
-% include_system(Receiver, Fn) ->
-%     Receiver#receiver{system = Fn}.
-%
-% include_all(Receiver, Fn) ->
-%     Receiver#receiver{all = Fn}.
-%
-% include_all_exits(Receiver, Fn) ->
-%     Receiver#receiver{all_exits = Fn}.
-%
-% flush_other(Receiver, FlushOther) ->
-%     Receiver#receiver{flush_other = FlushOther}.
-%
+map_receiver(Receiver, F2) ->
+    Wrap = fun(_, F1) ->
+        fun(X) -> F1(F2(X)) end
+    end,
+    Channels = maps:map(Wrap, Receiver#receiver.channels),
+    Receiver#receiver{channels = Channels}.
+
 % system_msg({Pid, Ref}, Msg) ->
 %     Build = fun(X) -> system_reply(Msg, Ref, X) end,
 %     Kind = {system_channel, Ref, Build},
