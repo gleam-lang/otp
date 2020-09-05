@@ -113,6 +113,13 @@ pub fn run_receiver_forever_test() {
   |> process.receive_forever()
   |> should.equal(0)
 }
+
+pub fn trap_exits_test() {
+  let receiver = process.trap_exits()
+  // TODO: test that exit signals are trapped
+  process.close_channels(receiver)
+  // TODO: test that exit signals are not trapped
+}
 // pub fn pid_test() {
 //   let channel = process.old_new_channel()
 //   let self = process.self()

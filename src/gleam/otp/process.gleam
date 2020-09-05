@@ -1,8 +1,6 @@
 // TODO: README
 // TODO: link
-// TODO: process monitor
 // TODO: port monitor
-// TODO: trap exits
 // TODO: flush_other ?
 // TODO: wrap_sender
 // TODO: wrap_receiver
@@ -352,20 +350,10 @@ pub fn message_queue_size(pid: Pid) -> Int {
   process_info_message_queue_length(pid, MessageQueueLen).1
 }
 
-//
-// type TrapExit {
-//   TrapExit
-// }
-//
-// external fn erlang_trap_exit(TrapExit, Bool) -> Bool =
-//   "erlang" "process_flag"
-//
-// // TODO: test
-// // TODO: document
-// pub fn trap_exit(bool: Bool) -> Nil {
-//   erlang_trap_exit(TrapExit, bool)
-//   Nil
-// }
+// TODO: document
+pub external fn trap_exits() -> Receiver(Exit) =
+  "gleam_otp_external" "trap_exits"
+
 pub external type Timer
 
 external fn erlang_send_after(Int, Pid, msg) -> Timer =
