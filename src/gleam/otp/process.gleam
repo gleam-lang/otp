@@ -1,6 +1,5 @@
 // TODO: README
 // TODO: link
-// TODO: port monitor
 // TODO: flush_other ?
 // TODO: wrap_sender
 // TODO: wrap_receiver
@@ -120,25 +119,26 @@ type PortMonitorFlag {
   Port
 }
 
-external fn erlang_port_monitor(PortMonitorFlag, Port) -> Reference =
+external fn erlang_monitor_port(PortMonitorFlag, Port) -> Reference =
   "erlang" "monitor"
 
-// // TODO: test
-// // TODO: document
-// pub fn monitor_port(port: Port) -> PortMonitor {
-//   PortMonitor(reference: erlang_port_monitor(Port, port))
-// }
-//
+// TODO: test
+// TODO: document
+pub fn monitor_port(port: Port) -> Receiver(PortDown) {
+  let reference = erlang_monitor_port(Port, port)
+  new_receiver(reference)
+}
+
 // TODO: document
 pub type ProcessDown {
   ProcessDown(pid: Pid, reason: Dynamic)
 }
 
-// // TODO: document
-// pub type PortDown {
-//   PortDown(port: Port, reason: Dynamic)
-// }
-//
+// TODO: document
+pub type PortDown {
+  PortDown(port: Port, reason: Dynamic)
+}
+
 // TODO: document
 // Be careful!
 pub external fn receive_forever(Receiver(msg)) -> msg =
