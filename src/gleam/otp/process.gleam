@@ -1,8 +1,7 @@
 // TODO: README
 // TODO: link
 // TODO: flush_other ?
-// TODO: wrap_sender
-// TODO: wrap_receiver
+// TODO: map_sender (contravarient)
 // TODO: receive system messages
 //
 import gleam/atom
@@ -25,7 +24,7 @@ pub external type Pid
 /// function may still be useful for sending messages to processes implemented
 /// in Erlang or other BEAM languages.
 ///
-/// Message sending is asynchronous and this function will likely return before
+/// Message handling is asynchronous and this function will likely return before
 /// the message is handled by the receiving processes.
 ///
 /// See the [Erlang documentation][erl] for more information.
@@ -274,67 +273,69 @@ pub external fn receive(
 ) -> Result(msg, Nil) =
   "gleam_otp_external" "run_receiver"
 
-// // TODO: document
-// pub type CallError(msg) {
-//   // TODO: document
-//   CalleeDown(reason: Dynamic)
-//   // TODO: document
-//   CallTimeout
-// }
-//
-// fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError(a)) {
-//   Error(CalleeDown(reason: down.reason))
-// }
-//
-// // TODO: test error paths
-// // TODO: document
-// // This function is based off of Erlang's gen:do_call/4.
-// pub fn try_call(
-//   channel: Channel(request),
-//   make_request: fn(Channel(response)) -> request,
-//   timeout: Int,
-// ) -> Result(response, CallError(response)) {
-//   let reply_channel = old_new_channel()
-//
-//   // Monitor the callee process so we can tell if it goes down (meaning we
-//   // won't get a reply)
-//   let monitor =
-//     channel
-//     |> pid
-//     |> monitor_process
-//
-//   // Send the request to the process over the channel
-//   send(channel, make_request(reply_channel))
-//
-//   // Await a reply or handle failure modes (timeout, process down, etc)
-//   let res =
-//     new_receiver()
-//     |> include_channel(reply_channel, Ok)
-//     |> include_process_monitor(monitor, process_down_to_call_error)
-//     |> set_timeout(timeout)
-//     |> run_receiver
-//
-//   // Demonitor the process as we're done
-//   demonitor_process(monitor)
-//   close_channel_old(channel)
-//
-//   // Prepare an appropriate error (if present) for the caller
-//   case res {
-//     Error(Nil) -> Error(CallTimeout)
-//     Ok(res) -> res
-//   }
-// }
-//
-// // TODO: test error paths
-// // TODO: document
-// pub fn call(
-//   channel: Channel(request),
-//   make_request: fn(Channel(response)) -> request,
-//   timeout: Int,
-// ) -> response {
-//   assert Ok(resp) = try_call(channel, make_request, timeout)
-//   resp
-// }
+// TODO: document
+pub type CallError(msg) {
+  // TODO: document
+  CalleeDown(reason: Dynamic)
+  // TODO: document
+  CallTimeout
+}
+
+fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError(a)) {
+  Error(CalleeDown(reason: down.reason))
+}
+
+// TODO: test
+// TODO: document
+pub external fn map_receiver(Receiver(a), with: fn(a) -> b) -> Receiver(b) =
+  "gleam_otp_external" "map_receiver"
+
+// TODO: test error paths
+// TODO: document
+// This function is based off of Erlang's gen:do_call/4.
+pub fn try_call(
+  sender: Sender(request),
+  make_request: fn(Sender(response)) -> request,
+  timeout: Int,
+) -> Result(response, CallError(response)) {
+  let tuple(reply_sender, reply_receiver) = new_channel()
+
+  // Monitor the callee process so we can tell if it goes down (meaning we
+  // won't get a reply)
+  let monitor = monitor_process(pid(sender))
+
+  // Send the request to the process over the channel
+  send(sender, make_request(reply_sender))
+
+  let receiver =
+    reply_receiver
+    |> map_receiver(Ok)
+    |> merge_receiver(map_receiver(monitor, process_down_to_call_error))
+
+  // Await a reply or handle failure modes (timeout, process down, etc)
+  let res = receive(receiver, timeout)
+
+  // Demonitor the process and close the channels as we're done
+  close_channels(receiver)
+
+  // Prepare an appropriate error (if present) for the caller
+  case res {
+    Error(Nil) -> Error(CallTimeout)
+    Ok(res) -> res
+  }
+}
+
+// TODO: test error paths
+// TODO: document
+pub fn call(
+  sender: Sender(request),
+  make_request: fn(Sender(response)) -> request,
+  timeout: Int,
+) -> response {
+  assert Ok(resp) = try_call(sender, make_request, timeout)
+  resp
+}
+
 type MessageQueueLenFlag {
   MessageQueueLen
 }
