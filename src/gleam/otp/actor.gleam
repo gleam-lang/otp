@@ -2,8 +2,10 @@ import gleam/otp/process.{
   Abnormal, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid, ProcessDown,
   Receiver, Resume, Running, Sender, Suspend, Suspended, SystemMessage,
 }
-import gleam/result
+import gleam/io
 import gleam/atom
+import gleam/result
+import gleam/option.{Option}
 import gleam/dynamic.{Dynamic}
 
 type Message(message) {
@@ -17,6 +19,11 @@ type Message(message) {
 pub type Next(state) {
   Continue(state)
   Stop(ExitReason)
+}
+
+pub type InitResult(state, message) {
+  Ready(state: state, receiver: Option(Receiver(message)))
+  Failed(ExitReason)
 }
 
 type Self(state, msg) {
@@ -33,7 +40,7 @@ type Self(state, msg) {
 
 pub type Spec(state, msg) {
   Spec(
-    init: fn() -> Result(state, ExitReason),
+    init: fn() -> InitResult(state, msg),
     loop: fn(msg, state) -> Next(state),
     init_timeout: Int,
   )
@@ -101,6 +108,14 @@ fn loop(self: Self(state, msg)) -> ExitReason {
   }
 }
 
+fn merge_extra_receiver(r1, r2) {
+  case r2 {
+    option.None -> r1
+    option.Some(r2) ->
+      process.merge_receiver(r1, process.map_receiver(r2, Message))
+  }
+}
+
 fn initialise_actor(
   spec: Spec(state, msg),
   ack_channel: Sender(Result(Sender(msg), ExitReason)),
@@ -108,7 +123,7 @@ fn initialise_actor(
   let tuple(sender, receiver) = process.new_channel()
   let receiver = process.map_receiver(receiver, Message)
   case spec.init() {
-    Ok(state) -> {
+    Ready(state, extra_receiver) -> {
       // Signal to parent that the process has initialised successfully
       process.send(ack_channel, Ok(sender))
       // Start message receive loop
@@ -117,14 +132,14 @@ fn initialise_actor(
           pid: process.self(),
           state: state,
           parent: process.pid(ack_channel),
-          receiver: receiver,
+          receiver: merge_extra_receiver(receiver, extra_receiver),
           message_handler: spec.loop,
           debug_state: process.debug_state([]),
           mode: Running,
         )
       loop(self)
     }
-    Error(reason) -> {
+    Failed(reason) -> {
       process.send(ack_channel, Error(reason))
       exit_process(reason)
     }
@@ -193,7 +208,11 @@ pub fn new(
   state: state,
   loop: fn(msg, state) -> Next(state),
 ) -> Result(Sender(msg), StartError) {
-  start(Spec(init: fn() { Ok(state) }, loop: loop, init_timeout: 5000))
+  start(Spec(
+    init: fn() { Ready(state, option.None) },
+    loop: loop,
+    init_timeout: 5000,
+  ))
 }
 
 // TODO: document

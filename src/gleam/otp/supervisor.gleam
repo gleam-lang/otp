@@ -18,6 +18,10 @@ pub opaque type ChildSpec(msg, argument_in, argument_out) {
   )
 }
 
+pub opaque type Message {
+  Exit(process.Exit)
+}
+
 type Instruction {
   StartAll
   StartFrom(Pid)
@@ -152,30 +156,47 @@ pub fn update_argument(
 
 fn init(
   start_children: fn(Children(Nil)) -> Children(a),
-) -> Result(Starter(a), process.ExitReason) {
+) -> actor.InitResult(Starter(a), Message) {
+  // Trap exits so that we get a message when a child crashes
+  let receiver =
+    process.trap_exits()
+    |> process.map_receiver(Exit)
+    |> option.Some
+
+  // Start any children
   let result =
     Starter(argument: Nil, run: None)
     |> Ready
     |> start_children
+
+  // Pass back up the result
   case result {
-    Ready(starter) -> Ok(starter)
+    Ready(starter) -> actor.Ready(starter, receiver)
     Failed(reason) -> {
       // TODO: refine error type
       let reason = process.Abnormal(dynamic.from(reason))
       // TODO: try to start them again
-      Error(reason)
+      actor.Failed(reason)
     }
   }
 }
 
-fn loop(_msg: msg, starter: Starter(argument)) -> actor.Next(Starter(argument)) {
-  // TODO: restart children if they go down
-  actor.Continue(starter)
+fn loop(
+  message: Message,
+  starter: Starter(argument),
+) -> actor.Next(Starter(argument)) {
+  case message, starter.run {
+    Exit(process.Exit(pid: pid, ..)), Some(starter) ->
+      case starter(StartFrom(pid)) {
+        Ok(tuple(starter, _)) -> actor.Continue(starter)
+        Error(e) -> actor.Stop(process.Abnormal(dynamic.from(e)))
+      }
+  }
 }
 
 pub fn start(
   start_children: fn(Children(Nil)) -> Children(a),
-) -> Result(Sender(a), StartError) {
+) -> Result(Sender(Message), StartError) {
   actor.start(actor.Spec(
     init: fn() { init(start_children) },
     loop: loop,

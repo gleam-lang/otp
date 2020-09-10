@@ -171,7 +171,7 @@ flush_receiver(Receiver, N) ->
 
 map_receiver(Receiver, F2) ->
     Wrap = fun(_, F1) ->
-        fun(X) -> F1(F2(X)) end
+        fun(X) -> F2(F1(X)) end
     end,
     Channels = maps:map(Wrap, Receiver#receiver.channels),
     Receiver#receiver{channels = Channels}.
