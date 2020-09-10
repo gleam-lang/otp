@@ -2,7 +2,7 @@
 import gleam/list
 import gleam/dynamic
 import gleam/option.{None, Option, Some}
-import gleam/otp/process.{Channel, Pid}
+import gleam/otp/process.{Pid, Sender}
 import gleam/otp/actor.{StartError}
 
 pub opaque type Children(argument) {
@@ -12,8 +12,8 @@ pub opaque type Children(argument) {
 
 pub opaque type ChildSpec(msg, argument_in, argument_out) {
   ChildSpec(
-    start: fn(argument_in) -> Result(Channel(msg), StartError),
-    update_argument: fn(argument_in, Channel(msg)) -> argument_out,
+    start: fn(argument_in) -> Result(Sender(msg), StartError),
+    update_argument: fn(argument_in, Sender(msg)) -> argument_out,
   )
 }
 
@@ -135,7 +135,7 @@ pub fn add(
 // TODO: test
 // TODO: document
 pub fn worker(
-  start: fn(argument) -> Result(Channel(msg), StartError),
+  start: fn(argument) -> Result(Sender(msg), StartError),
 ) -> ChildSpec(msg, argument, argument) {
   ChildSpec(start: start, update_argument: fn(argument, _channel) { argument })
 }
@@ -144,7 +144,7 @@ pub fn worker(
 // TODO: document
 pub fn update_argument(
   child: ChildSpec(msg, argument_a, argument_b),
-  updater: fn(argument_a, Channel(msg)) -> argument_c,
+  updater: fn(argument_a, Sender(msg)) -> argument_c,
 ) -> ChildSpec(msg, argument_a, argument_c) {
   ChildSpec(start: child.start, update_argument: updater)
 }
@@ -174,7 +174,7 @@ fn loop(_msg: msg, starter: Starter(argument)) -> actor.Next(Starter(argument)) 
 
 pub fn start(
   start_children: fn(Children(Nil)) -> Children(a),
-) -> Result(Channel(a), StartError) {
+) -> Result(Sender(a), StartError) {
   actor.start(actor.Spec(
     init: fn() { init(start_children) },
     loop: loop,
