@@ -29,7 +29,7 @@ pub fn get_status_test() {
 
 pub fn failed_init_test() {
   actor.Spec(
-    init: fn() { Error(process.Normal) },
+    init: fn() { actor.Failed(process.Normal) },
     loop: fn(_msg, state) { Continue(state) },
     init_timeout: 10,
   )

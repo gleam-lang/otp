@@ -1,4 +1,5 @@
 import gleam/should
+import gleam/option.{None}
 import gleam/otp/supervisor.{add, update_argument, worker}
 import gleam/otp/process
 import gleam/otp/actor
@@ -6,12 +7,14 @@ import gleam/otp/actor
 pub fn supervisor_test() {
   let tuple(sender, receiver) = process.new_channel()
 
+  // Children send their name back to the test process during
+  // initialisation so that we can tell they (re)started
   let child = fn(name) {
     fn(_) {
       actor.start(actor.Spec(
         init: fn() {
           process.send(sender, tuple(name, process.self()))
-          Ok(name)
+          actor.Ready(name, None)
         },
         init_timeout: 10,
         loop: fn(_msg, state) { actor.Continue(state) },
@@ -28,16 +31,23 @@ pub fn supervisor_test() {
   |> should.be_ok
 
   // Assert children have started
-  assert Ok(tuple("1", _p)) = process.receive(receiver, 10)
+  assert Ok(tuple("1", p)) = process.receive(receiver, 10)
   assert Ok(tuple("2", _)) = process.receive(receiver, 10)
   assert Ok(tuple("3", _)) = process.receive(receiver, 10)
   assert Error(Nil) = process.receive(receiver, 10)
 
-  // // Kill first child an assert they all restart
-  // process.send_exit(p, 1)
-  // assert Ok(tuple("1", _)) = process.receive(receiver, 10)
-  // assert Ok(tuple("2", p)) = process.receive(receiver, 10)
-  // assert Ok(tuple("3", _)) = process.receive(receiver, 10)
-  // assert Error(Nil) = process.receive(receiver, 10)
-  Nil
+  // Kill first child an assert they all restart
+  process.send_exit(p, 1)
+  assert Ok(tuple("1", p1)) = process.receive(receiver, 10)
+  assert Ok(tuple("2", p2)) = process.receive(receiver, 10)
+  assert Ok(tuple("3", _)) = process.receive(receiver, 10)
+  assert Error(Nil) = process.receive(receiver, 10)
+
+  // Kill second child an assert they all restart
+  process.send_exit(p2, 1)
+  assert Ok(tuple("2", _)) = process.receive(receiver, 10)
+  assert Ok(tuple("3", _)) = process.receive(receiver, 10)
+  assert Error(Nil) = process.receive(receiver, 10)
+  process.is_alive(p1)
+  |> should.be_true
 }
