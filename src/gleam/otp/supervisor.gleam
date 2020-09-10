@@ -4,6 +4,7 @@ import gleam/dynamic
 import gleam/option.{None, Option, Some}
 import gleam/otp/process.{Pid, Sender}
 import gleam/otp/actor.{StartError}
+import gleam/io
 
 pub opaque type Children(argument) {
   Ready(Starter(argument))

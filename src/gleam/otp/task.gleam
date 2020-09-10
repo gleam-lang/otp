@@ -1,24 +1,26 @@
 // TODO: await_many
-import gleam/otp/process.{Channel, Pid, ProcessMonitor}
+import gleam/otp/process.{Pid, Receiver}
 import gleam/dynamic.{Dynamic}
 
 pub opaque type Task(value) {
-  Task(
-    owner: Pid,
-    pid: Pid,
-    await_channel: Channel(value),
-    monitor: ProcessMonitor,
-  )
+  Task(owner: Pid, pid: Pid, receiver: Receiver(Message(value)))
 }
 
 // TODO: test
 // TODO: document
 pub fn async(work: fn() -> value) -> Task(value) {
   let owner = process.self()
-  let await_channel = process.old_new_channel()
-  let pid = process.start(fn() { process.send(await_channel, work()) })
-  let mon = process.monitor_process(pid)
-  Task(owner: owner, pid: pid, await_channel: await_channel, monitor: mon)
+  let tuple(sender, receiver) = process.new_channel()
+  let pid = process.start(fn() { process.send(sender, work()) })
+  let receiver =
+    pid
+    |> process.monitor_process
+    |> process.map_receiver(Mon)
+    |> process.merge_receiver(
+      receiver
+      |> process.map_receiver(Chan),
+    )
+  Task(owner: owner, pid: pid, receiver: receiver)
 }
 
 pub type AwaitError {
@@ -40,7 +42,7 @@ fn assert_owner(task: Task(a)) -> Nil {
   }
 }
 
-type AwaitMessage(value) {
+type Message(value) {
   Mon(process.ProcessDown)
   Chan(value)
 }
@@ -49,24 +51,16 @@ type AwaitMessage(value) {
 // TODO: document
 pub fn try_await(task: Task(value), timeout: Int) -> Result(value, AwaitError) {
   assert_owner(task)
-  let result =
-    process.new_receiver()
-    |> process.include_process_monitor(task.monitor, Mon)
-    |> process.include_channel(task.await_channel, Chan)
-    |> process.set_timeout(timeout)
-    |> process.run_receiver
-  case result {
+  case process.receive(task.receiver, timeout) {
     // The task process has sent back a value
     Ok(Chan(x)) -> {
-      process.close_channel_old(task.await_channel)
-      process.demonitor_process(task.monitor)
+      process.close_channels(task.receiver)
       Ok(x)
     }
 
     // The task process crashed without sending a value
     Ok(Mon(process.ProcessDown(reason: reason, ..))) -> {
-      process.close_channel_old(task.await_channel)
-      process.demonitor_process(task.monitor)
+      process.close_channels(task.receiver)
       Error(Exit(reason))
     }
 
