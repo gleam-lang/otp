@@ -52,8 +52,11 @@ pub type Sender(msg) {
 // TODO: document
 pub external type Receiver(msg)
 
-pub external fn new_receiver(Reference) -> Receiver(msg) =
+external fn new_receiver(Reference) -> Receiver(msg) =
   "gleam_otp_external" "new_receiver"
+
+pub external fn system_receiver() -> Receiver(msg) =
+  "gleam_otp_external" "system_receiver"
 
 // TODO: document
 // TODO: test
