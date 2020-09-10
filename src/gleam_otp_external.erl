@@ -6,7 +6,7 @@
 % Receivers
 -export([new_receiver/1, flush_receiver/1, run_receiver/2, merge_receiver/2,
          run_receiver_forever/1, bare_message_receiver/0, trap_exits/0,
-         map_receiver/2]).
+         map_receiver/2, system_receiver/0]).
 
 % import Gleam records
 
@@ -14,7 +14,7 @@
 -include("gen/src/gleam@otp@process_Exit.hrl").
 % -include("gen/src/gleam@otp@process_PortDown.hrl").
 -include("gen/src/gleam@otp@process_ProcessDown.hrl").
-% -include("gen/src/gleam@otp@process_StatusInfo.hrl").
+-include("gen/src/gleam@otp@process_StatusInfo.hrl").
 
 % Guards
 
@@ -47,6 +47,9 @@ trap_exits() ->
 
 bare_message_receiver() ->
     #receiver{pid = self(), channels = #{bare => fun(M) -> M end}}.
+
+system_receiver() ->
+    #receiver{pid = self(), channels = #{system => fun(M) -> M end}}.
 
 close_channel(exit) ->
     erlang:process_flag(trap_exit, false);
@@ -114,8 +117,8 @@ run_receiver(Receiver, Timeout) ->
         {'EXIT', Pid, Reason} when is_map_key(exit, Receiving) ->
             transform_msg(Receiving, exit, #exit{pid = Pid, reason = Reason});
 
-        % {system, From, Request} when is_function(System) ->
-        %     {ok, System(system_msg(From, Request))};
+        {system, From, Request} when is_map_key(system, Receiving) ->
+            transform_msg(Receiving, system, system_msg(From, Request));
 
         Msg when (not ?is_special_msg(Msg)) andalso is_map_key(bare, Receiving) ->
             transform_msg(Receiving, bare, Msg)
@@ -173,27 +176,26 @@ map_receiver(Receiver, F2) ->
     Channels = maps:map(Wrap, Receiver#receiver.channels),
     Receiver#receiver{channels = Channels}.
 
-% system_msg({Pid, Ref}, Msg) ->
-%     Build = fun(X) -> system_reply(Msg, Ref, X) end,
-%     Kind = {system_channel, Ref, Build},
-%     Channel = #channel{pid = Pid, kind = Kind},
-%     {Msg, Channel}.
-%
-% system_reply(Msg, Ref, Reply) ->
-%     Msg1 = case Msg of
-%         resume -> ok;
-%         suspend -> ok;
-%         get_state -> Reply;
-%         get_status -> process_status(Reply)
-%     end,
-%     {Ref, Msg1}.
-%
-% process_status(Status) ->
-%     #status_info{mode = Mode, parent = Parent, debug_state = Debug,
-%                  state = State, mod = Mod} = Status,
-%     Data = [
-%         get(), Mode, Parent, Debug,
-%         [{header, "Status for Gleam actor " ++ pid_to_list(self())},
-%          {data, [{'Status', Mode}, {'Parent', Parent}, {'State', State}]}]
-%     ],
-%     {status, self(), {module, Mod}, Data}.
+system_msg({Pid, Ref}, Tag) ->
+    Prepare = fun(X) -> system_reply(Tag, Ref, X) end,
+    Sender = #sender{pid = Pid, reference = Ref, prepare = {some, Prepare}},
+    {Tag, Sender}.
+
+system_reply(Tag, Ref, Reply) ->
+    Msg = case Tag of
+        resume -> ok;
+        suspend -> ok;
+        get_state -> Reply;
+        get_status -> process_status(Reply)
+    end,
+    {Ref, Msg}.
+
+process_status(Status) ->
+    #status_info{mode = Mode, parent = Parent, debug_state = Debug,
+                 state = State, mod = Mod} = Status,
+    Data = [
+        get(), Mode, Parent, Debug,
+        [{header, "Status for Gleam process " ++ pid_to_list(self())},
+         {data, [{'Status', Mode}, {'Parent', Parent}, {'State', State}]}]
+    ],
+    {status, self(), {module, Mod}, Data}.

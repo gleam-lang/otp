@@ -1,6 +1,6 @@
 import gleam/otp/process.{
-  Abnormal, Channel, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid,
-  ProcessDown, Resume, Running, Suspend, Suspended, SystemMessage,
+  Abnormal, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid, ProcessDown,
+  Receiver, Resume, Running, Sender, Suspend, Suspended, SystemMessage,
 }
 import gleam/result
 import gleam/atom
@@ -25,7 +25,7 @@ type Self(state, msg) {
     mode: Mode,
     parent: Pid,
     state: state,
-    channel: Channel(msg),
+    receiver: Receiver(Message(msg)),
     debug_state: DebugState,
     message_handler: fn(msg, state) -> Next(state),
   )
@@ -46,40 +46,17 @@ fn exit_process(reason: ExitReason) -> ExitReason {
 }
 
 fn receive_message(self: Self(state, msg)) -> Message(msg) {
-  let receiver =
-    process.new_receiver()
-    |> process.remove_timeout
-    |> process.include_system(System)
+  let system_receiver =
+    process.system_receiver()
+    |> process.map_receiver(System)
 
   let receiver = case self.mode {
-    Running -> process.include_channel(receiver, self.channel, Message)
-    Suspended -> receiver
+    Suspended -> system_receiver
+    Running ->
+      self.receiver
+      |> process.merge_receiver(system_receiver)
   }
-  process.run_receiver_forever(receiver)
-}
-
-fn set_mode(self: Self(state, msg), mode: Mode) -> Self(state, msg) {
-  Self(
-    pid: self.pid,
-    state: self.state,
-    parent: self.parent,
-    channel: self.channel,
-    message_handler: self.message_handler,
-    debug_state: self.debug_state,
-    mode: mode,
-  )
-}
-
-fn set_state(self: Self(state, msg), state: state) -> Self(state, msg) {
-  Self(
-    pid: self.pid,
-    state: state,
-    parent: self.parent,
-    channel: self.channel,
-    message_handler: self.message_handler,
-    debug_state: self.debug_state,
-    mode: self.mode,
-  )
+  process.receive_forever(receiver)
 }
 
 fn process_status_info(self: Self(state, msg)) -> process.StatusInfo {
@@ -101,16 +78,12 @@ fn loop(self: Self(state, msg)) -> ExitReason {
 
     System(Resume(caller)) -> {
       process.send(caller, Nil)
-      self
-      |> set_mode(Running)
-      |> loop
+      loop(Self(..self, mode: Running))
     }
 
     System(Suspend(caller)) -> {
       process.send(caller, Nil)
-      self
-      |> set_mode(Suspended)
-      |> loop
+      loop(Self(..self, mode: Suspended))
     }
 
     System(GetStatus(caller)) -> {
@@ -121,7 +94,7 @@ fn loop(self: Self(state, msg)) -> ExitReason {
     Message(msg) ->
       case self.message_handler(msg, self.state) {
         Stop(reason) -> exit_process(reason)
-        Continue(state) -> loop(set_state(self, state))
+        Continue(state) -> loop(Self(..self, state: state))
       }
 
     _other -> todo("message not yet supported")
@@ -130,20 +103,21 @@ fn loop(self: Self(state, msg)) -> ExitReason {
 
 fn initialise_actor(
   spec: Spec(state, msg),
-  ack_channel: Channel(Result(Channel(msg), ExitReason)),
+  ack_channel: Sender(Result(Sender(msg), ExitReason)),
 ) {
-  let channel = process.old_new_channel()
+  let tuple(sender, receiver) = process.new_channel()
+  let receiver = process.map_receiver(receiver, Message)
   case spec.init() {
     Ok(state) -> {
       // Signal to parent that the process has initialised successfully
-      process.send(ack_channel, Ok(channel))
+      process.send(ack_channel, Ok(sender))
       // Start message receive loop
       let self =
         Self(
           pid: process.self(),
           state: state,
           parent: process.pid(ack_channel),
-          channel: channel,
+          receiver: receiver,
           message_handler: spec.loop,
           debug_state: process.debug_state([]),
           mode: Running,
@@ -164,54 +138,51 @@ pub type StartError {
 }
 
 type StartInitMessage(msg) {
-  Ack(Result(Channel(msg), ExitReason))
+  Ack(Result(Sender(msg), ExitReason))
   Mon(ProcessDown)
 }
 
 // TODO: document
 // TODO: test init_timeout. Currently if we test it eunit prints an error from
 // the process death. How do we avoid this?
-pub fn start(spec: Spec(state, msg)) -> Result(Channel(msg), StartError) {
-  let ack = process.old_new_channel()
+pub fn start(spec: Spec(state, msg)) -> Result(Sender(msg), StartError) {
+  let tuple(ack_sender, ack_receiver) = process.new_channel()
 
-  let child = process.start(fn() { initialise_actor(spec, ack) })
-  let monitor = process.monitor_process(child)
+  let child = process.start(fn() { initialise_actor(spec, ack_sender) })
 
   let receiver =
-    process.new_receiver()
-    |> process.set_timeout(spec.init_timeout)
-    |> process.include_channel(ack, Ack)
-    |> process.include_process_monitor(monitor, Mon)
+    ack_receiver
+    |> process.map_receiver(Ack)
+    |> process.merge_receiver(
+      child
+      |> process.monitor_process
+      |> process.map_receiver(Mon),
+    )
 
-  case process.run_receiver(receiver) {
+  case process.receive(receiver, spec.init_timeout) {
     // Child started OK
     Ok(Ack(Ok(channel))) -> {
-      process.close_channel_old(ack)
+      process.close_channels(receiver)
       Ok(channel)
     }
 
     // Child initialiser returned an error
     Ok(Ack(Error(reason))) -> {
-      process.close_channel_old(ack)
+      process.close_channels(receiver)
       Error(InitFailed(reason))
     }
 
     // Child went down while initialising
     Ok(Mon(down)) -> {
-      process.demonitor_process(monitor)
-      process.close_channel_old(ack)
+      process.close_channels(receiver)
       Error(InitCrashed(down.reason))
     }
 
     // Child did not finish initialising in time
     Error(Nil) -> {
-      process.demonitor_process(monitor)
       process.kill(child)
-      process.close_channel_old(ack)
-      // Flush exit messages as we may be trapping exits
-      process.new_receiver()
-      |> process.include_process_exit(child, fn(x) { x })
-      |> process.flush_receiver
+      process.close_channels(receiver)
+      // TODO: Flush exit messages as we may be trapping exits
       Error(InitTimeout)
     }
   }
@@ -221,22 +192,22 @@ pub fn start(spec: Spec(state, msg)) -> Result(Channel(msg), StartError) {
 pub fn new(
   state: state,
   loop: fn(msg, state) -> Next(state),
-) -> Result(Channel(msg), StartError) {
+) -> Result(Sender(msg), StartError) {
   start(Spec(init: fn() { Ok(state) }, loop: loop, init_timeout: 5000))
 }
 
 // TODO: document
 // TODO: test
 // TODO: document
-pub fn send(channel: Channel(msg), msg: msg) -> Channel(msg) {
+pub fn send(channel: Sender(msg), msg: msg) -> Sender(msg) {
   process.send(channel, msg)
 }
 
 // TODO: document
 // TODO: test
 pub fn call(
-  receiver: Channel(message),
-  make_message: fn(Channel(reply)) -> message,
+  receiver: Sender(message),
+  make_message: fn(Sender(reply)) -> message,
   timeout: Int,
 ) -> reply {
   process.call(receiver, make_message, timeout)
