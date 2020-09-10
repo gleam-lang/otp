@@ -1,31 +1,43 @@
 import gleam/should
 import gleam/otp/supervisor.{add, update_argument, worker}
-import gleam/otp/process.{Sender}
-import gleam/otp/actor.{StartError}
-
-// Testing
-pub fn start_child1(x: Nil) -> Result(Sender(msg), StartError) {
-  actor.new(x, fn(_msg, state) { actor.Continue(state) })
-}
-
-pub fn start_child2(x: Sender(msg)) -> Result(Sender(msg), StartError) {
-  actor.new(x, fn(_msg, state) { actor.Continue(state) })
-}
-
-pub fn start_child3(x: Sender(msg)) -> Result(Sender(msg), StartError) {
-  actor.new(x, fn(_msg, state) { actor.Continue(state) })
-}
+import gleam/otp/process
+import gleam/otp/actor
 
 pub fn supervisor_test() {
-  fn(children) {
-    children
-    |> add(
-      worker(start_child1)
-      |> update_argument(fn(_arg, channel) { channel }),
-    )
-    |> add(worker(start_child2))
-    |> add(worker(start_child3))
+  let tuple(sender, receiver) = process.new_channel()
+
+  let child = fn(name) {
+    fn(_) {
+      actor.start(actor.Spec(
+        init: fn() {
+          process.send(sender, tuple(name, process.self()))
+          Ok(name)
+        },
+        init_timeout: 10,
+        loop: fn(_msg, state) { actor.Continue(state) },
+      ))
+    }
   }
-  |> supervisor.start
+
+  supervisor.start(fn(children) {
+    children
+    |> add(worker(child("1")))
+    |> add(worker(child("2")))
+    |> add(worker(child("3")))
+  })
   |> should.be_ok
+
+  // Assert children have started
+  assert Ok(tuple("1", _p)) = process.receive(receiver, 10)
+  assert Ok(tuple("2", _)) = process.receive(receiver, 10)
+  assert Ok(tuple("3", _)) = process.receive(receiver, 10)
+  assert Error(Nil) = process.receive(receiver, 10)
+
+  // // Kill first child an assert they all restart
+  // process.send_exit(p, 1)
+  // assert Ok(tuple("1", _)) = process.receive(receiver, 10)
+  // assert Ok(tuple("2", p)) = process.receive(receiver, 10)
+  // assert Ok(tuple("3", _)) = process.receive(receiver, 10)
+  // assert Error(Nil) = process.receive(receiver, 10)
+  Nil
 }
