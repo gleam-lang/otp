@@ -1,9 +1,13 @@
 // TODO: test
+// TODO: allow the IntensityTracker limit and period to be configured
 import gleam/list
+import gleam/pair
+import gleam/result
 import gleam/dynamic
 import gleam/option.{None, Option, Some}
 import gleam/otp/process.{Pid, Sender}
 import gleam/otp/actor.{StartError}
+import gleam/otp/intensity_tracker.{IntensityTracker}
 import gleam/io
 
 pub opaque type Children(argument) {
@@ -27,10 +31,14 @@ type Instruction {
   StartFrom(Pid)
 }
 
+type State(a) {
+  State(restarts: IntensityTracker, starter: Starter(a))
+}
+
 type Starter(argument) {
   Starter(
     argument: argument,
-    run: Option(
+    starter: Option(
       fn(Instruction) ->
         Result(tuple(Starter(argument), Instruction), StartError),
     ),
@@ -84,42 +92,42 @@ fn perform_instruction_for_child(
 }
 
 fn add_child_to_starter(
-  starter: Starter(argument_in),
+  state: Starter(argument_in),
   child_spec: ChildSpec(msg, argument_in, argument_out),
   child: Child(argument_out),
 ) -> Starter(argument_out) {
-  let run = fn(instruction) {
+  let starter = fn(instruction) {
     // Restart the older children. We use `try` to return early if the older
     // children failed to start
-    try tuple(starter, instruction) = case starter.run {
-      Some(run) -> run(instruction)
-      None -> Ok(tuple(starter, instruction))
+    try tuple(state, instruction) = case state.starter {
+      Some(starter) -> starter(instruction)
+      None -> Ok(tuple(state, instruction))
     }
 
     // Perform the instruction, restarting the child as required
     try tuple(child, instruction) =
       perform_instruction_for_child(
-        starter.argument,
+        state.argument,
         instruction,
         child_spec,
         child,
       )
 
     // Create a new starter for the next time the supervisor needs to restart
-    let starter = add_child_to_starter(starter, child_spec, child)
+    let state = add_child_to_starter(state, child_spec, child)
 
-    Ok(tuple(starter, instruction))
+    Ok(tuple(state, instruction))
   }
 
-  Starter(run: Some(run), argument: child.argument)
+  Starter(starter: Some(starter), argument: child.argument)
 }
 
 fn start_and_add_child(
-  starter: Starter(argument_0),
+  state: Starter(argument_0),
   child_spec: ChildSpec(msg, argument_0, argument_1),
 ) -> Children(argument_1) {
-  case start_child(child_spec, starter.argument) {
-    Ok(child) -> Ready(add_child_to_starter(starter, child_spec, child))
+  case start_child(child_spec, state.argument) {
+    Ok(child) -> Ready(add_child_to_starter(state, child_spec, child))
     Error(reason) -> Failed(reason)
   }
 }
@@ -133,7 +141,7 @@ pub fn add(
     Failed(fail) -> Failed(fail)
 
     // If everything is OK so far then we can add the child
-    Ready(starter) -> start_and_add_child(starter, child_spec)
+    Ready(state) -> start_and_add_child(state, child_spec)
   }
 }
 
@@ -156,7 +164,7 @@ pub fn update_argument(
 
 fn init(
   start_children: fn(Children(Nil)) -> Children(a),
-) -> actor.InitResult(Starter(a), Message) {
+) -> actor.InitResult(State(a), Message) {
   // Trap exits so that we get a message when a child crashes
   let receiver =
     process.trap_exits()
@@ -165,13 +173,17 @@ fn init(
 
   // Start any children
   let result =
-    Starter(argument: Nil, run: None)
+    Starter(argument: Nil, starter: None)
     |> Ready
     |> start_children
 
   // Pass back up the result
   case result {
-    Ready(starter) -> actor.Ready(starter, receiver)
+    Ready(starter) -> {
+      let restarts = intensity_tracker.new(limit: 5, period: 1)
+      let state = State(starter: starter, restarts: restarts)
+      actor.Ready(state, receiver)
+    }
     Failed(reason) -> {
       // TODO: refine error type
       let reason = process.Abnormal(dynamic.from(reason))
@@ -181,16 +193,42 @@ fn init(
   }
 }
 
-fn loop(
-  message: Message,
-  starter: Starter(argument),
-) -> actor.Next(Starter(argument)) {
-  case message, starter.run {
-    Exit(process.Exit(pid: pid, ..)), Some(starter) ->
-      case starter(StartFrom(pid)) {
-        Ok(tuple(starter, _)) -> actor.Continue(starter)
-        Error(e) -> actor.Stop(process.Abnormal(dynamic.from(e)))
-      }
+type HandleExitError {
+  RestartFailed(restarts: IntensityTracker)
+  TooManyRestarts
+}
+
+fn handle_exit(pid: process.Pid, state: State(a)) -> actor.Next(State(a)) {
+  let outcome = {
+    // If we are handling an exit then we must have some children
+    assert Some(starter) = state.starter.starter
+
+    // Check to see if there has been too many restarts in this period
+    try restarts =
+      state.restarts
+      |> intensity_tracker.add_event
+      |> result.map_error(fn(_) { TooManyRestarts })
+
+    // Restart the exited child and any following children
+    try tuple(starter, _) =
+      starter(StartFrom(pid))
+      |> result.map_error(fn(_) { RestartFailed(restarts) })
+
+    Ok(State(starter: starter, restarts: restarts))
+  }
+
+  case outcome {
+    Ok(state) -> actor.Continue(state)
+    Error(RestartFailed(_restarts)) ->
+      todo("Asynchrously enqueue another attempt to restart")
+    Error(TooManyRestarts) ->
+      actor.Stop(process.Abnormal(dynamic.from(TooManyRestarts)))
+  }
+}
+
+fn loop(message: Message, state: State(argument)) -> actor.Next(State(argument)) {
+  case message {
+    Exit(process.Exit(pid: pid, ..)) -> handle_exit(pid, state)
   }
 }
 
