@@ -38,7 +38,7 @@ type State(a) {
 type Starter(argument) {
   Starter(
     argument: argument,
-    starter: Option(
+    exec: Option(
       fn(Instruction) ->
         Result(tuple(Starter(argument), Instruction), StartError),
     ),
@@ -92,34 +92,34 @@ fn perform_instruction_for_child(
 }
 
 fn add_child_to_starter(
-  state: Starter(argument_in),
+  starter: Starter(argument_in),
   child_spec: ChildSpec(msg, argument_in, argument_out),
   child: Child(argument_out),
 ) -> Starter(argument_out) {
   let starter = fn(instruction) {
     // Restart the older children. We use `try` to return early if the older
     // children failed to start
-    try tuple(state, instruction) = case state.starter {
-      Some(starter) -> starter(instruction)
-      None -> Ok(tuple(state, instruction))
+    try tuple(starter, instruction) = case starter.exec {
+      Some(start) -> start(instruction)
+      None -> Ok(tuple(starter, instruction))
     }
 
     // Perform the instruction, restarting the child as required
     try tuple(child, instruction) =
       perform_instruction_for_child(
-        state.argument,
+        starter.argument,
         instruction,
         child_spec,
         child,
       )
 
     // Create a new starter for the next time the supervisor needs to restart
-    let state = add_child_to_starter(state, child_spec, child)
+    let starter = add_child_to_starter(starter, child_spec, child)
 
-    Ok(tuple(state, instruction))
+    Ok(tuple(starter, instruction))
   }
 
-  Starter(starter: Some(starter), argument: child.argument)
+  Starter(exec: Some(starter), argument: child.argument)
 }
 
 fn start_and_add_child(
@@ -173,7 +173,7 @@ fn init(
 
   // Start any children
   let result =
-    Starter(argument: Nil, starter: None)
+    Starter(argument: Nil, exec: None)
     |> Ready
     |> start_children
 
@@ -201,7 +201,7 @@ type HandleExitError {
 fn handle_exit(pid: process.Pid, state: State(a)) -> actor.Next(State(a)) {
   let outcome = {
     // If we are handling an exit then we must have some children
-    assert Some(starter) = state.starter.starter
+    assert Some(start) = state.starter.exec
 
     // Check to see if there has been too many restarts in this period
     try restarts =
@@ -211,7 +211,7 @@ fn handle_exit(pid: process.Pid, state: State(a)) -> actor.Next(State(a)) {
 
     // Restart the exited child and any following children
     try tuple(starter, _) =
-      starter(StartFrom(pid))
+      start(StartFrom(pid))
       |> result.map_error(fn(_) { RestartFailed(restarts) })
 
     Ok(State(starter: starter, restarts: restarts))
