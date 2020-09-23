@@ -12,7 +12,7 @@ import gleam/io
 
 pub opaque type Children(argument) {
   Ready(Starter(argument))
-  Failed(StartError)
+  Failed(ChildStartError)
 }
 
 pub opaque type ChildSpec(msg, argument_in, argument_out) {
@@ -22,8 +22,13 @@ pub opaque type ChildSpec(msg, argument_in, argument_out) {
   )
 }
 
+type ChildStartError {
+  ChildStartError(previous_pid: Option(Pid), error: StartError)
+}
+
 pub opaque type Message {
   Exit(process.Exit)
+  RetryRestart(process.Pid)
 }
 
 type Instruction {
@@ -32,7 +37,11 @@ type Instruction {
 }
 
 type State(a) {
-  State(restarts: IntensityTracker, starter: Starter(a))
+  State(
+    restarts: IntensityTracker,
+    starter: Starter(a),
+    retry_restart_channel: process.Sender(process.Pid),
+  )
 }
 
 type Starter(argument) {
@@ -40,7 +49,7 @@ type Starter(argument) {
     argument: argument,
     exec: Option(
       fn(Instruction) ->
-        Result(tuple(Starter(argument), Instruction), StartError),
+        Result(tuple(Starter(argument), Instruction), ChildStartError),
     ),
   )
 }
@@ -52,8 +61,10 @@ type Child(argument) {
 fn start_child(
   child_spec: ChildSpec(msg, argument_in, argument_out),
   argument: argument_in,
-) -> Result(Child(argument_out), StartError) {
-  try channel = child_spec.start(argument)
+) -> Result(Child(argument_out), ChildStartError) {
+  try channel =
+    child_spec.start(argument)
+    |> result.map_error(ChildStartError(None, _))
 
   Ok(Child(
     pid: process.pid(channel),
@@ -74,7 +85,7 @@ fn perform_instruction_for_child(
   instruction: Instruction,
   child_spec: ChildSpec(msg, argument_in, argument_out),
   child: Child(argument_out),
-) -> Result(tuple(Child(argument_out), Instruction), StartError) {
+) -> Result(tuple(Child(argument_out), Instruction), ChildStartError) {
   let current = child.pid
   case instruction {
     // This child is older than the StartFrom target, we don't need to
@@ -165,11 +176,20 @@ pub fn update_argument(
 fn init(
   start_children: fn(Children(Nil)) -> Children(a),
 ) -> actor.InitResult(State(a), Message) {
+  // Create a channel so that we can asynchronously retry restarting when we
+  // fail to bring an exited child
+  let tuple(retry_sender, retry_receiver) = process.new_channel()
+  let retry_receiver = process.map_receiver(retry_receiver, RetryRestart)
+
   // Trap exits so that we get a message when a child crashes
-  let receiver =
+  let exit_receiver =
     process.trap_exits()
     |> process.map_receiver(Exit)
-    |> option.Some
+
+  // Combine receivers
+  let receiver =
+    exit_receiver
+    |> process.merge_receiver(retry_receiver)
 
   // Start any children
   let result =
@@ -181,8 +201,13 @@ fn init(
   case result {
     Ready(starter) -> {
       let restarts = intensity_tracker.new(limit: 5, period: 1)
-      let state = State(starter: starter, restarts: restarts)
-      actor.Ready(state, receiver)
+      let state =
+        State(
+          starter: starter,
+          restarts: restarts,
+          retry_restart_channel: retry_sender,
+        )
+      actor.Ready(state, Some(receiver))
     }
     Failed(reason) -> {
       // TODO: refine error type
@@ -194,7 +219,7 @@ fn init(
 }
 
 type HandleExitError {
-  RestartFailed(restarts: IntensityTracker)
+  RestartFailed(pid: Pid, restarts: IntensityTracker)
   TooManyRestarts
 }
 
@@ -212,15 +237,23 @@ fn handle_exit(pid: process.Pid, state: State(a)) -> actor.Next(State(a)) {
     // Restart the exited child and any following children
     try tuple(starter, _) =
       start(StartFrom(pid))
-      |> result.map_error(fn(_) { RestartFailed(restarts) })
+      |> result.map_error(fn(e: ChildStartError) {
+        RestartFailed(option.unwrap(e.previous_pid, pid), restarts)
+      })
 
-    Ok(State(starter: starter, restarts: restarts))
+    Ok(State(..state, starter: starter, restarts: restarts))
   }
 
   case outcome {
     Ok(state) -> actor.Continue(state)
-    Error(RestartFailed(_restarts)) ->
-      todo("Asynchrously enqueue another attempt to restart")
+    Error(RestartFailed(failed_child, restarts)) -> {
+      // Asynchronously enqueue the restarting of this child again as we were
+      // unable to restart them this time. We do this asynchronously as we want
+      // to have a chance to handle any system messages that have come in.
+      process.send(state.retry_restart_channel, failed_child)
+      let state = State(..state, restarts: restarts)
+      actor.Continue(state)
+    }
     Error(TooManyRestarts) ->
       actor.Stop(process.Abnormal(dynamic.from(TooManyRestarts)))
   }
@@ -228,7 +261,8 @@ fn handle_exit(pid: process.Pid, state: State(a)) -> actor.Next(State(a)) {
 
 fn loop(message: Message, state: State(argument)) -> actor.Next(State(argument)) {
   case message {
-    Exit(process.Exit(pid: pid, ..)) -> handle_exit(pid, state)
+    Exit(process.Exit(pid: pid, ..)) | RetryRestart(pid) ->
+      handle_exit(pid, state)
   }
 }
 
