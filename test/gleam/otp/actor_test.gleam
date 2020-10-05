@@ -7,7 +7,7 @@ import gleam/result
 
 pub fn get_state_test() {
   assert Ok(channel) =
-    actor.new("Test state", fn(_msg, state) { Continue(state) })
+    actor.start("Test state", fn(_msg, state) { Continue(state) })
 
   channel
   |> process.pid
@@ -19,7 +19,7 @@ external fn get_status(Pid) -> Dynamic =
   "sys" "get_status"
 
 pub fn get_status_test() {
-  assert Ok(channel) = actor.new(Nil, fn(_msg, state) { Continue(state) })
+  assert Ok(channel) = actor.start(Nil, fn(_msg, state) { Continue(state) })
 
   channel
   |> process.pid
@@ -33,13 +33,13 @@ pub fn failed_init_test() {
     loop: fn(_msg, state) { Continue(state) },
     init_timeout: 10,
   )
-  |> actor.start
+  |> actor.start_spec
   |> result.is_error
   |> should.be_true
 }
 
 pub fn suspend_resume_test() {
-  assert Ok(channel) = actor.new(0, fn(_msg, iter) { Continue(iter + 1) })
+  assert Ok(channel) = actor.start(0, fn(_msg, iter) { Continue(iter + 1) })
 
   // Suspend process
   channel
@@ -70,7 +70,7 @@ pub fn suspend_resume_test() {
 }
 
 pub fn channel_test() {
-  assert Ok(channel) = actor.new("state 1", fn(msg, _state) { Continue(msg) })
+  assert Ok(channel) = actor.start("state 1", fn(msg, _state) { Continue(msg) })
 
   channel
   |> process.pid
