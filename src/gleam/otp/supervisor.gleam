@@ -1,5 +1,4 @@
 // TODO: test
-// TODO: allow the IntensityTracker limit and period to be configured
 import gleam/list
 import gleam/pair
 import gleam/result
@@ -209,7 +208,11 @@ fn init(
   // Pass back up the result
   case result {
     Ready(starter) -> {
-      let restarts = intensity_tracker.new(limit: 5, period: 1)
+      let restarts =
+        intensity_tracker.new(
+          limit: spec.max_frequency,
+          period: spec.frequency_period,
+        )
       let state =
         State(
           starter: starter,
@@ -221,7 +224,6 @@ fn init(
     Failed(reason) -> {
       // TODO: refine error type
       let reason = process.Abnormal(dynamic.from(reason))
-      // TODO: try to start them again
       actor.Failed(reason)
     }
   }
