@@ -28,10 +28,10 @@ pub opaque type Children(argument) {
 }
 
 // TODO: document
-pub opaque type ChildSpec(msg, argument_in, argument_out) {
+pub opaque type ChildSpec(msg, argment, returning) {
   ChildSpec(
-    start: fn(argument_in) -> Result(Sender(msg), StartError),
-    returning: fn(argument_in, Sender(msg)) -> argument_out,
+    start: fn(argment) -> Result(Sender(msg), StartError),
+    returning: fn(argment, Sender(msg)) -> returning,
   )
 }
 
@@ -39,7 +39,6 @@ type ChildStartError {
   ChildStartError(previous_pid: Option(Pid), error: StartError)
 }
 
-// TODO: document
 pub opaque type Message {
   Exit(process.Exit)
   RetryRestart(process.Pid)
