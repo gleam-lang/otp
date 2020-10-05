@@ -11,7 +11,7 @@ pub fn supervisor_test() {
   // initialisation so that we can tell they (re)started
   let child = fn(name) {
     fn(_) {
-      actor.start(actor.Spec(
+      actor.start_spec(actor.Spec(
         init: fn() {
           process.send(sender, tuple(name, process.self()))
           actor.Ready(name, None)

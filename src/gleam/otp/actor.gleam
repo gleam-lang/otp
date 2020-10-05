@@ -160,7 +160,7 @@ type StartInitMessage(msg) {
 // TODO: document
 // TODO: test init_timeout. Currently if we test it eunit prints an error from
 // the process death. How do we avoid this?
-pub fn start(spec: Spec(state, msg)) -> Result(Sender(msg), StartError) {
+pub fn start_spec(spec: Spec(state, msg)) -> Result(Sender(msg), StartError) {
   let tuple(ack_sender, ack_receiver) = process.new_channel()
 
   let child = process.start(fn() { initialise_actor(spec, ack_sender) })
@@ -204,11 +204,11 @@ pub fn start(spec: Spec(state, msg)) -> Result(Sender(msg), StartError) {
 }
 
 // TODO: document
-pub fn new(
+pub fn start(
   state: state,
   loop: fn(msg, state) -> Next(state),
 ) -> Result(Sender(msg), StartError) {
-  start(Spec(
+  start_spec(Spec(
     init: fn() { Ready(state, option.None) },
     loop: loop,
     init_timeout: 5000,

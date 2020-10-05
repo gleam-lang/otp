@@ -276,7 +276,7 @@ fn loop(message: Message, state: State(argument)) -> actor.Next(State(argument))
 }
 
 pub fn start_spec(spec: Spec(a, b)) -> Result(Sender(Message), StartError) {
-  actor.start(actor.Spec(
+  actor.start_spec(actor.Spec(
     init: fn() { init(spec) },
     loop: loop,
     init_timeout: 60_000,
