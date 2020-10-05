@@ -9,8 +9,8 @@ pub fn supervisor_test() {
 
   // Children send their name back to the test process during
   // initialisation so that we can tell they (re)started
-  let child = fn(name) {
-    fn(_) {
+  let child =
+    worker(fn(name) {
       actor.start_spec(actor.Spec(
         init: fn() {
           process.send(sender, tuple(name, process.self()))
@@ -19,34 +19,43 @@ pub fn supervisor_test() {
         init_timeout: 10,
         loop: fn(_msg, state) { actor.Continue(state) },
       ))
-    }
-  }
+    })
 
-  supervisor.start(fn(children) {
-    children
-    |> add(worker(child("1")))
-    |> add(worker(child("2")))
-    |> add(worker(child("3")))
-  })
+  // Each child returns the next name, which is their name + 1
+  let child =
+    child
+    |> returning(fn(name, _sender) { name + 1 })
+
+  supervisor.start_spec(supervisor.Spec(
+    argument: 1,
+    frequency_period: 1,
+    max_frequency: 5,
+    init: fn(children) {
+      children
+      |> add(child)
+      |> add(child)
+      |> add(child)
+    },
+  ))
   |> should.be_ok
 
   // Assert children have started
-  assert Ok(tuple("1", p)) = process.receive(receiver, 10)
-  assert Ok(tuple("2", _)) = process.receive(receiver, 10)
-  assert Ok(tuple("3", _)) = process.receive(receiver, 10)
+  assert Ok(tuple(1, p)) = process.receive(receiver, 10)
+  assert Ok(tuple(2, _)) = process.receive(receiver, 10)
+  assert Ok(tuple(3, _)) = process.receive(receiver, 10)
   assert Error(Nil) = process.receive(receiver, 10)
 
   // Kill first child an assert they all restart
   process.send_exit(p, 1)
-  assert Ok(tuple("1", p1)) = process.receive(receiver, 10)
-  assert Ok(tuple("2", p2)) = process.receive(receiver, 10)
-  assert Ok(tuple("3", _)) = process.receive(receiver, 10)
+  assert Ok(tuple(1, p1)) = process.receive(receiver, 10)
+  assert Ok(tuple(2, p2)) = process.receive(receiver, 10)
+  assert Ok(tuple(3, _)) = process.receive(receiver, 10)
   assert Error(Nil) = process.receive(receiver, 10)
 
   // Kill second child an assert they all restart
   process.send_exit(p2, 1)
-  assert Ok(tuple("2", _)) = process.receive(receiver, 10)
-  assert Ok(tuple("3", _)) = process.receive(receiver, 10)
+  assert Ok(tuple(2, _)) = process.receive(receiver, 10)
+  assert Ok(tuple(3, _)) = process.receive(receiver, 10)
   assert Error(Nil) = process.receive(receiver, 10)
   process.is_alive(p1)
   |> should.be_true
