@@ -1,4 +1,5 @@
 // TODO: test
+// TODO: specify amount of time permitted for shut-down
 import gleam/list
 import gleam/pair
 import gleam/result
@@ -8,7 +9,9 @@ import gleam/otp/process.{Pid, Sender}
 import gleam/otp/actor.{StartError}
 import gleam/otp/intensity_tracker.{IntensityTracker}
 import gleam/io
+import gleam/otp/node.{Node}
 
+// TODO: document
 pub type Spec(argument, return) {
   Spec(
     argument: argument,
@@ -18,11 +21,13 @@ pub type Spec(argument, return) {
   )
 }
 
+// TODO: document
 pub opaque type Children(argument) {
   Ready(Starter(argument))
   Failed(ChildStartError)
 }
 
+// TODO: document
 pub opaque type ChildSpec(msg, argument_in, argument_out) {
   ChildSpec(
     start: fn(argument_in) -> Result(Sender(msg), StartError),
@@ -34,6 +39,7 @@ type ChildStartError {
   ChildStartError(previous_pid: Option(Pid), error: StartError)
 }
 
+// TODO: document
 pub opaque type Message {
   Exit(process.Exit)
   RetryRestart(process.Pid)
@@ -151,6 +157,7 @@ fn start_and_add_child(
   }
 }
 
+// TODO: document
 pub fn add(
   children: Children(argument),
   child_spec: ChildSpec(msg, argument, new_argument),
@@ -277,6 +284,7 @@ fn loop(message: Message, state: State(argument)) -> actor.Next(State(argument))
   }
 }
 
+// TODO: document
 pub fn start_spec(spec: Spec(a, b)) -> Result(Sender(Message), StartError) {
   actor.start_spec(actor.Spec(
     init: fn() { init(spec) },
@@ -285,6 +293,7 @@ pub fn start_spec(spec: Spec(a, b)) -> Result(Sender(Message), StartError) {
   ))
 }
 
+// TODO: document
 pub fn start(
   init: fn(Children(Nil)) -> Children(a),
 ) -> Result(Sender(Message), StartError) {
@@ -294,4 +303,11 @@ pub fn start(
     max_frequency: 5,
     frequency_period: 1,
   ))
+}
+
+// TODO: document
+pub type ApplicationStartMode {
+  Normal
+  Takeover(Node)
+  Failover(Node)
 }
