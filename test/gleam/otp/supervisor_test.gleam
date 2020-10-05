@@ -1,6 +1,6 @@
 import gleam/should
 import gleam/option.{None}
-import gleam/otp/supervisor.{add, update_argument, worker}
+import gleam/otp/supervisor.{add, returning, worker}
 import gleam/otp/process
 import gleam/otp/actor
 

@@ -10,6 +10,15 @@ import gleam/otp/actor.{StartError}
 import gleam/otp/intensity_tracker.{IntensityTracker}
 import gleam/io
 
+pub type Spec(argument, return) {
+  Spec(
+    argument: argument,
+    max_frequency: Int,
+    frequency_period: Int,
+    init: fn(Children(argument)) -> Children(return),
+  )
+}
+
 pub opaque type Children(argument) {
   Ready(Starter(argument))
   Failed(ChildStartError)
@@ -18,7 +27,7 @@ pub opaque type Children(argument) {
 pub opaque type ChildSpec(msg, argument_in, argument_out) {
   ChildSpec(
     start: fn(argument_in) -> Result(Sender(msg), StartError),
-    update_argument: fn(argument_in, Sender(msg)) -> argument_out,
+    returning: fn(argument_in, Sender(msg)) -> argument_out,
   )
 }
 
@@ -70,7 +79,7 @@ fn start_child(
     pid: process.pid(channel),
     // Merge the new child's pid into the argument to produce the new argument
     // used to start any remaining children.
-    argument: child_spec.update_argument(argument, channel),
+    argument: child_spec.returning(argument, channel),
   ))
 }
 
@@ -161,21 +170,21 @@ pub fn add(
 pub fn worker(
   start: fn(argument) -> Result(Sender(msg), StartError),
 ) -> ChildSpec(msg, argument, argument) {
-  ChildSpec(start: start, update_argument: fn(argument, _channel) { argument })
+  ChildSpec(start: start, returning: fn(argument, _channel) { argument })
 }
 
 // TODO: test
 // TODO: document
-pub fn update_argument(
+pub fn returning(
   child: ChildSpec(msg, argument_a, argument_b),
   updater: fn(argument_a, Sender(msg)) -> argument_c,
 ) -> ChildSpec(msg, argument_a, argument_c) {
-  ChildSpec(start: child.start, update_argument: updater)
+  ChildSpec(start: child.start, returning: updater)
 }
 
 fn init(
-  start_children: fn(Children(Nil)) -> Children(a),
-) -> actor.InitResult(State(a), Message) {
+  spec: Spec(argument, return),
+) -> actor.InitResult(State(return), Message) {
   // Create a channel so that we can asynchronously retry restarting when we
   // fail to bring an exited child
   let tuple(retry_sender, retry_receiver) = process.new_channel()
@@ -193,9 +202,9 @@ fn init(
 
   // Start any children
   let result =
-    Starter(argument: Nil, exec: None)
+    Starter(argument: spec.argument, exec: None)
     |> Ready
-    |> start_children
+    |> spec.init
 
   // Pass back up the result
   case result {
@@ -266,12 +275,21 @@ fn loop(message: Message, state: State(argument)) -> actor.Next(State(argument))
   }
 }
 
-pub fn start(
-  start_children: fn(Children(Nil)) -> Children(a),
-) -> Result(Sender(Message), StartError) {
+pub fn start_spec(spec: Spec(a, b)) -> Result(Sender(Message), StartError) {
   actor.start(actor.Spec(
-    init: fn() { init(start_children) },
+    init: fn() { init(spec) },
     loop: loop,
     init_timeout: 60_000,
+  ))
+}
+
+pub fn start(
+  init: fn(Children(Nil)) -> Children(a),
+) -> Result(Sender(Message), StartError) {
+  start_spec(Spec(
+    init: init,
+    argument: Nil,
+    max_frequency: 5,
+    frequency_period: 1,
   ))
 }
