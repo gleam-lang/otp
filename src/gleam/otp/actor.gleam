@@ -16,11 +16,13 @@ type Message(message) {
   System(SystemMessage)
 }
 
+// TODO: document
 pub type Next(state) {
   Continue(state)
   Stop(ExitReason)
 }
 
+// TODO: document
 pub type InitResult(state, message) {
   Ready(state: state, receiver: Option(Receiver(message)))
   Failed(ExitReason)
@@ -38,10 +40,19 @@ type Self(state, msg) {
   )
 }
 
+/// This data structure holds all the values required by the `start_spec`
+/// function in order to create an actor.
+///
+/// If you do not need to configure the initialisation behaviour of your actor
+/// consider using the `start` function.
+///
 pub type Spec(state, msg) {
   Spec(
+    // TODO: document
     init: fn() -> InitResult(state, msg),
+    // TODO: document
     loop: fn(msg, state) -> Next(state),
+    // TODO: document
     init_timeout: Int,
   )
 }
@@ -139,6 +150,7 @@ fn initialise_actor(
         )
       loop(self)
     }
+
     Failed(reason) -> {
       process.send(ack_channel, Error(reason))
       exit_process(reason)
@@ -160,6 +172,14 @@ type StartInitMessage(msg) {
 // TODO: document
 // TODO: test init_timeout. Currently if we test it eunit prints an error from
 // the process death. How do we avoid this?
+//
+/// Start an actor from a given specification. If the actor's `init` function
+/// returns an error or does not return within `init_timeout` then an error is
+/// returned.
+///
+/// If you do not need to specify the initialisation behaviour of your actor
+/// consider using the `start` function.
+///
 pub fn start_spec(spec: Spec(state, msg)) -> Result(Sender(msg), StartError) {
   let tuple(ack_sender, ack_receiver) = process.new_channel()
 
@@ -203,7 +223,16 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Sender(msg), StartError) {
   }
 }
 
-// TODO: document
+/// Start an actor with a given initial state and message handling loop
+/// function.
+///
+/// This function returns a `Result` but it will always be `Ok` so it is safe
+/// to use with `assert` if you are not starting this actor as part of a
+/// supervision tree.
+///
+/// If you wish to configure the initialisation behaviour of a new actor see
+/// the `Spec` record and the `start_spec` function.
+///
 pub fn start(
   state: state,
   loop: fn(msg, state) -> Next(state),
@@ -215,15 +244,24 @@ pub fn start(
   ))
 }
 
-// TODO: document
-// TODO: test
-// TODO: document
+/// Send a message over a given channel.
+///
+/// This is a re-export of `process.send`, for the sake of convenience.
+///
 pub fn send(channel: Sender(msg), msg: msg) -> Sender(msg) {
   process.send(channel, msg)
 }
 
-// TODO: document
 // TODO: test
+/// Send a synchronous message and wait for a response from the receiving
+/// process.
+///
+/// If a reply is not received within the given timeout then the sender process
+/// crashes. If you wish receive a `Result` rather than crashing see the
+/// `process.try_call` function.
+///
+/// This is a re-export of `process.call`, for the sake of convenience.
+///
 pub fn call(
   receiver: Sender(message),
   make_message: fn(Sender(reply)) -> message,
