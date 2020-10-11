@@ -33,33 +33,63 @@ pub external type Pid
 pub external fn untyped_send(to: Pid, msg: msg) -> msg =
   "erlang" "send"
 
-// TODO: document
+/// A reference is a special value where each new one is unique. For more
+/// information references see the [Erlang documentation][1].
+///
+/// [1]: https://erlang.org/doc/efficiency_guide/advanced.html#unique_references
+///
 pub external type Reference
 
-// TODO: document
+/// Create a new reference. The reference is unique among the currently
+/// connected nodes in the Erlang cluster.
+///
 pub external fn new_reference() -> Reference =
   "erlang" "make_ref"
 
-// TODO: document
+/// Get the Pid of the process that calls the function.
+///
 pub external fn self() -> Pid =
   "erlang" "self"
 
-// TODO: document
+/// A sender is one end of a channel, it allows one or more processes to send
+/// data to the process that owns the channel.
+///
+/// See the `send` function for sending of values using a sender, and
+/// `new_channel` for creation of a sender.
+///
 pub type Sender(msg) {
   Sender(pid: Pid, reference: Reference, prepare: Option(fn(msg) -> Dynamic))
 }
 
-// TODO: document
+/// A receiver is one end of a channel, it allows the owning process to receive
+/// data sent over the channel via the corresponding sender.
+///
+/// See the `receive` for receiving values, the `map_receiver` and
+/// `merge_receiver` functions for combining receivers, and `new_channel` for
+/// creation of a receiver.
+///
 pub external type Receiver(msg)
 
 external fn new_receiver(Reference) -> Receiver(msg) =
   "gleam_otp_external" "new_receiver"
 
-pub external fn system_receiver() -> Receiver(msg) =
+/// Create a receiver for any system messages sent to the current process.
+///
+/// If you are using a higher level abstraction such as `gleam/actor` system
+/// messages will be handled automatically for you and this function should not
+/// be used. If you are using long lived processes without using a higher level
+/// abstraction you will need to handle system messages manually.
+///
+pub external fn system_receiver() -> Receiver(SystemMessage) =
   "gleam_otp_external" "system_receiver"
 
-// TODO: document
-// TODO: test
+/// Create a new channel for processes to communicate over, returning a sender
+/// and a receiver.
+///
+/// The Receiver is owned by the process that calls this function and must not
+/// be sent to another process. Any process that attempts to receive on a
+/// receiver that does not belong to them will crash.
+///
 pub fn new_channel() -> tuple(Sender(msg), Receiver(msg)) {
   let self = self()
   let reference = new_reference()
@@ -69,17 +99,37 @@ pub fn new_channel() -> tuple(Sender(msg), Receiver(msg)) {
   tuple(sender, receiver)
 }
 
-// TODO: document
 // TODO: test
+// TODO: demonitor
+/// Close a channel, causing any future messages sent on it to be discarded.
+///
+/// If the sender is used to send a message after the channel is closed it is
+/// still delivered to the receiver process but it will be discarded next time
+/// the process runs any receiver.
+///
+/// If the receiver is for a monitor the monitor is removed and any associated
+/// messages are flushed from the message inbox.
+///
+/// If the receiver is an exit trapping receiver the process will no longer
+/// trap exits, so any future crashes in linked processes will cause the
+/// process to crash.
+/// TODO: Is this the behaviour we want? May be better to have a dedicated
+/// function for this.
+///
 pub external fn close_channels(Receiver(msg)) -> Nil =
   "gleam_otp_external" "close_channels"
 
-// TODO: document
+/// Get the pid of the receiver process for a sender.
+///
 pub fn pid(sender: Sender(msg)) -> Pid {
   sender.pid
 }
 
-// TODO: document
+/// Send a message over a channel.
+///
+/// This function always succeeds, even if the receiving process has shut down
+/// or has closed the channel.
+///
 pub fn send(sender: Sender(msg), message: msg) -> Sender(msg) {
   case sender.prepare {
     Some(prepare) -> {

@@ -81,7 +81,11 @@ type Message(value) {
 }
 
 // TODO: test
-// TODO: document
+/// Wait for the value computed by a task.
+///
+/// If the a value is not received before the timeout has elapsed or if the
+/// task process crashes then an error is returned.
+///
 pub fn try_await(task: Task(value), timeout: Int) -> Result(value, AwaitError) {
   assert_owner(task)
   case process.receive(task.receiver, timeout) {
