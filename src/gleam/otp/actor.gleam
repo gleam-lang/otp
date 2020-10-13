@@ -63,12 +63,22 @@ type Self(state, msg) {
 ///
 pub type Spec(state, msg) {
   Spec(
-    // TODO: document
+    /// The initialisation functionality for the actor. This function is called
+    /// just after the actor starts but before the channel sender is returned
+    /// to the parent.
+    ///
+    /// This function is used to ensure that any required data or state is
+    /// correct. If this function returns an error it means that the actor has
+    /// failed to start and an error is returned to the parent.
+    ///
     init: fn() -> InitResult(state, msg),
-    // TODO: document
-    loop: fn(msg, state) -> Next(state),
-    // TODO: document
+    /// How many milliseconds the `init` function has to return before it is
+    /// considered to have taken too long and failed.
+    ///
     init_timeout: Int,
+    /// This function is called to handle each message that the actor receives.
+    ///
+    loop: fn(msg, state) -> Next(state),
   )
 }
 
