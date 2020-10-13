@@ -210,26 +210,46 @@ pub type PortDown {
   PortDown(port: Port, reason: Dynamic)
 }
 
-// TODO: document
-// Be careful!
+/// Receive a message from one of the channels in a receiver.
+///
+/// Be careful! This function does not return until there is a message to
+/// receive. If no message is received then the process will be stuck waiting
+/// forever.
+///
 pub external fn receive_forever(Receiver(msg)) -> msg =
   "gleam_otp_external" "run_receiver_forever"
 
-// TODO: document
+/// Discard all messages on the channels in a given receiver.
+///
+/// This function must be used carefully, it may cause caller processes to
+/// crash when they do not receive a reply as their request has been dropped.
+///
 pub external fn flush(Receiver(msg)) -> Int =
   "gleam_otp_external" "flush_receiver"
 
-// TODO: document
 // TODO: test
+/// Merge one receiver into another, producing a receiver that contains the
+/// channels of both.
+///
+/// If a channel is found in both receivers any mapping function from the
+/// second receiver is used in the new receiver.
+///
 pub external fn merge_receiver(Receiver(a), Receiver(a)) -> Receiver(a) =
   "gleam_otp_external" "merge_receiver"
 
+/// A message received when a linked process exits when the current process is
+/// trapping exits.
+///
 pub type Exit {
   Exit(pid: Pid, reason: Dynamic)
 }
 
 // TODO: test
-// TODO: document
+/// Receive a message that does not belong to any particular channel.
+///
+/// This function is typically not very useful when working with Gleam but it
+/// useful when working with Erlang code that sends messages to your code.
+///
 pub external fn bare_message_receiver() -> Receiver(Dynamic) =
   "gleam_otp_external" "bare_message_receiver"
 
@@ -273,7 +293,6 @@ pub type StatusInfo {
 
 // TODO: document
 // TODO: implement remaining messages
-// TODO: better abstraction around this to make it more type safe
 pub type SystemMessage {
   // {replace_state, StateFn}
   // {change_code, Mod, Vsn, Extra}
@@ -307,10 +326,17 @@ type KillFlag {
 external fn erlang_kill(to: Pid, because: KillFlag) -> Bool =
   "erlang" "exit"
 
-// TODO: document
 // TODO: test
-pub fn kill(pid: Pid) -> Bool {
+/// Send an untrappable `kill` exit signal to the target process.
+///
+/// See the documentation for the Erlang [`erlang:exit`][1] function for more
+/// information.
+///
+/// [1]: https://erlang.org/doc/man/erlang.html#exit-1
+///
+pub fn kill(pid: Pid) -> Nil {
   erlang_kill(pid, Kill)
+  Nil
 }
 
 external fn erlang_send_exit(to: Pid, because: whatever) -> Bool =
@@ -330,41 +356,65 @@ pub fn send_exit(to pid: Pid, because reason: whatever) -> Nil {
   Nil
 }
 
-// TODO: document
+/// Start a new process from a given function.
+///
+/// The new process is linked to the parent process so if it crashes the parent
+/// will also crash. If you wish your program to tolerate crashes see the
+/// supervisor module.
+///
 pub external fn start(fn() -> anything) -> Pid =
   "erlang" "spawn_link"
 
-// TODO: document
+/// Start a new process from a given function.
+///
+/// The new process is not linked to the parent process so if it crashes the
+/// issue may be silently ignored, leaving your program in an invalid state.
+///
 pub external fn start_unlinked(fn() -> anything) -> Pid =
   "erlang" "spawn"
 
-// TODO: document
+/// Receive a message from one of the channels in a given receiver, removing it
+/// from the process inbox and returning it.
+///
+/// If there are no messages for this receiver in the inbox and one is not
+/// received within the timeout then an error is returned.
+///
 pub external fn receive(
   receiver: Receiver(msg),
   timeout: Int,
 ) -> Result(msg, Nil) =
   "gleam_otp_external" "run_receiver"
 
-// TODO: document
+/// An error returned when making a call to a process.
+///
 pub type CallError(msg) {
-  // TODO: document
+  /// The process being called exited before it sent a response.
+  ///
   CalleeDown(reason: Dynamic)
-  // TODO: document
+
+  /// The process being called did not response within the permitted amount of
+  /// time.
+  ///
   CallTimeout
 }
 
-fn process_down_to_call_error(down: ProcessDown) -> Result(a, CallError(a)) {
-  Error(CalleeDown(reason: down.reason))
-}
-
 // TODO: test
-// TODO: document
+/// Add a transformation function to a receiver. When a message is received
+/// using this receiver the tranformation function is applied to the message.
+///
+/// This function can be used to change the type of messages received and may
+/// be useful when combined with the `merge_receiver` function.
+///
 pub external fn map_receiver(Receiver(a), with: fn(a) -> b) -> Receiver(b) =
   "gleam_otp_external" "map_receiver"
 
 // TODO: test error paths
-// TODO: document
 // This function is based off of Erlang's gen:do_call/4.
+/// Send a message over a channel and wait for a reply.
+///
+/// If the receiving process exits or does not reply within the allowed amount
+/// of time then an error is returned.
+///
 pub fn try_call(
   sender: Sender(request),
   make_request: fn(Sender(response)) -> request,
@@ -382,7 +432,10 @@ pub fn try_call(
   let receiver =
     reply_receiver
     |> map_receiver(Ok)
-    |> merge_receiver(map_receiver(monitor, process_down_to_call_error))
+    |> merge_receiver(map_receiver(
+      monitor,
+      fn(down: ProcessDown) { Error(CalleeDown(reason: down.reason)) },
+    ))
 
   // Await a reply or handle failure modes (timeout, process down, etc)
   let res = receive(receiver, timeout)
@@ -398,7 +451,12 @@ pub fn try_call(
 }
 
 // TODO: test error paths
-// TODO: document
+/// Send a message over a channel and wait for a reply.
+///
+/// If the receiving process exits or does not reply within the allowed amount
+/// of time the calling process crashes. If you wish an error to be returned
+/// instead see the `try_call` function.
+///
 pub fn call(
   sender: Sender(request),
   make_request: fn(Sender(response)) -> request,
@@ -418,12 +476,21 @@ external fn process_info_message_queue_length(
 ) -> tuple(Atom, Int) =
   "erlang" "process_info"
 
-// TODO: document
+/// Get the number of messages in the calling processes' inbox message queue.
+///
 pub fn message_queue_size(pid: Pid) -> Int {
   process_info_message_queue_length(pid, MessageQueueLen).1
 }
 
-// TODO: document
+/// Start trapping exits within the current process and return a receiver.
+///
+/// When not trapping exits if a linked process crashes an `Exit` message is
+/// sent over the channel. This is the normal behaviour before this function is
+/// called.
+///
+/// When trapping exits (after this function is called) if a linked process
+/// crashes an `Exit` message is sent over the channel.
+///
 pub external fn trap_exits() -> Receiver(Exit) =
   "gleam_otp_external" "trap_exits"
 
@@ -435,7 +502,8 @@ external fn erlang_send_after(Int, Pid, msg) -> Timer =
 external fn fake_timer() -> Timer =
   "erlang" "make_ref"
 
-// TODO: document
+/// Send a message over a channel after a specified timeout.
+///
 pub fn send_after(sender: Sender(msg), delay: Int, message: msg) -> Timer {
   case sender.prepare {
     Some(prepare) -> erlang_send_after(delay, sender.pid, prepare(message))
