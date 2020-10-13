@@ -2,7 +2,6 @@
 // TODO: link
 // TODO: flush_other ?
 // TODO: map_sender (contravarient)
-// TODO: receive system messages
 //
 import gleam/atom
 import gleam/result
@@ -73,6 +72,7 @@ pub external type Receiver(msg)
 external fn new_receiver(Reference) -> Receiver(msg) =
   "gleam_otp_external" "new_receiver"
 
+// TODO: test?
 /// Create a receiver for any system messages sent to the current process.
 ///
 /// If you are using a higher level abstraction such as `gleam/actor` system
@@ -159,9 +159,18 @@ type ProcessMonitorFlag {
 external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> Reference =
   "erlang" "monitor"
 
-// TODO: document
 // TODO: test
 // TODO: test closing
+/// Start monitoring a process. When the process exits a message is sent over
+/// the returned channel with information about the exit.
+///
+/// The message is only sent once, when the target process exits. If the
+/// process was not alive when this function is called the message will never
+/// be received.
+///
+/// Closing the channel with `close_channels` demonitors the process and
+/// flushes any monitor message for this channel from the message inbox.
+///
 pub fn monitor_process(pid: Pid) -> Receiver(ProcessDown) {
   let reference = erlang_monitor_process(Process, pid)
   new_receiver(reference)
@@ -175,18 +184,28 @@ external fn erlang_monitor_port(PortMonitorFlag, Port) -> Reference =
   "erlang" "monitor"
 
 // TODO: test
-// TODO: document
+/// Start monitoring a port. When the port exits a message is sent over
+/// the returned channel with information about the exit.
+///
+/// The message is only sent once, when the target port exits. If the port was
+/// not alive when this function is called the message will never be received.
+///
+/// Closing the channel with `close_channels` demonitors the port and flushes
+/// any monitor message for this channel from the message inbox.
+///
 pub fn monitor_port(port: Port) -> Receiver(PortDown) {
   let reference = erlang_monitor_port(Port, port)
   new_receiver(reference)
 }
 
-// TODO: document
+/// A message received when a monitored process exits.
+///
 pub type ProcessDown {
   ProcessDown(pid: Pid, reason: Dynamic)
 }
 
-// TODO: document
+/// A message received when a monitored port exits.
+///
 pub type PortDown {
   PortDown(port: Port, reason: Dynamic)
 }
@@ -427,12 +446,20 @@ pub fn send_after(sender: Sender(msg), delay: Int, message: msg) -> Timer {
 external fn erlang_cancel_timer(Timer) -> Dynamic =
   "erlang" "cancel_timer"
 
+/// Values returned when a timer is cancelled.
+///
 pub type Cancelled {
+  /// The timer could not be found. It probably has already triggered.
+  ///
   TimerNotFound
+
+  /// The timer was found and cancelled before it triggered.
+  ///
   Cancelled(time_remaining: Int)
 }
 
-// TODO: document
+/// Cancel a given timer, causing it not to trigger if it has not done already.
+///
 pub fn cancel_timer(timer: Timer) -> Cancelled {
   case dynamic.int(erlang_cancel_timer(timer)) {
     Ok(i) -> Cancelled(i)
