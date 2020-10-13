@@ -16,15 +16,30 @@ type Message(message) {
   System(SystemMessage)
 }
 
-// TODO: document
+/// The type used to indicate what to do after handling a message.
+///
 pub type Next(state) {
+  /// Continue handling messages.
+  ///
   Continue(state)
+
+  /// Stop handling messages and shut down.
+  ///
   Stop(ExitReason)
 }
 
-// TODO: document
+/// The type used to indicate whether an actor has started successfully or not.
+///
 pub type InitResult(state, message) {
+  /// The actor has successfully initialised. The actor can start handling
+  /// messages and actor's channel sender can be returned to the parent
+  /// process.
+  ///
   Ready(state: state, receiver: Option(Receiver(message)))
+
+  /// The actor has failed to initialise. The actor shuts down and an error is
+  /// returned to the parent process.
+  ///
   Failed(ExitReason)
 }
 
@@ -169,7 +184,6 @@ type StartInitMessage(msg) {
   Mon(ProcessDown)
 }
 
-// TODO: document
 // TODO: test init_timeout. Currently if we test it eunit prints an error from
 // the process death. How do we avoid this?
 //
