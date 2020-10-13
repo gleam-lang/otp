@@ -11,7 +11,12 @@ import gleam/otp/intensity_tracker.{IntensityTracker}
 import gleam/io
 import gleam/otp/node.{Node}
 
-// TODO: document
+/// This data structure holds all the values required by the `start_spec`
+/// function in order to create an supervisor.
+///
+/// If you do not need to configure the behaviour of your supervisor consider
+/// using the `start` function.
+///
 pub type Spec(argument, return) {
   Spec(
     argument: argument,
@@ -21,13 +26,19 @@ pub type Spec(argument, return) {
   )
 }
 
-// TODO: document
+/// This type represents the starting children of a supervisor within the
+/// `init` function.
+///
 pub opaque type Children(argument) {
   Ready(Starter(argument))
   Failed(ChildStartError)
 }
 
-// TODO: document
+/// This type contains all the information required to start a new child and
+/// add it to the `Children`.
+///
+/// This is typically created with the `worker` function.
+///
 pub opaque type ChildSpec(msg, argment, returning) {
   ChildSpec(
     start: fn(argment) -> Result(Sender(msg), StartError),
@@ -156,7 +167,10 @@ fn start_and_add_child(
   }
 }
 
-// TODO: document
+/// Add a child to the collection of children of the supervisor
+///
+/// This function starts the child from the child spec.
+///
 pub fn add(
   children: Children(argument),
   child_spec: ChildSpec(msg, argument, new_argument),
@@ -283,7 +297,8 @@ fn loop(message: Message, state: State(argument)) -> actor.Next(State(argument))
   }
 }
 
-// TODO: document
+/// Start a supervisor from a given specification.
+///
 pub fn start_spec(spec: Spec(a, b)) -> Result(Sender(Message), StartError) {
   actor.start_spec(actor.Spec(
     init: fn() { init(spec) },
@@ -292,7 +307,11 @@ pub fn start_spec(spec: Spec(a, b)) -> Result(Sender(Message), StartError) {
   ))
 }
 
-// TODO: document
+/// Start a supervisor from a given `init` function.
+///
+/// If you wish to have more control over the configuration of the supervisor
+/// see the `start_spec` function.
+///
 pub fn start(
   init: fn(Children(Nil)) -> Children(a),
 ) -> Result(Sender(Message), StartError) {
@@ -304,7 +323,16 @@ pub fn start(
   ))
 }
 
-// TODO: document
+/// A type used to describe the situation in which an Erlang based application
+/// is starting.
+///
+/// For more information see the [Erlang distributed application
+/// documentation][1] and the Learn Your Some Erlang chapter on [distributed
+/// applications][2].
+///
+/// [1]: https://erlang.org/doc/design_principles/distributed_applications.html
+/// [2]: https://learnyousomeerlang.com/distributed-otp-applications
+///
 pub type ApplicationStartMode {
   Normal
   Takeover(Node)
