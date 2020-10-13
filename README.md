@@ -17,11 +17,11 @@ This library defines several different types of actor that can be used in
 Gleam programs.
 
 ```
-   Process
-      ↓
-    Actor
-   ↙    ↘
-Task    Supervisor
+      Process
+      ↙    ↘
+   Actor   Task
+     ↓
+Supervisor
 ```
 
 ### Process
@@ -37,7 +37,9 @@ TODO
 
 ### Task
 
-TODO
+A task is a kind of process that performs a single task and then shuts down.
+Commonly tasks are used to convert sequential code into concurrent code by
+performing computation in another process.
 
 ### Supervisor
 
