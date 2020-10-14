@@ -1,6 +1,8 @@
+//// The intensity tracker is used to monitor how frequently an event happens,
+//// erroring if it happens too many times within a period of time.
+
 import gleam/list
 
-// TODO: document
 // TODO: test
 pub opaque type IntensityTracker {
   IntensityTracker(limit: Int, period: Int, events: List(Int))
