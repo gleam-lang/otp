@@ -1,4 +1,5 @@
 // TODO: test
+// TODO: supervisor child function
 // TODO: specify amount of time permitted for shut-down
 import gleam/list
 import gleam/pair
@@ -185,7 +186,14 @@ pub fn add(
 }
 
 // TODO: test
-// TODO: document
+/// Prepare a new worker type child.
+///
+/// If you wish to prepare a new supervisor type child see the `supervisor`
+/// function.
+///
+/// If you wish to change the type of the argument for later children see the
+/// `returning` function.
+///
 pub fn worker(
   start: fn(argument) -> Result(Sender(msg), StartError),
 ) -> ChildSpec(msg, argument, argument) {
@@ -193,7 +201,12 @@ pub fn worker(
 }
 
 // TODO: test
-// TODO: document
+/// As each child is added to a supervisors children a new argument is prepared
+/// with which to start the next child. By default argument is the same as the
+/// previous argument, but this function can be used to change it to something
+/// else by passing a function that takes the previous argument and the sender
+/// of the previous child.
+///
 pub fn returning(
   child: ChildSpec(msg, argument_a, argument_b),
   updater: fn(argument_a, Sender(msg)) -> argument_c,
