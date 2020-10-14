@@ -351,3 +351,29 @@ pub type ApplicationStartMode {
   Takeover(Node)
   Failover(Node)
 }
+
+pub external type ApplicationStop
+
+pub external fn application_stopped() -> ApplicationStop =
+  "gleam_otp_external" "application_stopped"
+
+/// The result of starting a Gleam actor.
+///
+/// This type is compatible with Gleam supervisors. If you wish to convert it
+/// to a type compatible with Erlang supervisors see the `ErlangStartResult`
+/// type and `erlang_start_result` function.
+///
+pub type StartResult(msg) =
+  actor.StartResult(msg)
+
+/// An Erlang supervisor compatible process start result.
+///
+pub type ErlangStartResult =
+  actor.ErlangStartResult
+
+/// Convert a Gleam actor start result into an Erlang supervisor compatible
+/// process start result.
+///
+pub fn to_erlang_start_result(res: StartResult(msg)) -> ErlangStartResult {
+  actor.to_erlang_start_result(res)
+}

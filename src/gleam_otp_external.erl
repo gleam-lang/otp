@@ -6,7 +6,7 @@
 % Receivers
 -export([new_receiver/1, flush_receiver/1, run_receiver/2, merge_receiver/2,
          run_receiver_forever/1, bare_message_receiver/0, trap_exits/0,
-         map_receiver/2, system_receiver/0]).
+         map_receiver/2, system_receiver/0, application_stopped/0]).
 
 % import Gleam records
 
@@ -199,3 +199,6 @@ process_status(Status) ->
          {data, [{'Status', Mode}, {'Parent', Parent}, {'State', State}]}]
     ],
     {status, self(), {module, Mod}, Data}.
+
+application_stopped() ->
+    ok.
