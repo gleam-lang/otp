@@ -33,7 +33,9 @@ other actor types that provide more functionality.
 
 ### Actor
 
-TODO
+The `actor` is the most commonly used actor type in Gleam and serves as a good
+building block for other abstractions. Like Erlang's `gen_server` it will
+automatically handle OTP's debug system messages for you.
 
 ### Task
 
@@ -43,4 +45,7 @@ performing computation in another process.
 
 ### Supervisor
 
-TODO
+Supervisors is a process that starts and then supervises a group of processes,
+restarting them if they crash. Supervisors can start other supervisors,
+resulting in a hierarchical process structure called a supervision tree,
+providing fault tolerance to a Gleam application.
