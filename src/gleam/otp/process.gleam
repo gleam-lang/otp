@@ -70,7 +70,7 @@ pub type Sender(msg) {
 ///
 pub external type Receiver(msg)
 
-external fn new_receiver(Reference) -> Receiver(msg) =
+external fn new_receiver(reference) -> Receiver(msg) =
   "gleam_otp_external" "new_receiver"
 
 // TODO: test?
@@ -101,7 +101,6 @@ pub fn new_channel() -> tuple(Sender(msg), Receiver(msg)) {
 }
 
 // TODO: test
-// TODO: demonitor
 /// Close a channel, causing any future messages sent on it to be discarded.
 ///
 /// If the sender is used to send a message after the channel is closed it is
@@ -168,7 +167,7 @@ external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> Reference =
 ///
 pub fn monitor_process(pid: Pid) -> Receiver(ProcessDown) {
   let reference = erlang_monitor_process(Process, pid)
-  new_receiver(reference)
+  new_receiver(tuple(Process, reference))
 }
 
 type PortMonitorFlag {
@@ -190,7 +189,7 @@ external fn erlang_monitor_port(PortMonitorFlag, Port) -> Reference =
 ///
 pub fn monitor_port(port: Port) -> Receiver(PortDown) {
   let reference = erlang_monitor_port(Port, port)
-  new_receiver(reference)
+  new_receiver(tuple(Port, reference))
 }
 
 /// A message received when a monitored process exits.

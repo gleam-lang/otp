@@ -12,7 +12,7 @@
 
 -include("gen/src/gleam@otp@process_Sender.hrl").
 -include("gen/src/gleam@otp@process_Exit.hrl").
-% -include("gen/src/gleam@otp@process_PortDown.hrl").
+-include("gen/src/gleam@otp@process_PortDown.hrl").
 -include("gen/src/gleam@otp@process_ProcessDown.hrl").
 -include("gen/src/gleam@otp@process_StatusInfo.hrl").
 
@@ -51,9 +51,11 @@ bare_message_receiver() ->
 system_receiver() ->
     #receiver{pid = self(), channels = #{system => fun(M) -> M end}}.
 
-close_channel(exit) ->
+close_channel(Ref) when Ref =:= exit orelse Ref =:= bare ->
     ok;
-close_channel(Ref) ->
+close_channel({Kind, Ref}) when Kind =:= port orelse Kind =:= process ->
+    erlang:demonitor(Ref);
+close_channel(Ref) when is_reference(Ref) ->
     update_channels(fun(Open) -> maps:remove(Ref, Open) end).
 
 close_channels(Receiver) ->
@@ -65,13 +67,13 @@ assert_receiver_owner(#receiver{pid = Pid}) ->
     Pid = self().
 
 currently_open_channels() ->
-    get('$gleam_open_channels').
+    case get('$gleam_open_channels') of
+        undefined -> #{};
+        Channels -> Channels
+    end.
 
 update_channels(Fn) ->
-    case currently_open_channels() of
-        undefined -> Fn(#{});
-        Channels -> Fn(Channels)
-    end.
+    put('$gleam_open_channels', Fn(currently_open_channels())).
 
 open_channel(Ref) ->
     update_channels(fun(Refs) -> maps:put(Ref, [], Refs) end).
@@ -101,18 +103,22 @@ run_receiver(Receiver, Timeout) ->
             run_receiver(Receiver, Timeout);
 
         % Message on closed channels are discarded
-        {'DOWN', Ref, _, _, _} when not is_map_key(Ref, OpenChannels) ->
+        {'DOWN', Ref, process, _, _} when not is_map_key({process, Ref}, OpenChannels) ->
+            % TODO: shrink timeout if time has passed
+            run_receiver(Receiver, Timeout);
+
+        {'DOWN', Ref, port, _, _} when not is_map_key({port, Ref}, OpenChannels) ->
             % TODO: shrink timeout if time has passed
             run_receiver(Receiver, Timeout);
 
         {Ref, Msg} when is_map_key(Ref, Receiving) ->
             transform_msg(Receiving, Ref, Msg);
 
-        {'DOWN', Ref, process, Pid, Reason} when is_map_key(Ref, Receiving) ->
-            transform_msg(Receiving, Ref, #process_down{pid = Pid, reason = Reason});
+        {'DOWN', Ref, process, Pid, Reason} when is_map_key({process, Ref}, Receiving) ->
+            transform_msg(Receiving, {process, Ref}, #process_down{pid = Pid, reason = Reason});
 
-        % {'DOWN', Ref, port, Port, Reason} when is_map_key(Ref, Refs) ->
-        %     transform_msg(Refs, Ref, #port_down{port = Port, reason = Reason});
+        {'DOWN', Ref, port, Port, Reason} when is_map_key({port, Ref}, Receiving) ->
+            transform_msg(Receiving, {port, Ref}, #port_down{port = Port, reason = Reason});
 
         {'EXIT', Pid, Reason} when is_map_key(exit, Receiving) ->
             transform_msg(Receiving, exit, #exit{pid = Pid, reason = Reason});
@@ -148,10 +154,16 @@ flush_receiver(Receiver, N) ->
             flush_receiver(Receiver, N + 1);
 
         % Messages on closed channels are _always_ discarded
-        {'DOWN', Ref, _, _, _} when not is_map_key(Ref, OpenChannels) ->
+        {'DOWN', Ref, port, _, _} when not is_map_key({port, Ref}, OpenChannels) ->
             flush_receiver(Receiver, N); % Don't count these messages
 
-        {'DOWN', Ref, _, _, _} when is_map_key(Ref, Flushing) ->
+        {'DOWN', Ref, process, _, _} when not is_map_key({process, Ref}, OpenChannels) ->
+            flush_receiver(Receiver, N); % Don't count these messages
+
+        {'DOWN', Ref, port, _, _} when is_map_key({port, Ref}, Flushing) ->
+            flush_receiver(Receiver, N + 1);
+
+        {'DOWN', Ref, process, _, _} when is_map_key({process, Ref}, Flushing) ->
             flush_receiver(Receiver, N + 1);
 
         {'EXIT', _, _} when is_map_key(exit, Flushing) ->
