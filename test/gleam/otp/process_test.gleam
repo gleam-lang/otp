@@ -177,79 +177,45 @@ pub fn try_call_timeout_test() {
   |> should.be_true
 }
 
+// TODO
 // pub fn message_queue_size_test() {
 //   // Empty inbox
 //   process.new_receiver()
 //   |> process.include_all(fn(x) { x })
 //   |> process.flush_receiver
-//
 //   let self = process.self()
-//
 //   self
 //   |> process.message_queue_size
 //   |> should.equal(0)
-//
 //   process.untyped_send(self, 1)
 //   process.untyped_send(self, 1)
-//
 //   self
 //   |> process.message_queue_size
 //   |> should.equal(2)
 // }
-//
-// pub fn monitor_test_test() {
-//   // Spawn child
-//   let to_parent_channel = process.new_channel()
-//   let pid =
-//     process.start(fn() {
-//       let channel = process.new_channel()
-//       process.send(to_parent_channel, channel)
-//       process.receive(channel, 150)
-//     })
-//
-//   // Monitor child
-//   let monitor = process.monitor_process(pid)
-//
-//   // Shutdown child to trigger monitor
-//   assert Ok(channel) = process.receive(to_parent_channel, 50)
-//   process.send(channel, Nil)
-//
-//   // We get a process down message!
-//   process.new_receiver()
-//   |> process.include_process_monitor(monitor, fn(x) { x })
-//   |> process.set_timeout(5)
-//   |> process.run_receiver
-//   |> should.equal(Ok(process.ProcessDown(pid, dynamic.from(process.Normal))))
-// }
-//
-// pub fn demonitor_test_test() {
-//   // Spawn child
-//   let to_parent_channel = process.new_channel()
-//   let pid =
-//     process.start(fn() {
-//       let channel = process.new_channel()
-//       process.send(to_parent_channel, channel)
-//       process.receive(channel, 150)
-//     })
-//
-//   // Monitor child
-//   let monitor = process.monitor_process(pid)
-//
-//   // Shutdown child to trigger monitor
-//   assert Ok(channel) = process.receive(to_parent_channel, 50)
-//   process.send(channel, Nil)
-//
-//   // Demonitor, which will flush the messages
-//   process.demonitor_process(monitor)
-//
-//   // We don't get a process down message as we demonitored the child
-//   process.new_receiver()
-//   |> process.include_process_monitor(monitor, fn(x) { x })
-//   |> process.set_timeout(5)
-//   |> process.run_receiver
-//   |> should.equal(Error(Nil))
-// }
-//
+pub fn monitor_test_test() {
+  // Spawn child
+  let tuple(send_to_parent, parent_receiver) = process.new_channel()
+  let pid =
+    process.start(fn() {
+      let tuple(sender, receiver) = process.new_channel()
+      process.send(send_to_parent, sender)
+      process.receive(receiver, 150)
+    })
+
+  // Monitor child
+  let monitor = process.monitor_process(pid)
+
+  // Shutdown child to trigger monitor
+  assert Ok(sender) = process.receive(parent_receiver, 50)
+  process.send(sender, Nil)
+
+  // We get a process down message!
+  monitor
+  |> process.receive(5)
+  |> should.equal(Ok(process.ProcessDown(pid, dynamic.from(process.Normal))))
+}
+
 // pub fn flush_other_test() {
 //   let c1 = process.new_channel()
 //   let c2 = process.new_channel()
@@ -299,7 +265,7 @@ pub fn send_after_test() {
   |> process.receive(0)
   |> should.equal(Error(Nil))
   receiver
-  |> process.receive(10)
+  |> process.receive(20)
   |> should.equal(Ok("b"))
 }
 

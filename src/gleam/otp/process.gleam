@@ -1,3 +1,4 @@
+// TODO: stop trapping exits function
 // TODO: README
 // TODO: link
 // TODO: flush_other ?
@@ -109,12 +110,6 @@ pub fn new_channel() -> tuple(Sender(msg), Receiver(msg)) {
 ///
 /// If the receiver is for a monitor the monitor is removed and any associated
 /// messages are flushed from the message inbox.
-///
-/// If the receiver is an exit trapping receiver the process will no longer
-/// trap exits, so any future crashes in linked processes will cause the
-/// process to crash.
-/// TODO: Is this the behaviour we want? May be better to have a dedicated
-/// function for this.
 ///
 pub external fn close_channels(Receiver(msg)) -> Nil =
   "gleam_otp_external" "close_channels"

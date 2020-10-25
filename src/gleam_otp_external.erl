@@ -52,7 +52,7 @@ system_receiver() ->
     #receiver{pid = self(), channels = #{system => fun(M) -> M end}}.
 
 close_channel(exit) ->
-    erlang:process_flag(trap_exit, false);
+    ok;
 close_channel(Ref) ->
     update_channels(fun(Open) -> maps:remove(Ref, Open) end).
 
