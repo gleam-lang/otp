@@ -54,6 +54,7 @@ providing fault tolerance to a Gleam application.
 This library is experimental there are some limitations that not yet been resolved.
 
 - There is no support for named processes.
+- Actors do not yet support all OTP system messages. Unsupported messages are dropped.
 - Supervisors do not yet support different shutdown period per child. In
   practice this means that children that are supervisors do not get an
   unlimited amount of time to shut down, as is expected in Erlang or Elixir.
