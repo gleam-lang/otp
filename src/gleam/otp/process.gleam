@@ -1,7 +1,5 @@
 // TODO: bare_channel for wrapping Erlang processes
-// TODO: stop trapping exits function
 // TODO: link
-// TODO: flush_other ?
 //
 import gleam/atom
 import gleam/result
@@ -57,7 +55,7 @@ pub external fn self() -> Pid =
 /// `new_channel` for creation of a sender.
 ///
 pub type Sender(msg) {
-  Sender(pid: Pid, reference: Reference, prepare: Option(fn(msg) -> Dynamic))
+  Sender(pid: Pid, prepare: Option(fn(msg) -> Dynamic))
 }
 
 /// A receiver is one end of a channel, it allows the owning process to receive
@@ -72,7 +70,6 @@ pub external type Receiver(msg)
 external fn new_receiver(reference) -> Receiver(msg) =
   "gleam_otp_external" "new_receiver"
 
-// TODO: test?
 /// Create a receiver for any system messages sent to the current process.
 ///
 /// If you are using a higher level abstraction such as `gleam/actor` system
@@ -91,12 +88,29 @@ pub external fn system_receiver() -> Receiver(SystemMessage) =
 /// receiver that does not belong to them will crash.
 ///
 pub fn new_channel() -> tuple(Sender(msg), Receiver(msg)) {
-  let self = self()
   let reference = new_reference()
-  let prepare = fn(msg) { dynamic.from(tuple(reference, msg)) }
-  let sender = Sender(pid: self, reference: reference, prepare: Some(prepare))
+  let sender =
+    self()
+    |> new_bare_sender
+    |> map_sender(fn(msg) { tuple(reference, msg) })
   let receiver = new_receiver(reference)
   tuple(sender, receiver)
+}
+
+/// Create a new channel sender that sends bare messages direct to the given
+/// process.
+///
+/// The messages sent using this sender are not received on any particular
+/// channel and as such are not type checked. Always favour using the
+/// `new_channel` function when possible as this will provide a safer and more
+/// convenient
+///
+/// This function may be useful when working with processes written in other BEAM
+/// languages as they may not use Gleam's channels to receive messages.
+///
+pub fn new_bare_sender(pid: Pid) -> Sender(msg) {
+  let prepare = fn(msg) { dynamic.from(msg) }
+  Sender(pid: pid, prepare: Some(prepare))
 }
 
 // TODO: test
@@ -142,7 +156,7 @@ pub fn send(sender: Sender(msg), message: msg) -> Sender(msg) {
 /// one available.
 ///
 pub fn null_sender(pid: Pid) -> Sender(msg) {
-  Sender(pid: pid, reference: new_reference(), prepare: None)
+  Sender(pid: pid, prepare: None)
 }
 
 type ProcessMonitorFlag {
@@ -415,7 +429,7 @@ pub external fn map_receiver(Receiver(a), with: fn(a) -> b) -> Receiver(b) =
 pub fn map_sender(sender: Sender(a), with mapper: fn(b) -> a) -> Sender(b) {
   let wrap = function.compose(mapper, _)
   let prepare = option.map(sender.prepare, wrap)
-  Sender(prepare: prepare, pid: sender.pid, reference: sender.reference)
+  Sender(prepare: prepare, pid: sender.pid)
 }
 
 // TODO: test error paths
@@ -503,6 +517,14 @@ pub fn message_queue_size(pid: Pid) -> Int {
 ///
 pub external fn trap_exits() -> Receiver(Exit) =
   "gleam_otp_external" "trap_exits"
+
+/// Stop trapping exits, causing any crashes in linked processes to also crash
+/// this process.
+///
+/// See also the `trap_exits` function.
+///
+pub external fn stop_trapping_exits() -> Nil =
+  "gleam_otp_external" "stop_trapping_exits"
 
 pub external type Timer
 

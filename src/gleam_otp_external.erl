@@ -6,7 +6,8 @@
 % Receivers
 -export([new_receiver/1, flush_receiver/1, run_receiver/2, merge_receiver/2,
          run_receiver_forever/1, bare_message_receiver/0, trap_exits/0,
-         map_receiver/2, system_receiver/0, application_stopped/0]).
+         map_receiver/2, stop_trapping_exits/0, system_receiver/0,
+         application_stopped/0]).
 
 % import Gleam records
 
@@ -40,6 +41,10 @@
 new_receiver(Ref) ->
     open_channel(Ref),
     #receiver{pid = self(), channels = #{Ref => fun(M) -> M end}}.
+
+stop_trapping_exits() ->
+    erlang:process_flag(trap_exit, false),
+    nil.
 
 trap_exits() ->
     erlang:process_flag(trap_exit, true),
@@ -190,7 +195,7 @@ map_receiver(Receiver, F2) ->
 
 system_msg({Pid, Ref}, Tag) ->
     Prepare = fun(X) -> system_reply(Tag, Ref, X) end,
-    Sender = #sender{pid = Pid, reference = Ref, prepare = {some, Prepare}},
+    Sender = #sender{pid = Pid, prepare = {some, Prepare}},
     {Tag, Sender}.
 
 system_reply(Tag, Ref, Reply) ->

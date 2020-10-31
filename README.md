@@ -10,7 +10,6 @@ actor model. It is compatible with Erlang's OTP framework.
 This library is experimental and will likely have many breaking changes in the
 future!
 
-
 ## Actor hierarchy
 
 This library defines several different types of actor that can be used in
