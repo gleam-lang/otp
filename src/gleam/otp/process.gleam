@@ -1,6 +1,3 @@
-// TODO: bare_channel for wrapping Erlang processes
-// TODO: link
-//
 import gleam/atom
 import gleam/result
 import gleam/atom.{Atom}
@@ -97,6 +94,7 @@ pub fn new_channel() -> tuple(Sender(msg), Receiver(msg)) {
   tuple(sender, receiver)
 }
 
+// TODO: test
 /// Create a new channel sender that sends bare messages direct to the given
 /// process.
 ///
@@ -565,4 +563,33 @@ pub fn cancel_timer(timer: Timer) -> Cancelled {
     Ok(i) -> Cancelled(i)
     Error(_) -> TimerNotFound
   }
+}
+
+external fn erlang_link(Pid) -> Bool =
+  "erlang" "link"
+
+// TODO: test
+/// Creates a link between the calling process and another process.
+///
+/// When a process crashes any linked processes will also crash. This is useful
+/// to ensure that groups of processes that depend on each other all either
+/// succeed or fail together.
+///
+/// See the `gleam/otp/supervisor` module and the `trap_exits` function for
+/// mechanisms for handling process crashes.
+///
+pub fn link(pid: Pid) -> Nil {
+  erlang_link(pid)
+  Nil
+}
+
+external fn erlang_unlink(pid: Pid) -> Bool =
+  "erlang" "link"
+
+// TODO: test
+/// Removes any existing link between the caller process and the target process.
+///
+pub fn unlink(pid: Pid) -> Nil {
+  erlang_unlink(pid)
+  Nil
 }
