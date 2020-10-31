@@ -51,7 +51,7 @@ pub external fn self() -> Pid =
 /// See the `send` function for sending of values using a sender, and
 /// `new_channel` for creation of a sender.
 ///
-pub type Sender(msg) {
+pub opaque type Sender(msg) {
   Sender(pid: Pid, prepare: Option(fn(msg) -> Dynamic))
 }
 
