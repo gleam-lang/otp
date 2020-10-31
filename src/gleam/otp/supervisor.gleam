@@ -1,6 +1,6 @@
 // TODO: test
-// TODO: supervisor child function
 // TODO: specify amount of time permitted for shut-down
+import gleam/io
 import gleam/list
 import gleam/pair
 import gleam/result
@@ -9,7 +9,6 @@ import gleam/option.{None, Option, Some}
 import gleam/otp/process.{Pid, Sender}
 import gleam/otp/actor.{StartError}
 import gleam/otp/intensity_tracker.{IntensityTracker}
-import gleam/io
 import gleam/otp/node.{Node}
 
 /// This data structure holds all the values required by the `start_spec`
@@ -186,6 +185,26 @@ pub fn add(
 }
 
 // TODO: test
+// TODO: unlimitd shut down duration
+/// Prepare a new supervisor type child.
+///
+/// If you wish to prepare a new non-supervisor type child see the `worker`
+/// function.
+///
+/// If you wish to change the type of the argument for later children see the
+/// `returning` function.
+///
+/// Note: Gleam supervisors do not yet support different shutdown periods per
+/// child so this function is currently identical in behaviour to `worker`. It is
+/// recommended to use this function for supervisor children nevertheless so the
+/// correct shut down behaviour is used in later releases of this library.
+///
+pub fn supervisor(
+  start: fn(argument) -> Result(Sender(msg), StartError),
+) -> ChildSpec(msg, argument, argument) {
+  ChildSpec(start: start, returning: fn(argument, _channel) { argument })
+}
+
 /// Prepare a new worker type child.
 ///
 /// If you wish to prepare a new supervisor type child see the `supervisor`
@@ -376,4 +395,33 @@ pub type ErlangStartResult =
 ///
 pub fn to_erlang_start_result(res: StartResult(msg)) -> ErlangStartResult {
   actor.to_erlang_start_result(res)
+}
+
+/// Processes written in Erlang or other BEAM languages use bare processes rather
+/// than channels, so the value returned from their process start functions are
+/// not compatible with Gleam supervisors. This function can be used to wrap the
+/// return value so it can be used with a Gleam supervisor.
+///
+pub fn wrap_erlang_start_result(
+  start: Result(Pid, error),
+) -> StartResult(anything) {
+  case start {
+    Ok(pid) -> Ok(process.null_sender(pid))
+    Error(error) ->
+      error
+      |> dynamic.from
+      |> actor.InitCrashed
+      |> Error
+  }
+}
+
+/// Processes written in Erlang or other BEAM languages use bare processes rather
+/// than channels, so the value returned from their process start functions are
+/// not compatible with Gleam supervisors. This function can be used to wrap the
+/// start function so it can be used with a Gleam supervisor.
+///
+pub fn wrap_erlang_start_function(
+  start: fn() -> Result(Pid, error),
+) -> fn() -> StartResult(anything) {
+  fn() { wrap_erlang_start_result(start()) }
 }

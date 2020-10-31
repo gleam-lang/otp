@@ -1,3 +1,4 @@
+// TODO: bare_channel for wrapping Erlang processes
 // TODO: stop trapping exits function
 // TODO: README
 // TODO: link

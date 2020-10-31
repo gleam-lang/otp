@@ -1,4 +1,3 @@
-// TODO: bare_channel for wrapping Erlang processes
 import gleam/otp/process.{
   Abnormal, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid, ProcessDown,
   Receiver, Resume, Running, Sender, Suspend, Suspended, SystemMessage,
@@ -141,7 +140,10 @@ fn loop(self: Self(state, msg)) -> ExitReason {
         Continue(state) -> loop(Self(..self, state: state))
       }
 
-    _other -> todo("message not yet supported")
+    _unsupported_system_message -> {
+      io.println("Gleam Action: unsupported system message dropped")
+      loop(self)
+    }
   }
 }
 
@@ -263,7 +265,6 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Sender(msg), StartError) {
     Error(Nil) -> {
       process.kill(child)
       process.close_channels(receiver)
-      // TODO: Flush exit messages as we may be trapping exits
       Error(InitTimeout)
     }
   }
