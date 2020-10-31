@@ -49,3 +49,15 @@ Supervisors is a process that starts and then supervises a group of processes,
 restarting them if they crash. Supervisors can start other supervisors,
 resulting in a hierarchical process structure called a supervision tree,
 providing fault tolerance to a Gleam application.
+
+## Limitations and known issues
+
+This library is experimental there are some limitations that not yet been resolved.
+
+- There is no support for named processes.
+- Supervisors do not yet support different shutdown period per child. In
+  practice this means that children that are supervisors do not get an
+  unlimited amount of time to shut down, as is expected in Erlang or Elixir.
+- This library has not seen much testing compared to the Erlang OTP
+  libraries, both in terms of unit tests and real world testing in
+  applications. 
