@@ -285,3 +285,41 @@ pub fn cancel_timer_test() {
   should.be_true(i > 0)
   should.be_true(i < 100)
 }
+
+pub fn map_receiver_test() {
+  let tuple(sender, receiver) = process.new_channel()
+  let receiver =
+    receiver
+    |> process.map_receiver(fn(x) { x + 1 })
+    |> process.map_receiver(fn(x) { [x] })
+
+  process.send(sender, 1)
+  process.send(sender, 2)
+
+  receiver
+  |> process.receive(0)
+  |> should.equal(Ok([2]))
+
+  receiver
+  |> process.receive(0)
+  |> should.equal(Ok([3]))
+}
+
+pub fn map_sender_test() {
+  let tuple(sender, receiver) = process.new_channel()
+  let sender =
+    sender
+    |> process.map_sender(fn(x) { [x] })
+    |> process.map_sender(fn(x) { x + 1 })
+
+  process.send(sender, 1)
+  process.send(sender, 2)
+
+  receiver
+  |> process.receive(0)
+  |> should.equal(Ok([2]))
+
+  receiver
+  |> process.receive(0)
+  |> should.equal(Ok([3]))
+}

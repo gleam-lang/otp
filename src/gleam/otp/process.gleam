@@ -1,9 +1,7 @@
 // TODO: bare_channel for wrapping Erlang processes
 // TODO: stop trapping exits function
-// TODO: README
 // TODO: link
 // TODO: flush_other ?
-// TODO: map_sender (contravarient)
 //
 import gleam/atom
 import gleam/result
@@ -393,7 +391,6 @@ pub type CallError(msg) {
   CallTimeout
 }
 
-// TODO: test
 /// Add a transformation function to a receiver. When a message is received
 /// using this receiver the tranformation function is applied to the message.
 ///
@@ -402,6 +399,24 @@ pub type CallError(msg) {
 ///
 pub external fn map_receiver(Receiver(a), with: fn(a) -> b) -> Receiver(b) =
   "gleam_otp_external" "map_receiver"
+
+/// Add a transformation function to a sender. When a message is sent using this
+/// sender the tranformation function is applied to the message before it is
+/// sent.
+///
+/// This function can be used to change the type of messages sent and may
+/// be useful to change the type of a sender before giving it to another process.
+///
+/// You may notice that this function takes a mapper function from `b` to `a`
+/// rather than from `a` to `b` as you would find in functions like `list.map`
+/// and `receiver.map`. This style of a map function may be called a
+/// _"contravarient"_ map.
+///
+pub fn map_sender(sender: Sender(a), with mapper: fn(b) -> a) -> Sender(b) {
+  let wrap = function.compose(mapper, _)
+  let prepare = option.map(sender.prepare, wrap)
+  Sender(prepare: prepare, pid: sender.pid, reference: sender.reference)
+}
 
 // TODO: test error paths
 // This function is based off of Erlang's gen:do_call/4.
