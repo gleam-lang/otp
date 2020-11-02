@@ -385,18 +385,6 @@ pub external fn application_stopped() -> ApplicationStop =
 pub type StartResult(msg) =
   actor.StartResult(msg)
 
-/// An Erlang supervisor compatible process start result.
-///
-pub type ErlangStartResult =
-  actor.ErlangStartResult
-
-/// Convert a Gleam actor start result into an Erlang supervisor compatible
-/// process start result.
-///
-pub fn to_erlang_start_result(res: StartResult(msg)) -> ErlangStartResult {
-  actor.to_erlang_start_result(res)
-}
-
 /// Processes written in Erlang or other BEAM languages use bare processes rather
 /// than channels, so the value returned from their process start functions are
 /// not compatible with Gleam supervisors. This function can be used to wrap the
