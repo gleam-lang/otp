@@ -195,11 +195,23 @@ pub type StartError {
 /// The result of starting a Gleam actor.
 ///
 /// This type is compatible with Gleam supervisors. If you wish to convert it
-/// to a type compatible with Erlang supervisors see the `wrap_erlang*` functions
-/// in the supervisor module.
+/// to a type compatible with Erlang supervisors see the `ErlangStartResult`
+/// type and `erlang_start_result` function.
 ///
 pub type StartResult(msg) =
   Result(Sender(msg), StartError)
+
+/// An Erlang supervisor compatible process start result.
+///
+pub type ErlangStartResult =
+  Result(Pid, StartError)
+
+/// Convert a Gleam actor start result into an Erlang supervisor compatible
+/// process start result.
+///
+pub fn to_erlang_start_result(res: StartResult(msg)) -> ErlangStartResult {
+  result.map(res, process.pid)
+}
 
 type StartInitMessage(msg) {
   Ack(Result(Sender(msg), ExitReason))
