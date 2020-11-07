@@ -402,17 +402,10 @@ pub fn to_erlang_start_result(res: StartResult(msg)) -> ErlangStartResult {
 /// not compatible with Gleam supervisors. This function can be used to wrap the
 /// return value so it can be used with a Gleam supervisor.
 ///
-pub fn wrap_erlang_start_result(
+pub fn from_erlang_start_result(
   start: Result(Pid, error),
 ) -> StartResult(anything) {
-  case start {
-    Ok(pid) -> Ok(process.null_sender(pid))
-    Error(error) ->
-      error
-      |> dynamic.from
-      |> actor.InitCrashed
-      |> Error
-  }
+  actor.from_erlang_start_result(start)
 }
 
 /// Processes written in Erlang or other BEAM languages use bare processes rather
@@ -420,8 +413,8 @@ pub fn wrap_erlang_start_result(
 /// not compatible with Gleam supervisors. This function can be used to wrap the
 /// start function so it can be used with a Gleam supervisor.
 ///
-pub fn wrap_erlang_start_function(
+pub fn wrap_erlang_starter(
   start: fn() -> Result(Pid, error),
 ) -> fn() -> StartResult(anything) {
-  fn() { wrap_erlang_start_result(start()) }
+  actor.wrap_erlang_starter(start)
 }

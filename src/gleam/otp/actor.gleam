@@ -203,14 +203,46 @@ pub type StartResult(msg) =
 
 /// An Erlang supervisor compatible process start result.
 ///
+/// If you wish to convert this into a `StartResult` compatible with Gleam
+/// supervisors see the `from_erlang_start_result` and `wrap_erlang_starter`
+/// functions.
+///
 pub type ErlangStartResult =
-  Result(Pid, StartError)
+  Result(Pid, Dynamic)
 
 /// Convert a Gleam actor start result into an Erlang supervisor compatible
 /// process start result.
 ///
 pub fn to_erlang_start_result(res: StartResult(msg)) -> ErlangStartResult {
-  result.map(res, process.pid)
+  case res {
+    Ok(x) -> Ok(process.pid(x))
+    Error(x) -> Error(dynamic.from(x))
+  }
+}
+
+/// Processes written in Erlang or other BEAM languages use bare processes rather
+/// than channels, so the value returned from their process start functions are
+/// not compatible with Gleam supervisors. This function can be used to wrap the
+/// return value so it can be used with a Gleam supervisor.
+///
+pub fn from_erlang_start_result(
+  start: Result(Pid, error),
+) -> StartResult(anything) {
+  case start {
+    Ok(pid) -> Ok(process.null_sender(pid))
+    Error(error) -> Error(InitCrashed(dynamic.from(error)))
+  }
+}
+
+/// Processes written in Erlang or other BEAM languages use bare processes rather
+/// than channels, so the value returned from their process start functions are
+/// not compatible with Gleam supervisors. This function can be used to wrap the
+/// start function so it can be used with a Gleam supervisor.
+///
+pub fn wrap_erlang_starter(
+  start: fn() -> Result(Pid, error),
+) -> fn() -> StartResult(anything) {
+  fn() { from_erlang_start_result(start()) }
 }
 
 type StartInitMessage(msg) {
@@ -315,4 +347,10 @@ pub fn call(
   timeout: Int,
 ) -> reply {
   process.call(receiver, make_message, timeout)
+}
+
+/// Get the pid of the receiver process for a sender.
+///
+pub fn pid(sender: Sender(msg)) -> Pid {
+  process.pid(sender)
 }
