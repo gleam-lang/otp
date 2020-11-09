@@ -19,13 +19,9 @@
 
 % Guards
 
--define(is_n_tuple(Term, N), (is_tuple(Term) andalso tuple_size(Term) =:= N)).
--define(is_record(Tag, Arity, Term),
-        (?is_n_tuple(Term, Arity + 1) andalso element(1, Term) =:= Tag)).
-
--define(is_system_msg(Term), ?is_record(system, 2, Term)).
--define(is_monitor_msg(Term), ?is_record('DOWN', 4, Term)).
--define(is_exit_msg(Term), ?is_record('EXIT', 2, Term)).
+-define(is_system_msg(Term), is_record(Term, system, 3)).
+-define(is_monitor_msg(Term), is_record(Term, 'DOWN', 5)).
+-define(is_exit_msg(Term), is_record(Term, 'EXIT', 3)).
 -define(is_gen_reply(Term),
         (is_tuple(Term) andalso tuple_size(Term) =:= 2 andalso
         is_reference(element(1, Term)))).
