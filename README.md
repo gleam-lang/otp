@@ -32,7 +32,7 @@ other actor types that provide more functionality.
 
 ### Actor
 
-The `actor` is the most commonly used actor type in Gleam and serves as a good
+The `actor` is the most commonly used process type in Gleam and serves as a good
 building block for other abstractions. Like Erlang's `gen_server` it will
 automatically handle OTP's debug system messages for you.
 
