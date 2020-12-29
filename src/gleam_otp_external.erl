@@ -99,7 +99,7 @@ run_receiver(Receiver, Timeout) ->
     OpenChannels = currently_open_channels(),
     receive
         % Message on closed channels are discarded
-        {Ref, _} when not is_map_key(Ref, OpenChannels) ->
+        {Ref, _} when is_reference(Ref) andalso (not is_map_key(Ref, OpenChannels)) ->
             % TODO: shrink timeout if time has passed
             run_receiver(Receiver, Timeout);
 
