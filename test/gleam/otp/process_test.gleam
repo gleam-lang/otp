@@ -1,4 +1,5 @@
 import gleam/otp/process.{Normal}
+import gleam/otp/port.{Port}
 import gleam/should
 import gleam/io
 import gleam/result
@@ -104,6 +105,16 @@ pub fn bare_receive_test() {
   receiver
   |> process.receive(0)
   |> should.equal(Ok(0))
+}
+
+pub fn bare_receive_port_test() {
+  // Generate a port message
+  let port = open_port(Spawn("echo -n hello"), [])
+
+  // The channel recieves the stdout from the port
+  process.bare_message_receiver()
+  |> process.receive(100)
+  |> should.be_ok()
 }
 
 pub fn run_receiver_forever_test() {
@@ -323,3 +334,15 @@ pub fn map_sender_test() {
   |> process.receive(0)
   |> should.equal(Ok([3]))
 }
+
+type PortName {
+  Spawn(command: String)
+  SpawnExecutable(command: String)
+}
+
+type PortSettings {
+  ExitStatus
+}
+
+external fn open_port(PortName, List(PortSettings)) -> Port =
+  "erlang" "open_port"

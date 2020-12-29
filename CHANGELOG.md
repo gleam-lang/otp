@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fixed an issue where the `gleam/otp/process.bare_message_receiver` function ignored messages from ports
+
 ## v0.1.3 - 2020-11-07
 
 - The `gleam/otp/actor.ErlangStartResult` type has been re-added.
