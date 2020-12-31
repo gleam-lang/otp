@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased
+## v0.1.4 - 2020-12-31
 
-- Fixed an issue where the `gleam/otp/process.bare_message_receiver` function ignored messages from ports
+- Port messages are no longer treated as regular channel messages by 
+  receivers.
 
 ## v0.1.3 - 2020-11-07
 

@@ -109,7 +109,7 @@ pub fn bare_receive_test() {
 
 pub fn bare_receive_port_test() {
   // Generate a port message
-  let port = open_port(Spawn("echo -n hello"), [])
+  let _port = open_port(Spawn("gleam --version"), [])
 
   // The channel recieves the stdout from the port
   process.bare_message_receiver()
@@ -337,7 +337,6 @@ pub fn map_sender_test() {
 
 type PortName {
   Spawn(command: String)
-  SpawnExecutable(command: String)
 }
 
 type PortSettings {
