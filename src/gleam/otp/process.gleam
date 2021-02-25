@@ -2,7 +2,7 @@ import gleam/atom
 import gleam/result
 import gleam/atom.{Atom}
 import gleam/dynamic.{Dynamic}
-import gleam/otp/port.{Port}
+import gleam/otp/port
 import gleam/function
 import gleam/option.{None, Option, Some}
 
@@ -184,7 +184,7 @@ type PortMonitorFlag {
   Port
 }
 
-external fn erlang_monitor_port(PortMonitorFlag, Port) -> Reference =
+external fn erlang_monitor_port(PortMonitorFlag, port.Port) -> Reference =
   "erlang" "monitor"
 
 // TODO: test
@@ -197,7 +197,7 @@ external fn erlang_monitor_port(PortMonitorFlag, Port) -> Reference =
 /// Closing the channel with `close_channels` demonitors the port and flushes
 /// any monitor message for this channel from the message inbox.
 ///
-pub fn monitor_port(port: Port) -> Receiver(PortDown) {
+pub fn monitor_port(port: port.Port) -> Receiver(PortDown) {
   let reference = erlang_monitor_port(Port, port)
   new_receiver(tuple(Port, reference))
 }
@@ -211,7 +211,7 @@ pub type ProcessDown {
 /// A message received when a monitored port exits.
 ///
 pub type PortDown {
-  PortDown(port: Port, reason: Dynamic)
+  PortDown(port: port.Port, reason: Dynamic)
 }
 
 /// Receive a message from one of the channels in a receiver.
