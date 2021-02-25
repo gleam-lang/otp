@@ -1,11 +1,11 @@
-import gleam/otp/process.{Normal}
+import gleam/otp/process
 import gleam/otp/port.{Port}
 import gleam/should
 import gleam/io
 import gleam/result
 import gleam/atom
 import gleam/dynamic
-import gleam/option.{Some}
+import gleam/option
 
 external fn sleep(Int) -> Nil =
   "timer" "sleep"

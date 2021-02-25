@@ -1,5 +1,5 @@
 import gleam/otp/process.{
-  Abnormal, DebugState, ExitReason, GetState, GetStatus, Mode, Normal, Pid, ProcessDown,
+  DebugState, ExitReason, GetState, GetStatus, Mode, Pid, ProcessDown,
   Receiver, Resume, Running, Sender, Suspend, Suspended, SystemMessage,
 }
 import gleam/io
