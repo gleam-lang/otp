@@ -2,7 +2,6 @@ import gleam/atom
 import gleam/result
 import gleam/atom.{Atom}
 import gleam/dynamic.{Dynamic}
-import gleam/option.{None}
 import gleam/otp/port.{Port}
 import gleam/function
 import gleam/option.{None, Option, Some}
