@@ -109,7 +109,7 @@ pub fn bare_receive_test() {
 
 pub fn bare_receive_port_test() {
   // Generate a port message
-  let _port = open_port(Spawn("gleam --version"), [])
+  let _port = open_port(Spawn("gleam --version"), [ExitStatus])
 
   // The channel recieves the stdout from the port
   process.bare_message_receiver()
