@@ -324,8 +324,8 @@ fn handle_exit(pid: process.Pid, state: State(a)) -> actor.Next(State(a)) {
 
 fn loop(message: Message, state: State(argument)) -> actor.Next(State(argument)) {
   case message {
-    Exit(process.Exit(pid: pid, ..)) | RetryRestart(pid) ->
-      handle_exit(pid, state)
+    Exit(process.Exit(pid: pid, ..)) -> handle_exit(pid, state)
+    RetryRestart(pid) -> handle_exit(pid, state)
   }
 }
 
