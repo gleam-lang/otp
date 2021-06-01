@@ -2,7 +2,7 @@
 
 ## v0.1.5 - 2021-06-01
 
-- Unused import warnings fixed for current versions of Gleam.
+- Warnings fixed for current versions of Gleam.
 
 ## v0.1.4 - 2020-12-31
 
