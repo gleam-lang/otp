@@ -1,6 +1,6 @@
 {application, gleam_otp,
  [{description, "Fault tolerant multicore Gleam programs with OTP"},
-  {vsn, "0.1.4"},
+  {vsn, "0.1.5"},
   {registered, []},
   {applications,
    [kernel,

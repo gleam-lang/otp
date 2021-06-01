@@ -18,3 +18,4 @@ _build
 rebar3.crashdump
 *~
 gen
+doc
