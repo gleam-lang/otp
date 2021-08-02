@@ -73,7 +73,7 @@ type Starter(argument) {
     argument: argument,
     exec: Option(
       fn(Instruction) ->
-        Result(tuple(Starter(argument), Instruction), ChildStartError),
+        Result(#(Starter(argument), Instruction), ChildStartError),
     ),
   )
 }
@@ -109,19 +109,19 @@ fn perform_instruction_for_child(
   instruction: Instruction,
   child_spec: ChildSpec(msg, argument_in, argument_out),
   child: Child(argument_out),
-) -> Result(tuple(Child(argument_out), Instruction), ChildStartError) {
+) -> Result(#(Child(argument_out), Instruction), ChildStartError) {
   let current = child.pid
   case instruction {
     // This child is older than the StartFrom target, we don't need to
     // restart it
-    StartFrom(target) if target != current -> Ok(tuple(child, instruction))
+    StartFrom(target) if target != current -> Ok(#(child, instruction))
 
     // This pid either is the cause of the problem, or we have the StartAll
     // instruction. Either way it and its younger siblings need to be restarted.
     _ -> {
       shutdown_child(current, child_spec)
       try child = start_child(child_spec, argument)
-      Ok(tuple(child, StartAll))
+      Ok(#(child, StartAll))
     }
   }
 }
@@ -134,13 +134,13 @@ fn add_child_to_starter(
   let starter = fn(instruction) {
     // Restart the older children. We use `try` to return early if the older
     // children failed to start
-    try tuple(starter, instruction) = case starter.exec {
+    try #(starter, instruction) = case starter.exec {
       Some(start) -> start(instruction)
-      None -> Ok(tuple(starter, instruction))
+      None -> Ok(#(starter, instruction))
     }
 
     // Perform the instruction, restarting the child as required
-    try tuple(child, instruction) =
+    try #(child, instruction) =
       perform_instruction_for_child(
         starter.argument,
         instruction,
@@ -151,7 +151,7 @@ fn add_child_to_starter(
     // Create a new starter for the next time the supervisor needs to restart
     let starter = add_child_to_starter(starter, child_spec, child)
 
-    Ok(tuple(starter, instruction))
+    Ok(#(starter, instruction))
   }
 
   Starter(exec: Some(starter), argument: child.argument)
@@ -238,7 +238,7 @@ fn init(
 ) -> actor.InitResult(State(return), Message) {
   // Create a channel so that we can asynchronously retry restarting when we
   // fail to bring an exited child
-  let tuple(retry_sender, retry_receiver) = process.new_channel()
+  let #(retry_sender, retry_receiver) = process.new_channel()
   let retry_receiver = process.map_receiver(retry_receiver, RetryRestart)
 
   // Trap exits so that we get a message when a child crashes
@@ -298,7 +298,7 @@ fn handle_exit(pid: process.Pid, state: State(a)) -> actor.Next(State(a)) {
       |> result.map_error(fn(_) { TooManyRestarts })
 
     // Restart the exited child and any following children
-    try tuple(starter, _) =
+    try #(starter, _) =
       start(StartFrom(pid))
       |> result.map_error(fn(e: ChildStartError) {
         RestartFailed(option.unwrap(e.previous_pid, pid), restarts)

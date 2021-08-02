@@ -83,14 +83,14 @@ pub external fn system_receiver() -> Receiver(SystemMessage) =
 /// be sent to another process. Any process that attempts to receive on a
 /// receiver that does not belong to them will crash.
 ///
-pub fn new_channel() -> tuple(Sender(msg), Receiver(msg)) {
+pub fn new_channel() -> #(Sender(msg), Receiver(msg)) {
   let reference = new_reference()
   let sender =
     self()
     |> new_bare_sender
-    |> map_sender(fn(msg) { tuple(reference, msg) })
+    |> map_sender(fn(msg) { #(reference, msg) })
   let receiver = new_receiver(reference)
-  tuple(sender, receiver)
+  #(sender, receiver)
 }
 
 // TODO: test
@@ -177,7 +177,7 @@ external fn erlang_monitor_process(ProcessMonitorFlag, Pid) -> Reference =
 ///
 pub fn monitor_process(pid: Pid) -> Receiver(ProcessDown) {
   let reference = erlang_monitor_process(Process, pid)
-  new_receiver(tuple(Process, reference))
+  new_receiver(#(Process, reference))
 }
 
 type PortMonitorFlag {
@@ -199,7 +199,7 @@ external fn erlang_monitor_port(PortMonitorFlag, port.Port) -> Reference =
 ///
 pub fn monitor_port(port: port.Port) -> Receiver(PortDown) {
   let reference = erlang_monitor_port(Port, port)
-  new_receiver(tuple(Port, reference))
+  new_receiver(#(Port, reference))
 }
 
 /// A message received when a monitored process exits.
@@ -441,7 +441,7 @@ pub fn try_call(
   make_request: fn(Sender(response)) -> request,
   timeout: Int,
 ) -> Result(response, CallError(response)) {
-  let tuple(reply_sender, reply_receiver) = new_channel()
+  let #(reply_sender, reply_receiver) = new_channel()
 
   // Monitor the callee process so we can tell if it goes down (meaning we
   // won't get a reply)
@@ -494,7 +494,7 @@ type MessageQueueLenFlag {
 external fn process_info_message_queue_length(
   Pid,
   MessageQueueLenFlag,
-) -> tuple(Atom, Int) =
+) -> #(Atom, Int) =
   "erlang" "process_info"
 
 /// Get the number of messages in the calling processes' inbox message queue.

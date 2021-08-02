@@ -43,7 +43,7 @@ pub opaque type Task(value) {
 ///
 pub fn async(work: fn() -> value) -> Task(value) {
   let owner = process.self()
-  let tuple(sender, receiver) = process.new_channel()
+  let #(sender, receiver) = process.new_channel()
   let pid = process.start(fn() { process.send(sender, work()) })
   let receiver =
     pid

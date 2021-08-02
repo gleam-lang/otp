@@ -1,6 +1,6 @@
 import gleam/otp/process.{
-  DebugState, ExitReason, GetState, GetStatus, Mode, Pid, ProcessDown,
-  Receiver, Resume, Running, Sender, Suspend, Suspended, SystemMessage,
+  DebugState, ExitReason, GetState, GetStatus, Mode, Pid, ProcessDown, Receiver,
+  Resume, Running, Sender, Suspend, Suspended, SystemMessage,
 }
 import gleam/io
 import gleam/atom
@@ -159,7 +159,7 @@ fn initialise_actor(
   spec: Spec(state, msg),
   ack_channel: Sender(Result(Sender(msg), ExitReason)),
 ) {
-  let tuple(sender, receiver) = process.new_channel()
+  let #(sender, receiver) = process.new_channel()
   let receiver = process.map_receiver(receiver, Message)
   case spec.init() {
     Ready(state, extra_receiver) -> {
@@ -261,7 +261,7 @@ type StartInitMessage(msg) {
 /// consider using the `start` function.
 ///
 pub fn start_spec(spec: Spec(state, msg)) -> Result(Sender(msg), StartError) {
-  let tuple(ack_sender, ack_receiver) = process.new_channel()
+  let #(ack_sender, ack_receiver) = process.new_channel()
 
   let child = process.start(fn() { initialise_actor(spec, ack_sender) })
 

@@ -26,7 +26,7 @@ pub fn is_alive_dead_test() {
 }
 
 pub fn receive_test() {
-  let tuple(sender, receiver) = process.new_channel()
+  let #(sender, receiver) = process.new_channel()
 
   // Send message from self
   process.send(sender, 0)
@@ -49,8 +49,8 @@ pub fn receive_test() {
 }
 
 pub fn flush_test() {
-  let tuple(s1, r1) = process.new_channel()
-  let tuple(s2, r2) = process.new_channel()
+  let #(s1, r1) = process.new_channel()
+  let #(s2, r2) = process.new_channel()
   process.send(s1, 1)
   process.send(s2, 2)
   process.send(s2, 3)
@@ -76,7 +76,7 @@ pub fn new_reference_test() {
 }
 
 pub fn self_test() {
-  let tuple(sender, receiver) = process.new_channel()
+  let #(sender, receiver) = process.new_channel()
   let child_pid1 = process.start(fn() { process.send(sender, process.self()) })
   assert Ok(child_pid2) = process.receive(receiver, 100)
 
@@ -88,7 +88,7 @@ pub fn self_test() {
 }
 
 pub fn bare_receive_test() {
-  let tuple(sender, receiver) = process.new_channel()
+  let #(sender, receiver) = process.new_channel()
   process.send(sender, 0)
   process.untyped_send(process.self(), 1)
 
@@ -118,7 +118,7 @@ pub fn bare_receive_port_test() {
 }
 
 pub fn run_receiver_forever_test() {
-  let tuple(sender, receiver) = process.new_channel()
+  let #(sender, receiver) = process.new_channel()
   process.send(sender, 0)
   receiver
   |> process.receive_forever()
@@ -133,7 +133,7 @@ pub fn trap_exits_test() {
 }
 
 pub fn pid_test() {
-  let tuple(sender, _) = process.new_channel()
+  let #(sender, _) = process.new_channel()
   let self = process.self()
   sender
   |> process.pid
@@ -141,18 +141,18 @@ pub fn pid_test() {
 }
 
 fn call_message(value) {
-  fn(reply_channel) { tuple(value, reply_channel) }
+  fn(reply_channel) { #(value, reply_channel) }
 }
 
 pub fn try_call_test() {
-  let tuple(parent_sender, parent_receiver) = process.new_channel()
+  let #(parent_sender, parent_receiver) = process.new_channel()
 
   process.start(fn() {
     // Send the call channel to the parent
-    let tuple(call_sender, call_receiver) = process.new_channel()
+    let #(call_sender, call_receiver) = process.new_channel()
     process.send(parent_sender, call_sender)
     // Wait for the channel to be called
-    assert Ok(tuple(x, reply_channel)) = process.receive(call_receiver, 50)
+    assert Ok(#(x, reply_channel)) = process.receive(call_receiver, 50)
     // Reply
     process.send(reply_channel, x + 1)
   })
@@ -166,14 +166,14 @@ pub fn try_call_test() {
 }
 
 pub fn try_call_timeout_test() {
-  let tuple(parent_sender, parent_receiver) = process.new_channel()
+  let #(parent_sender, parent_receiver) = process.new_channel()
 
   process.start(fn() {
     // Send the call channel to the parent
-    let tuple(call_sender, call_receiver) = process.new_channel()
+    let #(call_sender, call_receiver) = process.new_channel()
     process.send(parent_sender, call_sender)
     // Wait for the channel to be called
-    assert Ok(tuple(x, reply_channel)) = process.receive(call_receiver, 50)
+    assert Ok(#(x, reply_channel)) = process.receive(call_receiver, 50)
     // Reply, after a delay
     sleep(20)
     process.send(reply_channel, x + 1)
@@ -206,10 +206,10 @@ pub fn try_call_timeout_test() {
 // }
 pub fn monitor_test_test() {
   // Spawn child
-  let tuple(send_to_parent, parent_receiver) = process.new_channel()
+  let #(send_to_parent, parent_receiver) = process.new_channel()
   let pid =
     process.start(fn() {
-      let tuple(sender, receiver) = process.new_channel()
+      let #(sender, receiver) = process.new_channel()
       process.send(send_to_parent, sender)
       process.receive(receiver, 150)
     })
@@ -262,7 +262,7 @@ pub fn null_channel_test() {
 }
 
 pub fn send_after_test() {
-  let tuple(sender, receiver) = process.new_channel()
+  let #(sender, receiver) = process.new_channel()
 
   // 0 is received immediately, though asynchronously
   process.send_after(sender, 0, "a")
@@ -287,7 +287,7 @@ pub fn null_channel_send_after_test() {
 }
 
 pub fn cancel_timer_test() {
-  let tuple(sender, _receiver) = process.new_channel()
+  let #(sender, _receiver) = process.new_channel()
   let instant_timer = process.send_after(sender, 0, "a")
   let later_timer = process.send_after(sender, 100, "a")
   sleep(5)
@@ -298,7 +298,7 @@ pub fn cancel_timer_test() {
 }
 
 pub fn map_receiver_test() {
-  let tuple(sender, receiver) = process.new_channel()
+  let #(sender, receiver) = process.new_channel()
   let receiver =
     receiver
     |> process.map_receiver(fn(x) { x + 1 })
@@ -317,7 +317,7 @@ pub fn map_receiver_test() {
 }
 
 pub fn map_sender_test() {
-  let tuple(sender, receiver) = process.new_channel()
+  let #(sender, receiver) = process.new_channel()
   let sender =
     sender
     |> process.map_sender(fn(x) { [x] })
