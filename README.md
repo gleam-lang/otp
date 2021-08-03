@@ -10,6 +10,13 @@ actor model. It is compatible with Erlang's OTP framework.
 This library is experimental and will likely have many breaking changes in the
 future!
 
+Gleam’s actor system is built with a few primary goals:
+
+ - Full type safety of actors and messages.
+ - Be compatible with Erlang’s OTP actor framework.
+ - Provide fault tolerance and self-healing through supervisors.
+ - Have equivalent performance to Erlang’s OTP.
+
 ## Actor hierarchy
 
 This library defines several different types of actor that can be used in
@@ -55,7 +62,7 @@ This library is experimental there are some limitations that not yet been resolv
 
 - There is no support for named processes.
 - Actors do not yet support all OTP system messages. Unsupported messages are dropped.
-- Supervisors do not yet support different shutdown period per child. In
+- Supervisors do not yet support different shutdown periods per child. In
   practice this means that children that are supervisors do not get an
   unlimited amount of time to shut down, as is expected in Erlang or Elixir.
 - This library has not seen much testing compared to the Erlang OTP
