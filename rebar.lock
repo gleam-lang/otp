@@ -1,8 +1,11 @@
 {"1.2.0",
-[{<<"gleam_stdlib">>,{pkg,<<"gleam_stdlib">>,<<"0.17.0">>},0}]}.
+[{<<"gleam_erlang">>,{pkg,<<"gleam_erlang">>,<<"0.1.0">>},0},
+ {<<"gleam_stdlib">>,{pkg,<<"gleam_stdlib">>,<<"0.17.0">>},0}]}.
 [
 {pkg_hash,[
+ {<<"gleam_erlang">>, <<"A104FB11D7BEE83BC52C87897D52A6584D53EBB9EC7D63C80D9240F5E555ED10">>},
  {<<"gleam_stdlib">>, <<"186494B596DB67A1FDAFFF164F988737AE47A5C634893422397A356CA3C3F979">>}]},
 {pkg_hash_ext,[
+ {<<"gleam_erlang">>, <<"316BE16CF523F2E6EFB8B092943261E12F94989BFE63C1DB93D5233BB8418478">>},
  {<<"gleam_stdlib">>, <<"66834E96F3F42609B4E5AAA2B73F9EC45625A422D0AED091B3A704ACAE0420E7">>}]}
 ].
