@@ -1,6 +1,6 @@
-import gleam/atom
+import gleam/erlang/atom
 import gleam/result
-import gleam/atom.{Atom}
+import gleam/erlang/atom.{Atom}
 import gleam/dynamic.{Dynamic}
 import gleam/otp/port
 import gleam/function

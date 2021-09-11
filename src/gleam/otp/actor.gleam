@@ -3,7 +3,7 @@ import gleam/otp/process.{
   Resume, Running, Sender, Suspend, Suspended, SystemMessage,
 }
 import gleam/io
-import gleam/atom
+import gleam/erlang/atom
 import gleam/result
 import gleam/option.{Option}
 import gleam/dynamic.{Dynamic}
