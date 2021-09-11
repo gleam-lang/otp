@@ -3,7 +3,7 @@ import gleam/otp/port.{Port}
 import gleam/should
 import gleam/io
 import gleam/result
-import gleam/atom
+import gleam/erlang/atom
 import gleam/dynamic
 import gleam/option
 
