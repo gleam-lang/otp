@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.0 - 2021-09-11
+
+- Updated for Gleam v0.17.0.
+
 ## v0.1.6 - 2021-08-02
 
 - Updated to use the new `#()` tuple syntax.
