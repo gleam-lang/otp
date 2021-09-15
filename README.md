@@ -17,6 +17,33 @@ Gleam’s actor system is built with a few primary goals:
  - Provide fault tolerance and self-healing through supervisors.
  - Have equivalent performance to Erlang’s OTP.
 
+## Getting started
+
+### Getting OTP onto your system
+
+To use the OTP library in a Gleam project, add `gleam_otp` to the `deps` section of the projects `rebar.config` file. The result might, for instance, look like this:
+```
+  {deps, [
+    {gleam_stdlib, "0.16.0"},
+    {gleam_otp, "0.1.6"}
+  ]}.
+```
+You might have to futz with the version number to match other components of your system.
+
+Then run `rebar3 get-deps`.
+
+The next time you run `rebar3 shell` (or any other rebar3 command that induces compilation), rebar3 should download the deps as you've specified. If it doesn't, you might want to delete the `rebar.lock` file in the project root, if it's present.
+
+### How to understand the Gleam OTP library
+
+(1) Read the rest of this README.
+
+(2) Understand Erlang's OTP library.
+
+(3) this [blog post](https://gleam.run/news/gleam-v0.12-and-gleam-otp-v0.1-released/) is a decent jumping off point.
+
+(4) [Gleam OTP test suite](https://github.com/gleam-lang/otp/tree/main/test/gleam/otp) demonstrates what the library offers in more detail.
+
 ## Actor hierarchy
 
 This library defines several different types of actor that can be used in
@@ -67,4 +94,4 @@ This library is experimental there are some limitations that not yet been resolv
   unlimited amount of time to shut down, as is expected in Erlang or Elixir.
 - This library has not seen much testing compared to the Erlang OTP
   libraries, both in terms of unit tests and real world testing in
-  applications. 
+  applications.
