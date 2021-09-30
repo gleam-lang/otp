@@ -11,21 +11,6 @@ import gleam/option.{None, Option, Some}
 ///
 pub external type Pid
 
-/// Send a bare message to a process. These bare messages are not not commonly
-/// used in Gleam as they are not typed checked, see the Channel type for a
-/// type safe and more ergonomic way of sending messages to processes. This
-/// function may still be useful for sending messages to processes implemented
-/// in Erlang or other BEAM languages.
-///
-/// Message handling is asynchronous and this function will likely return before
-/// the message is handled by the receiving processes.
-///
-/// See the [Erlang documentation][erl] for more information.
-/// [erl]: http://erlang.org/doc/man/erlang.html#send-2
-///
-pub external fn untyped_send(to: Pid, msg: msg) -> msg =
-  "erlang" "send"
-
 /// A reference is a special value where each new one is unique. For more
 /// information references see the [Erlang documentation][1].
 ///
@@ -592,3 +577,21 @@ pub fn unlink(pid: Pid) -> Nil {
   erlang_unlink(pid)
   Nil
 }
+
+/// Send an untyped bare message to a process.
+///
+/// You probably don't want to use this function!
+/// Bare messages are not not commonly used in Gleam as they are not typed
+/// checked, see the Sender and Receiver channel types for a type safe and more
+/// ergonomic way of sending messages to processes. This function may still be
+/// useful for sending messages to processes implemented in Erlang or other BEAM
+/// languages.
+///
+/// Message handling is asynchronous and this function will likely return before
+/// the message is handled by the receiving processes.
+///
+/// See the [Erlang documentation][erl] for more information.
+/// [erl]: http://erlang.org/doc/man/erlang.html#send-2
+///
+pub external fn untyped_send(to: Pid, msg: msg) -> msg =
+  "erlang" "send"
