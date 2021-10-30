@@ -10,5 +10,6 @@
   {modules, []},
 
   {licenses, ["Apache 2.0"]},
-  {links, [{"GitHub", "https://github.com/gleam-lang/otp"}]}
+  {links, [{"GitHub", "https://github.com/gleam-lang/otp"}]},
+  {include_files, ["gleam.toml", "gen"]}
 ]}.
