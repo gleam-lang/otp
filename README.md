@@ -19,19 +19,11 @@ Gleam’s actor system is built with a few primary goals:
 
 ## Installation
 
-To use the OTP library in a Gleam rebar3 project, add `gleam_otp` to the `deps`
-section of the projects `rebar.config` file. The result might, for instance,
-look like this:
+To use the OTP library in a Gleam rebar3 project, add `gleam_otp` to the `dependencies` section of the projects `gleam.toml` file. 
 
-```erlang
-{deps, [
-  {gleam_stdlib, "0.16.0"},
-  {gleam_otp, "0.1.6"}
-]}.
+```toml
+gleam_otp = "~> 0.1"
 ```
-
-The next time you run `rebar3 shell` (or any other rebar3 command that induces
-compilation) rebar3 will download the deps as you've specified.
 
 ### How to understand the Gleam OTP library
 
