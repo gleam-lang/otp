@@ -11,11 +11,11 @@
 
 % import Gleam records
 
--include("gleam@otp@process_Sender.hrl").
--include("gleam@otp@process_Exit.hrl").
--include("gleam@otp@process_PortDown.hrl").
--include("gleam@otp@process_ProcessDown.hrl").
--include("gleam@otp@process_StatusInfo.hrl").
+-include("../include/gleam@otp@process_Sender.hrl").
+-include("../include/gleam@otp@process_Exit.hrl").
+-include("../include/gleam@otp@process_PortDown.hrl").
+-include("../include/gleam@otp@process_ProcessDown.hrl").
+-include("../include/gleam@otp@process_StatusInfo.hrl").
 
 % Guards
 
