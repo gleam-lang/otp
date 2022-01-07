@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.3.1 - 2022-01-07
+
+- Updated for Gleam v0.19.0.
+
 ## v0.3.0 - 2021-11-23
 
 - Converted to use the Gleam build tool.
