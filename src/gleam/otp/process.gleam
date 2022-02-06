@@ -114,6 +114,12 @@ pub fn pid(sender: Sender(msg)) -> Pid {
   sender.pid
 }
 
+/// Attempt to parse a pid from some dynamic data
+///
+/// This may be useful if you receive a pid in a message from an Erlang process.
+pub external fn pid_from_dynamic(dynamic : Dynamic) -> Result(Pid, Nil) =
+  "gleam_otp_external" "pid_from_dynamic"
+
 /// Send a message over a channel.
 ///
 /// This function always succeeds, even if the receiving process has shut down

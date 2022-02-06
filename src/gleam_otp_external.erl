@@ -9,6 +9,9 @@
          map_receiver/2, stop_trapping_exits/0, system_receiver/0,
          application_stopped/0]).
 
+% Pids
+-export([pid_from_dynamic/1]).
+
 % import Gleam records
 
 -include_lib("gleam_otp/include/gleam@otp@process_Sender.hrl").
@@ -215,3 +218,11 @@ process_status(Status) ->
 
 application_stopped() ->
     ok.
+
+% Pids 
+
+pid_from_dynamic(Dynamic) ->
+    case is_pid(Dynamic) of
+        true -> {ok, Dynamic};
+        false -> {error, nil}
+    end.
