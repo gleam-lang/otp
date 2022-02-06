@@ -345,3 +345,17 @@ type PortSettings {
 
 external fn open_port(PortName, List(PortSettings)) -> Port =
   "erlang" "open_port"
+
+pub fn dynamic_is_pid_test() {
+  let pid = process.start(fn() { Nil })
+  let dynamic = dynamic.from(pid)
+  process.pid_from_dynamic(dynamic)
+  |> should.equal(Ok(pid))
+}
+
+pub fn dynamic_is_not_pid_test() {
+  let not_pid = "ceci n'est pas un pid"
+  let dynamic = dynamic.from(not_pid)
+  process.pid_from_dynamic(dynamic)
+  |> should.equal(Error(Nil))
+}
