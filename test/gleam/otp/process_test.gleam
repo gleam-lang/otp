@@ -357,5 +357,7 @@ pub fn dynamic_is_not_pid_test() {
   let not_pid = "ceci n'est pas un pid"
   let dynamic = dynamic.from(not_pid)
   process.pid_from_dynamic(dynamic)
-  |> should.equal(Error(Nil))
+  |> should.equal(Error([
+    dynamic.DecodeError(expected: "Pid", found: "String", path: []),
+  ]))
 }

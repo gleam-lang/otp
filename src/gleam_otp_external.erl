@@ -224,5 +224,5 @@ application_stopped() ->
 pid_from_dynamic(Dynamic) ->
     case is_pid(Dynamic) of
         true -> {ok, Dynamic};
-        false -> {error, nil}
+        false -> {error, [{decode_error, <<"Pid">>, gleam@dynamic:classify(Dynamic), []}]}
     end.
