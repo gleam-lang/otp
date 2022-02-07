@@ -1,7 +1,7 @@
 import gleam/erlang/atom
 import gleam/result
 import gleam/erlang/atom.{Atom}
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic.{DecodeError, Dynamic}
 import gleam/otp/port
 import gleam/function
 import gleam/option.{None, Option, Some}
@@ -117,7 +117,7 @@ pub fn pid(sender: Sender(msg)) -> Pid {
 /// Attempt to parse a pid from some dynamic data
 ///
 /// This may be useful if you receive a pid in a message from an Erlang process.
-pub external fn pid_from_dynamic(dynamic : Dynamic) -> Result(Pid, Nil) =
+pub external fn pid_from_dynamic(Dynamic) -> Result(Pid, List(DecodeError)) =
   "gleam_otp_external" "pid_from_dynamic"
 
 /// Send a message over a channel.
