@@ -114,7 +114,7 @@ pub fn pid(sender: Sender(msg)) -> Pid {
   sender.pid
 }
 
-/// Attempt to parse a pid from some dynamic data
+/// Attempt to parse a pid from some dynamic data.
 ///
 /// This may be useful if you receive a pid in a message from an Erlang process.
 pub external fn pid_from_dynamic(Dynamic) -> Result(Pid, List(DecodeError)) =
