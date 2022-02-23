@@ -25,4 +25,17 @@ pub fn async_await_test() {
   |> should.equal(Ok(2))
   task.try_await(t3, 5)
   |> should.equal(Ok(3))
+
+  //  Spawn 3 more tasks, performing 45ms work collectively
+  let t4 = task.async(work(4))
+  let t5 = task.async(work(5))
+  let t6 = task.async(work(6))
+
+  // Assert they run concurrently (not caring how long they take)
+  task.try_await_forever(t4)
+  |> should.equal(Ok(4))
+  task.try_await_forever(t5)
+  |> should.equal(Ok(5))
+  task.try_await_forever(t6)
+  |> should.equal(Ok(6))
 }
