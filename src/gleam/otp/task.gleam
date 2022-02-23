@@ -116,3 +116,40 @@ pub fn await(task: Task(value), timeout: Int) -> value {
   assert Ok(value) = try_await(task, timeout)
   value
 }
+
+// TODO: test
+/// Wait endlessly for the value computed by a task.
+///
+/// Be Careful! This function does not return until there is a value to
+/// receive. If a value is not received then the process will be stuck waiting
+/// forever.
+///
+pub fn try_await_forever(task: Task(value)) -> Result(value, AwaitError) {
+  assert_owner(task)
+  case process.receive_forever(task.receiver) {
+    // The task process has sent back a value
+    Chan(x) -> {
+      process.close_channels(task.receiver)
+      Ok(x)
+    }
+
+    // The task process crashed without sending a value
+    Mon(process.ProcessDown(reason: reason, ..)) -> {
+      process.close_channels(task.receiver)
+      Error(Exit(reason))
+    }
+  }
+}
+
+// TODO: test
+/// Wait endlessly for the value computed by a task.
+///
+/// Be Careful! Like `try_await_forever`, this function does not return until there is a value to
+/// receive.
+///
+/// If the task process crashes then this function crashes.
+///
+pub fn await_forever(task: Task(value)) -> value {
+  assert Ok(value) = try_await_forever(task)
+  value
+}
