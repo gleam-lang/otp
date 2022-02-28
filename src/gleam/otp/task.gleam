@@ -117,7 +117,6 @@ pub fn await(task: Task(value), timeout: Int) -> value {
   value
 }
 
-// TODO: test
 /// Wait endlessly for the value computed by a task.
 ///
 /// Be Careful! This function does not return until there is a value to
@@ -141,7 +140,6 @@ pub fn try_await_forever(task: Task(value)) -> Result(value, AwaitError) {
   }
 }
 
-// TODO: test
 /// Wait endlessly for the value computed by a task.
 ///
 /// Be Careful! Like `try_await_forever`, this function does not return until there is a value to
