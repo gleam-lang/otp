@@ -2,7 +2,7 @@ import gleam/otp/actor.{Continue}
 import gleam/otp/process.{Pid}
 import gleam/otp/system
 import gleam/dynamic.{Dynamic}
-import gleam/should
+import gleeunit/should
 import gleam/result
 
 pub fn get_state_test() {

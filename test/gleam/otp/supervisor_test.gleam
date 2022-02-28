@@ -1,4 +1,4 @@
-import gleam/should
+import gleeunit/should
 import gleam/option.{None}
 import gleam/otp/supervisor.{add, returning, worker}
 import gleam/otp/process

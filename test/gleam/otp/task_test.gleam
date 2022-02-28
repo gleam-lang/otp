@@ -1,4 +1,4 @@
-import gleam/should
+import gleeunit/should
 import gleam/otp/task
 import gleam/otp/process
 

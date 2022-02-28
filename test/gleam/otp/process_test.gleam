@@ -1,6 +1,6 @@
 import gleam/otp/process
 import gleam/otp/port.{Port}
-import gleam/should
+import gleeunit/should
 import gleam/io
 import gleam/result
 import gleam/erlang/atom
