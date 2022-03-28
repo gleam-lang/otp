@@ -17,7 +17,9 @@ Gleam’s actor system is built with a few primary goals:
  - Provide fault tolerance and self-healing through supervisors.
  - Have equivalent performance to Erlang’s OTP.
 
-## Installation
+## Usage
+
+Add this library to your Gleam project.
 
 ```shell
 gleam add gleam_otp
