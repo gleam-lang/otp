@@ -1,5 +1,3 @@
-import gleam/erlang/atom
-import gleam/result
 import gleam/erlang/atom.{Atom}
 import gleam/dynamic.{DecodeError, Dynamic}
 import gleam/otp/port

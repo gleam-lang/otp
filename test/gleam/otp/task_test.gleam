@@ -1,6 +1,5 @@
 import gleeunit/should
 import gleam/otp/task
-import gleam/otp/process
 
 external fn sleep(Int) -> Nil =
   "timer" "sleep"

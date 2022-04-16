@@ -4,7 +4,6 @@ import gleam/otp/process.{
 }
 import gleam/io
 import gleam/erlang/atom
-import gleam/result
 import gleam/option.{Option}
 import gleam/dynamic.{Dynamic}
 

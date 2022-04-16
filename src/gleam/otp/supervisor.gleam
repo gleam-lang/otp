@@ -1,8 +1,5 @@
 // TODO: test
 // TODO: specify amount of time permitted for shut-down
-import gleam/io
-import gleam/list
-import gleam/pair
 import gleam/result
 import gleam/dynamic
 import gleam/option.{None, Option, Some}
