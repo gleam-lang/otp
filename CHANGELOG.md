@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.4.0 - 2022-04-16
 
 - The `gleam/otp/process` module gains the `pid_from_dynamic` function.
 - The `gleam/otp/task` module gains the `await_forever` and `try_await_forever` functions.
