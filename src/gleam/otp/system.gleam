@@ -1,5 +1,5 @@
 import gleam/dynamic.{Dynamic}
-import gleam/otp/process.{Pid}
+import gleam/erlang/process.{Pid}
 
 external type DoNotLeak
 

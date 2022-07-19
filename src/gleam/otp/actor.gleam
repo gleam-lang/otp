@@ -1,6 +1,7 @@
+import gleam/erlang/process.{Pid} as erlang_process
 import gleam/otp/process.{
-  DebugState, ExitReason, GetState, GetStatus, Mode, Pid, ProcessDown, Receiver,
-  Resume, Running, Sender, Suspend, Suspended, SystemMessage,
+  DebugState, ExitReason, GetState, GetStatus, Mode, ProcessDown, Receiver, Resume,
+  Running, Sender, Suspend, Suspended, SystemMessage,
 }
 import gleam/io
 import gleam/erlang/atom

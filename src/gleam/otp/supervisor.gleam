@@ -3,7 +3,8 @@
 import gleam/result
 import gleam/dynamic
 import gleam/option.{None, Option, Some}
-import gleam/otp/process.{Pid, Sender}
+import gleam/otp/process.{Sender}
+import gleam/erlang/process.{Pid} as erlang_process
 import gleam/otp/actor.{StartError}
 import gleam/otp/intensity_tracker.{IntensityTracker}
 import gleam/otp/node.{Node}
@@ -49,7 +50,7 @@ type ChildStartError {
 
 pub opaque type Message {
   Exit(process.Exit)
-  RetryRestart(process.Pid)
+  RetryRestart(Pid)
 }
 
 type Instruction {
@@ -61,7 +62,7 @@ type State(a) {
   State(
     restarts: IntensityTracker,
     starter: Starter(a),
-    retry_restart_channel: process.Sender(process.Pid),
+    retry_restart_channel: process.Sender(Pid),
   )
 }
 
@@ -283,7 +284,7 @@ type HandleExitError {
   TooManyRestarts
 }
 
-fn handle_exit(pid: process.Pid, state: State(a)) -> actor.Next(State(a)) {
+fn handle_exit(pid: Pid, state: State(a)) -> actor.Next(State(a)) {
   let outcome = {
     // If we are handling an exit then we must have some children
     assert Some(start) = state.starter.exec

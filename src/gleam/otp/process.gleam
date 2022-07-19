@@ -3,18 +3,8 @@ import gleam/dynamic.{DecodeError, Dynamic}
 import gleam/otp/port
 import gleam/function
 import gleam/option.{None, Option, Some}
-
-/// A Pid (or Process identifier) is a reference to an OTP process, which is a
-/// lightweight thread that communicates by sending and receiving messages.
-///
-pub external type Pid
-
-/// A reference is a special value where each new one is unique. For more
-/// information references see the [Erlang documentation][1].
-///
-/// [1]: https://erlang.org/doc/efficiency_guide/advanced.html#unique_references
-///
-pub external type Reference
+import gleam/erlang/process.{Pid}
+import gleam/erlang.{Reference}
 
 /// Create a new reference. The reference is unique among the currently
 /// connected nodes in the Erlang cluster.
