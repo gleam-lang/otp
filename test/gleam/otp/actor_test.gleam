@@ -1,5 +1,6 @@
 import gleam/otp/actor.{Continue}
-import gleam/otp/process.{Pid}
+import gleam/erlang/process.{Pid} as erlang_process
+import gleam/otp/process
 import gleam/otp/system
 import gleam/dynamic.{Dynamic}
 import gleeunit/should

@@ -27,7 +27,8 @@
 ////
 
 // TODO: await_many
-import gleam/otp/process.{Pid, Receiver}
+import gleam/erlang/process.{Pid}
+import gleam/otp/process.{Receiver}
 import gleam/dynamic.{Dynamic}
 
 pub opaque type Task(value) {
