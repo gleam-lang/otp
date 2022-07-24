@@ -3,8 +3,8 @@
 import gleam/result
 import gleam/dynamic
 import gleam/option.{None, Option, Some}
-import gleam/erlang/process.{Subject}
-import gleam/erlang/process.{Pid} as erlang_process
+import gleam/erlang/process.{Pid, Subject}
+import gleam/otp/process as legacy
 import gleam/otp/actor.{StartError}
 import gleam/otp/intensity_tracker.{IntensityTracker}
 import gleam/otp/node.{Node}
@@ -37,10 +37,11 @@ pub opaque type Children(argument) {
 ///
 /// This is typically created with the `worker` function.
 ///
-pub opaque type ChildSpec(msg, argment, returning) {
+pub opaque type ChildSpec(msg, argument, returning) {
   ChildSpec(
-    start: fn(argment) -> Result(Sender(msg), StartError),
-    returning: fn(argment, Sender(msg)) -> returning,
+    // TODO: merge this into one field
+    start: fn(argument) -> Result(Subject(msg), StartError),
+    returning: fn(argument, Subject(msg)) -> returning,
   )
 }
 
@@ -49,7 +50,7 @@ type ChildStartError {
 }
 
 pub opaque type Message {
-  Exit(process.Exit)
+  Exit(legacy.Exit)
   RetryRestart(Pid)
 }
 
@@ -62,7 +63,7 @@ type State(a) {
   State(
     restarts: IntensityTracker,
     starter: Starter(a),
-    retry_restart_channel: process.Sender(Pid),
+    retry_restarts: Subject(Pid),
   )
 }
 
@@ -84,22 +85,23 @@ fn start_child(
   child_spec: ChildSpec(msg, argument_in, argument_out),
   argument: argument_in,
 ) -> Result(Child(argument_out), ChildStartError) {
-  try channel =
+  try subject =
     child_spec.start(argument)
     |> result.map_error(ChildStartError(None, _))
 
   Ok(Child(
-    pid: process.pid(channel),
+    pid: process.subject_owner(subject),
     // Merge the new child's pid into the argument to produce the new argument
     // used to start any remaining children.
-    argument: child_spec.returning(argument, channel),
+    argument: child_spec.returning(argument, subject),
   ))
 }
 
 // TODO: more sophsiticated stopping of processes. i.e. give supervisors
 // more time to shut down.
 fn shutdown_child(pid: Pid, _spec: ChildSpec(msg, arg_1, arg_2)) -> Nil {
-  process.send_exit(pid, process.Normal)
+  // process.send_exit(pid, process.Normal)
+  todo("gleam_erlang does not support sending exit messages yet")
 }
 
 fn perform_instruction_for_child(
@@ -198,7 +200,7 @@ pub fn add(
 /// correct shut down behaviour is used in later releases of this library.
 ///
 pub fn supervisor(
-  start: fn(argument) -> Result(Sender(msg), StartError),
+  start: fn(argument) -> Result(Subject(msg), StartError),
 ) -> ChildSpec(msg, argument, argument) {
   ChildSpec(start: start, returning: fn(argument, _channel) { argument })
 }
@@ -212,7 +214,7 @@ pub fn supervisor(
 /// `returning` function.
 ///
 pub fn worker(
-  start: fn(argument) -> Result(Sender(msg), StartError),
+  start: fn(argument) -> Result(Subject(msg), StartError),
 ) -> ChildSpec(msg, argument, argument) {
   ChildSpec(start: start, returning: fn(argument, _channel) { argument })
 }
@@ -226,7 +228,7 @@ pub fn worker(
 ///
 pub fn returning(
   child: ChildSpec(msg, argument_a, argument_b),
-  updater: fn(argument_a, Sender(msg)) -> argument_c,
+  updater: fn(argument_a, Subject(msg)) -> argument_c,
 ) -> ChildSpec(msg, argument_a, argument_c) {
   ChildSpec(start: child.start, returning: updater)
 }
@@ -234,21 +236,21 @@ pub fn returning(
 fn init(
   spec: Spec(argument, return),
 ) -> actor.InitResult(State(return), Message) {
-  // Create a channel so that we can asynchronously retry restarting when we
+  // Create a subject so that we can asynchronously retry restarting when we
   // fail to bring an exited child
-  let #(retry_sender, retry_receiver) = process.new_channel()
-  let retry_receiver = process.map_receiver(retry_receiver, RetryRestart)
+  let retry = process.new_subject()
 
   // Trap exits so that we get a message when a child crashes
-  let exit_receiver =
-    process.trap_exits()
-    |> process.map_receiver(Exit)
+  // process.trap_exits(True)
+  todo("gleam_erlang does not support trapping exits yet")
 
-  // Combine receivers
-  let receiver =
-    exit_receiver
-    |> process.merge_receiver(retry_receiver)
+  // Combine selectors
+  let selector =
+    process.new_selector()
+    |> process.selecting(retry, RetryRestart)
+    |> todo("gleam_erlang does not support selecting exit signals yet")
 
+  // |> process.selecting_exits(Exit)
   // Start any children
   let result =
     Starter(argument: spec.argument, exec: None)
@@ -264,18 +266,12 @@ fn init(
           period: spec.frequency_period,
         )
       let state =
-        State(
-          starter: starter,
-          restarts: restarts,
-          retry_restart_channel: retry_sender,
-        )
-      actor.Ready(state, Some(receiver))
+        State(starter: starter, restarts: restarts, retry_restarts: retry)
+      actor.Ready(state, selector)
     }
-    Failed(reason) -> {
+    Failed(reason) ->
       // TODO: refine error type
-      let reason = process.Abnormal(dynamic.from(reason))
-      actor.Failed(reason)
-    }
+      actor.Failed(dynamic.from(reason))
   }
 }
 
@@ -311,25 +307,25 @@ fn handle_exit(pid: Pid, state: State(a)) -> actor.Next(State(a)) {
       // Asynchronously enqueue the restarting of this child again as we were
       // unable to restart them this time. We do this asynchronously as we want
       // to have a chance to handle any system messages that have come in.
-      process.send(state.retry_restart_channel, failed_child)
+      process.send(state.retry_restarts, failed_child)
       let state = State(..state, restarts: restarts)
       actor.Continue(state)
     }
     Error(TooManyRestarts) ->
-      actor.Stop(process.Abnormal(dynamic.from(TooManyRestarts)))
+      actor.Stop(legacy.Abnormal(dynamic.from(TooManyRestarts)))
   }
 }
 
 fn loop(message: Message, state: State(argument)) -> actor.Next(State(argument)) {
   case message {
-    Exit(process.Exit(pid: pid, ..)) -> handle_exit(pid, state)
+    Exit(legacy.Exit(pid: pid, ..)) -> handle_exit(pid, state)
     RetryRestart(pid) -> handle_exit(pid, state)
   }
 }
 
 /// Start a supervisor from a given specification.
 ///
-pub fn start_spec(spec: Spec(a, b)) -> Result(Sender(Message), StartError) {
+pub fn start_spec(spec: Spec(a, b)) -> Result(Subject(Message), StartError) {
   actor.start_spec(actor.Spec(
     init: fn() { init(spec) },
     loop: loop,
@@ -344,7 +340,7 @@ pub fn start_spec(spec: Spec(a, b)) -> Result(Sender(Message), StartError) {
 ///
 pub fn start(
   init: fn(Children(Nil)) -> Children(a),
-) -> Result(Sender(Message), StartError) {
+) -> Result(Subject(Message), StartError) {
   start_spec(Spec(
     init: init,
     argument: Nil,
@@ -393,26 +389,4 @@ pub type ErlangStartResult =
 ///
 pub fn to_erlang_start_result(res: StartResult(msg)) -> ErlangStartResult {
   actor.to_erlang_start_result(res)
-}
-
-/// Processes written in Erlang or other BEAM languages use bare processes rather
-/// than channels, so the value returned from their process start functions are
-/// not compatible with Gleam supervisors. This function can be used to wrap the
-/// return value so it can be used with a Gleam supervisor.
-///
-pub fn from_erlang_start_result(
-  start: Result(Pid, error),
-) -> StartResult(anything) {
-  actor.from_erlang_start_result(start)
-}
-
-/// Processes written in Erlang or other BEAM languages use bare processes rather
-/// than channels, so the value returned from their process start functions are
-/// not compatible with Gleam supervisors. This function can be used to wrap the
-/// start function so it can be used with a Gleam supervisor.
-///
-pub fn wrap_erlang_starter(
-  start: fn() -> Result(Pid, error),
-) -> fn() -> StartResult(anything) {
-  actor.wrap_erlang_starter(start)
 }
