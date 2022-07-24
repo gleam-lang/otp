@@ -3,6 +3,7 @@ import gleam/option.{None}
 import gleam/otp/supervisor.{add, returning, worker}
 import gleam/otp/process
 import gleam/otp/actor
+import gleam/erlang/process as erlang_process
 
 pub fn supervisor_test() {
   let #(sender, receiver) = process.new_channel()
@@ -13,7 +14,7 @@ pub fn supervisor_test() {
     worker(fn(name) {
       actor.start_spec(actor.Spec(
         init: fn() {
-          process.send(sender, #(name, process.self()))
+          process.send(sender, #(name, erlang_process.self()))
           actor.Ready(name, None)
         },
         init_timeout: 10,

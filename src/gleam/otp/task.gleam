@@ -27,12 +27,11 @@
 ////
 
 // TODO: await_many
-import gleam/erlang/process.{Pid}
-import gleam/otp/process.{Receiver}
+import gleam/erlang/process.{Pid, Selector, Subject}
 import gleam/dynamic.{Dynamic}
 
 pub opaque type Task(value) {
-  Task(owner: Pid, pid: Pid, receiver: Receiver(Message(value)))
+  Task(owner: Pid, pid: Pid, selector: Selector(Message(value)))
 }
 
 // TODO: test
@@ -44,17 +43,15 @@ pub opaque type Task(value) {
 ///
 pub fn async(work: fn() -> value) -> Task(value) {
   let owner = process.self()
-  let #(sender, receiver) = process.new_channel()
-  let pid = process.start(fn() { process.send(sender, work()) })
-  let receiver =
-    pid
-    |> process.monitor_process
-    |> process.map_receiver(Mon)
-    |> process.merge_receiver(
-      receiver
-      |> process.map_receiver(Chan),
-    )
-  Task(owner: owner, pid: pid, receiver: receiver)
+  let subject = process.new_subject()
+  let pid =
+    process.start(linked: True, running: fn() { process.send(subject, work()) })
+  let monitor = process.monitor_process(pid)
+  let selector =
+    process.new_selector()
+    |> process.selecting_process_down(monitor, FromMonitor)
+    |> process.selecting(subject, FromSubject)
+  Task(owner: owner, pid: pid, selector: selector)
 }
 
 pub type AwaitError {
@@ -68,17 +65,17 @@ fn assert_owner(task: Task(a)) -> Nil {
   let self = process.self()
   case task.owner == self {
     True -> Nil
-    False ->
-      process.send_exit(
-        to: self,
-        because: "awaited on a task that does not belong to this process",
-      )
+    False -> // process.send_exit(
+      //   to: self,
+      //   because: "awaited on a task that does not belong to this process",
+      // )
+      todo("gleam_erlang does not support send_exit yet")
   }
 }
 
 type Message(value) {
-  Mon(process.ProcessDown)
-  Chan(value)
+  FromMonitor(process.ProcessDown)
+  FromSubject(value)
 }
 
 // TODO: test
@@ -89,18 +86,13 @@ type Message(value) {
 ///
 pub fn try_await(task: Task(value), timeout: Int) -> Result(value, AwaitError) {
   assert_owner(task)
-  case process.receive(task.receiver, timeout) {
+  case process.select(task.selector, timeout) {
     // The task process has sent back a value
-    Ok(Chan(x)) -> {
-      process.close_channels(task.receiver)
-      Ok(x)
-    }
+    Ok(FromSubject(x)) -> Ok(x)
 
     // The task process crashed without sending a value
-    Ok(Mon(process.ProcessDown(reason: reason, ..))) -> {
-      process.close_channels(task.receiver)
+    Ok(FromMonitor(process.ProcessDown(reason: reason, ..))) ->
       Error(Exit(reason))
-    }
 
     // The task process is alive but has not sent a value yet
     Error(Nil) -> Error(Timeout)
@@ -126,18 +118,13 @@ pub fn await(task: Task(value), timeout: Int) -> value {
 ///
 pub fn try_await_forever(task: Task(value)) -> Result(value, AwaitError) {
   assert_owner(task)
-  case process.receive_forever(task.receiver) {
+  // case process.receive_forever(task.selector) {
+  case todo("gleam_erlang does not support receive_forever yet") {
     // The task process has sent back a value
-    Chan(x) -> {
-      process.close_channels(task.receiver)
-      Ok(x)
-    }
+    FromSubject(x) -> Ok(x)
 
     // The task process crashed without sending a value
-    Mon(process.ProcessDown(reason: reason, ..)) -> {
-      process.close_channels(task.receiver)
-      Error(Exit(reason))
-    }
+    FromMonitor(process.ProcessDown(reason: reason, ..)) -> Error(Exit(reason))
   }
 }
 

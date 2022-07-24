@@ -1,8 +1,8 @@
-import gleam/erlang/process.{Pid} as erlang_process
+import gleam/erlang/process.{Pid, Selector, Subject}
 import gleam/otp/process.{
-  DebugState, ExitReason, GetState, GetStatus, Mode, ProcessDown, Receiver, Resume,
-  Running, Sender, Suspend, Suspended, SystemMessage,
-}
+  Abnormal, DebugState, ExitReason, GetState, GetStatus, Mode, Resume, Running, Suspend,
+  Suspended, SystemMessage,
+} as legacy
 import gleam/io
 import gleam/erlang/atom
 import gleam/option.{Option}
@@ -35,21 +35,22 @@ pub type InitResult(state, message) {
   /// messages and actor's channel sender can be returned to the parent
   /// process.
   ///
-  Ready(state: state, receiver: Option(Receiver(message)))
+  Ready(state: state, subject: Option(Selector(message)))
 
+  // TODO: exit reason
+  // Failed(ExitReason)
   /// The actor has failed to initialise. The actor shuts down and an error is
   /// returned to the parent process.
   ///
-  Failed(ExitReason)
+  Failed(Dynamic)
 }
 
 type Self(state, msg) {
   Self(
-    pid: Pid,
     mode: Mode,
     parent: Pid,
     state: state,
-    receiver: Receiver(Message(msg)),
+    selector: Selector(Message(msg)),
     debug_state: DebugState,
     message_handler: fn(msg, state) -> Next(state),
   )
@@ -89,22 +90,23 @@ fn exit_process(reason: ExitReason) -> ExitReason {
 }
 
 fn receive_message(self: Self(state, msg)) -> Message(msg) {
-  let system_receiver =
-    process.system_receiver()
-    |> process.map_receiver(System)
+  // let system_selector =
+  //   process.system_selector()
+  //   |> process.map_selector(System)
 
-  let receiver = case self.mode {
-    Suspended -> system_receiver
-    Running ->
-      self.receiver
-      |> process.merge_receiver(system_receiver)
-  }
-  process.receive_forever(receiver)
+  // let selector = case self.mode {
+  //   Suspended -> system_selector
+  //   Running ->
+  //     self.selector
+  //     |> process.merge_selector(system_selector)
+  // }
+  // process.receive_forever(selector)
+  todo
 }
 
-fn process_status_info(self: Self(state, msg)) -> process.StatusInfo {
-  process.StatusInfo(
-    mod: atom.create_from_string("gleam@otp@actor"),
+fn process_status_info(self: Self(state, msg)) -> legacy.StatusInfo {
+  legacy.StatusInfo(
+    module: atom.create_from_string("gleam@otp@actor"),
     parent: self.parent,
     mode: self.mode,
     debug_state: self.debug_state,
@@ -147,41 +149,43 @@ fn loop(self: Self(state, msg)) -> ExitReason {
   }
 }
 
-fn merge_extra_receiver(r1, r2) {
+fn merge_extra_selector(r1: Selector(Message(m)), r2: Option(Selector(m))) {
   case r2 {
     option.None -> r1
     option.Some(r2) ->
-      process.merge_receiver(r1, process.map_receiver(r2, Message))
+      // process.merge_selectors(r1, r2, Message)
+      todo("the gleam_erlang library does not yet support merging selectors")
   }
 }
 
 fn initialise_actor(
   spec: Spec(state, msg),
-  ack_channel: Sender(Result(Sender(msg), ExitReason)),
+  ack: Subject(Result(Subject(msg), ExitReason)),
 ) {
-  let #(sender, receiver) = process.new_channel()
-  let receiver = process.map_receiver(receiver, Message)
+  let subject = process.new_subject()
+  let selector =
+    process.new_selector()
+    |> process.selecting(subject, Message)
   case spec.init() {
-    Ready(state, extra_receiver) -> {
+    Ready(state, extra_selector) -> {
       // Signal to parent that the process has initialised successfully
-      process.send(ack_channel, Ok(sender))
+      process.send(ack, Ok(subject))
       // Start message receive loop
       let self =
         Self(
-          pid: process.self(),
           state: state,
-          parent: process.pid(ack_channel),
-          receiver: merge_extra_receiver(receiver, extra_receiver),
+          parent: process.subject_owner(ack),
+          selector: merge_extra_selector(selector, extra_selector),
           message_handler: spec.loop,
-          debug_state: process.debug_state([]),
+          debug_state: legacy.debug_state([]),
           mode: Running,
         )
       loop(self)
     }
 
     Failed(reason) -> {
-      process.send(ack_channel, Error(reason))
-      exit_process(reason)
+      process.send(ack, Error(Abnormal(reason)))
+      exit_process(Abnormal(reason))
     }
   }
 }
@@ -199,7 +203,7 @@ pub type StartError {
 /// type and `erlang_start_result` function.
 ///
 pub type StartResult(msg) =
-  Result(Sender(msg), StartError)
+  Result(Subject(msg), StartError)
 
 /// An Erlang supervisor compatible process start result.
 ///
@@ -215,39 +219,14 @@ pub type ErlangStartResult =
 ///
 pub fn to_erlang_start_result(res: StartResult(msg)) -> ErlangStartResult {
   case res {
-    Ok(x) -> Ok(process.pid(x))
+    Ok(x) -> Ok(process.subject_owner(x))
     Error(x) -> Error(dynamic.from(x))
   }
 }
 
-/// Processes written in Erlang or other BEAM languages use bare processes rather
-/// than channels, so the value returned from their process start functions are
-/// not compatible with Gleam supervisors. This function can be used to wrap the
-/// return value so it can be used with a Gleam supervisor.
-///
-pub fn from_erlang_start_result(
-  start: Result(Pid, error),
-) -> StartResult(anything) {
-  case start {
-    Ok(pid) -> Ok(process.null_sender(pid))
-    Error(error) -> Error(InitCrashed(dynamic.from(error)))
-  }
-}
-
-/// Processes written in Erlang or other BEAM languages use bare processes rather
-/// than channels, so the value returned from their process start functions are
-/// not compatible with Gleam supervisors. This function can be used to wrap the
-/// start function so it can be used with a Gleam supervisor.
-///
-pub fn wrap_erlang_starter(
-  start: fn() -> Result(Pid, error),
-) -> fn() -> StartResult(anything) {
-  fn() { from_erlang_start_result(start()) }
-}
-
 type StartInitMessage(msg) {
-  Ack(Result(Sender(msg), ExitReason))
-  Mon(ProcessDown)
+  Ack(Result(Subject(msg), ExitReason))
+  Mon(process.ProcessDown)
 }
 
 // TODO: test init_timeout. Currently if we test it eunit prints an error from
@@ -260,43 +239,34 @@ type StartInitMessage(msg) {
 /// If you do not need to specify the initialisation behaviour of your actor
 /// consider using the `start` function.
 ///
-pub fn start_spec(spec: Spec(state, msg)) -> Result(Sender(msg), StartError) {
-  let #(ack_sender, ack_receiver) = process.new_channel()
+pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
+  let ack_subject = process.new_subject()
 
-  let child = process.start(fn() { initialise_actor(spec, ack_sender) })
-
-  let receiver =
-    ack_receiver
-    |> process.map_receiver(Ack)
-    |> process.merge_receiver(
-      child
-      |> process.monitor_process
-      |> process.map_receiver(Mon),
+  let child =
+    process.start(
+      linked: True,
+      running: fn() { initialise_actor(spec, ack_subject) },
     )
 
-  case process.receive(receiver, spec.init_timeout) {
+  let selector =
+    process.new_selector()
+    |> process.selecting(ack_subject, Ack)
+    |> process.selecting_process_down(process.monitor_process(child), Mon)
+
+  case process.select(selector, spec.init_timeout) {
     // Child started OK
-    Ok(Ack(Ok(channel))) -> {
-      process.close_channels(receiver)
-      Ok(channel)
-    }
+    Ok(Ack(Ok(channel))) -> Ok(channel)
 
     // Child initialiser returned an error
-    Ok(Ack(Error(reason))) -> {
-      process.close_channels(receiver)
-      Error(InitFailed(reason))
-    }
+    Ok(Ack(Error(reason))) -> Error(InitFailed(reason))
 
     // Child went down while initialising
-    Ok(Mon(down)) -> {
-      process.close_channels(receiver)
-      Error(InitCrashed(down.reason))
-    }
+    Ok(Mon(down)) -> Error(InitCrashed(down.reason))
 
     // Child did not finish initialising in time
     Error(Nil) -> {
-      process.kill(child)
-      process.close_channels(receiver)
+      // process.kill(child)
+      todo("gleam_erlang does not yet support killing processes yet")
       Error(InitTimeout)
     }
   }
@@ -315,7 +285,7 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Sender(msg), StartError) {
 pub fn start(
   state: state,
   loop: fn(msg, state) -> Next(state),
-) -> Result(Sender(msg), StartError) {
+) -> Result(Subject(msg), StartError) {
   start_spec(Spec(
     init: fn() { Ready(state, option.None) },
     loop: loop,
@@ -327,8 +297,8 @@ pub fn start(
 ///
 /// This is a re-export of `process.send`, for the sake of convenience.
 ///
-pub fn send(channel: Sender(msg), msg: msg) -> Sender(msg) {
-  process.send(channel, msg)
+pub fn send(subject: Subject(msg), msg: msg) -> Nil {
+  process.send(subject, msg)
 }
 
 // TODO: test
@@ -342,15 +312,9 @@ pub fn send(channel: Sender(msg), msg: msg) -> Sender(msg) {
 /// This is a re-export of `process.call`, for the sake of convenience.
 ///
 pub fn call(
-  receiver: Sender(message),
-  make_message: fn(Sender(reply)) -> message,
+  selector: Subject(message),
+  make_message: fn(Subject(reply)) -> message,
   timeout: Int,
 ) -> reply {
-  process.call(receiver, make_message, timeout)
-}
-
-/// Get the pid of the receiver process for a sender.
-///
-pub fn pid(sender: Sender(msg)) -> Pid {
-  process.pid(sender)
+  process.call(selector, make_message, timeout)
 }
