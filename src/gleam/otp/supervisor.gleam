@@ -3,7 +3,7 @@
 import gleam/result
 import gleam/dynamic
 import gleam/option.{None, Option, Some}
-import gleam/otp/process.{Sender}
+import gleam/erlang/process.{Subject}
 import gleam/erlang/process.{Pid} as erlang_process
 import gleam/otp/actor.{StartError}
 import gleam/otp/intensity_tracker.{IntensityTracker}
