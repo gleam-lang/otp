@@ -2,16 +2,19 @@ import gleam/erlang/atom.{Atom}
 import gleam/erlang/process.{Pid, Subject}
 import gleam/dynamic.{Dynamic}
 
-// import gleam/otp/port
-// import gleam/function
-// import gleam/option.{None, Option, Some}
-// import gleam/erlang.{Reference}
-
+// TODO: implement decoder
 // /// Attempt to parse a pid from some dynamic data.
 // ///
 // /// This may be useful if you receive a pid in a message from an Erlang process.
 // pub external fn pid_from_dynamic(Dynamic) -> Result(Pid, List(DecodeError)) =
 //   "gleam_otp_external" "pid_from_dynamic"
+
+/// A message received when a linked process exits when the current process is
+/// trapping exits.
+///
+pub type Exit {
+  Exit(pid: Pid, reason: Dynamic)
+}
 
 pub type ExitReason {
   // The process is stopping due to normal and expected reasons. This is not

@@ -1,12 +1,12 @@
 import gleeunit/should
 import gleam/option.{None}
 import gleam/otp/supervisor.{add, returning, worker}
-import gleam/otp/process
 import gleam/otp/actor
-import gleam/erlang/process as erlang_process
+import gleam/otp/process as legacy
+import gleam/erlang/process
 
 pub fn supervisor_test() {
-  let #(sender, receiver) = process.new_channel()
+  let subject = process.new_subject()
 
   // Children send their name back to the test process during
   // initialisation so that we can tell they (re)started
@@ -14,8 +14,8 @@ pub fn supervisor_test() {
     worker(fn(name) {
       actor.start_spec(actor.Spec(
         init: fn() {
-          process.send(sender, #(name, erlang_process.self()))
-          actor.Ready(name, None)
+          process.send(subject, #(name, process.self()))
+          actor.Ready(name, process.new_selector())
         },
         init_timeout: 10,
         loop: fn(_msg, state) { actor.Continue(state) },
@@ -25,7 +25,7 @@ pub fn supervisor_test() {
   // Each child returns the next name, which is their name + 1
   let child =
     child
-    |> returning(fn(name, _sender) { name + 1 })
+    |> returning(fn(name, _subject) { name + 1 })
 
   supervisor.start_spec(supervisor.Spec(
     argument: 1,
@@ -41,23 +41,25 @@ pub fn supervisor_test() {
   |> should.be_ok
 
   // Assert children have started
-  assert Ok(#(1, p)) = process.receive(receiver, 10)
-  assert Ok(#(2, _)) = process.receive(receiver, 10)
-  assert Ok(#(3, _)) = process.receive(receiver, 10)
-  assert Error(Nil) = process.receive(receiver, 10)
+  assert Ok(#(1, p)) = process.receive(subject, 10)
+  assert Ok(#(2, _)) = process.receive(subject, 10)
+  assert Ok(#(3, _)) = process.receive(subject, 10)
+  assert Error(Nil) = process.receive(subject, 10)
 
   // Kill first child an assert they all restart
-  process.send_exit(p, 1)
-  assert Ok(#(1, p1)) = process.receive(receiver, 10)
-  assert Ok(#(2, p2)) = process.receive(receiver, 10)
-  assert Ok(#(3, _)) = process.receive(receiver, 10)
-  assert Error(Nil) = process.receive(receiver, 10)
+  // process.send_exit(p, 1)
+  todo("gleam_erlang doesn't support process.send_exit yet")
+  assert Ok(#(1, p1)) = process.receive(subject, 10)
+  assert Ok(#(2, p2)) = process.receive(subject, 10)
+  assert Ok(#(3, _)) = process.receive(subject, 10)
+  assert Error(Nil) = process.receive(subject, 10)
 
   // Kill second child an assert they all restart
-  process.send_exit(p2, 1)
-  assert Ok(#(2, _)) = process.receive(receiver, 10)
-  assert Ok(#(3, _)) = process.receive(receiver, 10)
-  assert Error(Nil) = process.receive(receiver, 10)
+  // process.send_exit(p2, 1)
+  todo("gleam_erlang doesn't support process.send_exit yet")
+  assert Ok(#(2, _)) = process.receive(subject, 10)
+  assert Ok(#(3, _)) = process.receive(subject, 10)
+  assert Error(Nil) = process.receive(subject, 10)
   process.is_alive(p1)
   |> should.be_true
 }

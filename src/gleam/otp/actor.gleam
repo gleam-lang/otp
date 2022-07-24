@@ -5,7 +5,6 @@ import gleam/otp/process.{
 } as legacy
 import gleam/io
 import gleam/erlang/atom
-import gleam/option.{Option}
 import gleam/dynamic.{Dynamic}
 
 type Message(message) {
@@ -35,7 +34,7 @@ pub type InitResult(state, message) {
   /// messages and actor's channel sender can be returned to the parent
   /// process.
   ///
-  Ready(state: state, subject: Option(Selector(message)))
+  Ready(state: state, selector: Selector(message))
 
   // TODO: exit reason
   // Failed(ExitReason)
@@ -149,25 +148,18 @@ fn loop(self: Self(state, msg)) -> ExitReason {
   }
 }
 
-fn merge_extra_selector(r1: Selector(Message(m)), r2: Option(Selector(m))) {
-  case r2 {
-    option.None -> r1
-    option.Some(r2) ->
-      // process.merge_selectors(r1, r2, Message)
-      todo("the gleam_erlang library does not yet support merging selectors")
-  }
-}
-
 fn initialise_actor(
   spec: Spec(state, msg),
   ack: Subject(Result(Subject(msg), ExitReason)),
 ) {
   let subject = process.new_subject()
-  let selector =
-    process.new_selector()
-    |> process.selecting(subject, Message)
   case spec.init() {
-    Ready(state, extra_selector) -> {
+    Ready(state, selector) -> {
+      let selector =
+        selector
+        // |> process.map_selector(Message)
+        |> todo("gleam_erlang doesn't support mapping selectors yet")
+        |> todo("select for system messages")
       // Signal to parent that the process has initialised successfully
       process.send(ack, Ok(subject))
       // Start message receive loop
@@ -175,7 +167,7 @@ fn initialise_actor(
         Self(
           state: state,
           parent: process.subject_owner(ack),
-          selector: merge_extra_selector(selector, extra_selector),
+          selector: selector,
           message_handler: spec.loop,
           debug_state: legacy.debug_state([]),
           mode: Running,
@@ -287,7 +279,7 @@ pub fn start(
   loop: fn(msg, state) -> Next(state),
 ) -> Result(Subject(msg), StartError) {
   start_spec(Spec(
-    init: fn() { Ready(state, option.None) },
+    init: fn() { Ready(state, process.new_selector()) },
     loop: loop,
     init_timeout: 5000,
   ))
