@@ -100,8 +100,7 @@ fn start_child(
 // TODO: more sophsiticated stopping of processes. i.e. give supervisors
 // more time to shut down.
 fn shutdown_child(pid: Pid, _spec: ChildSpec(msg, arg_1, arg_2)) -> Nil {
-  // process.send_exit(pid, process.Normal)
-  todo("gleam_erlang does not support sending exit messages yet")
+  process.send_exit(pid)
 }
 
 fn perform_instruction_for_child(
@@ -241,8 +240,7 @@ fn init(
   let retry = process.new_subject()
 
   // Trap exits so that we get a message when a child crashes
-  // process.trap_exits(True)
-  todo("gleam_erlang does not support trapping exits yet")
+  process.trap_exits(True)
 
   // Combine selectors
   let selector =

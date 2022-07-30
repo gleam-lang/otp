@@ -14,10 +14,7 @@
 
 % import Gleam records
 
--include_lib("gleam_otp/include/gleam@otp@process_Sender.hrl").
 -include_lib("gleam_otp/include/gleam@otp@process_Exit.hrl").
--include_lib("gleam_otp/include/gleam@otp@process_PortDown.hrl").
--include_lib("gleam_otp/include/gleam@otp@process_ProcessDown.hrl").
 -include_lib("gleam_otp/include/gleam@otp@process_StatusInfo.hrl").
 
 % Guards
@@ -118,12 +115,6 @@ run_receiver(Receiver, Timeout) ->
         {Ref, Msg} when is_map_key(Ref, Receiving) ->
             transform_msg(Receiving, Ref, Msg);
 
-        {'DOWN', Ref, process, Pid, Reason} when is_map_key({process, Ref}, Receiving) ->
-            transform_msg(Receiving, {process, Ref}, #process_down{pid = Pid, reason = Reason});
-
-        {'DOWN', Ref, port, Port, Reason} when is_map_key({port, Ref}, Receiving) ->
-            transform_msg(Receiving, {port, Ref}, #port_down{port = Port, reason = Reason});
-
         {'EXIT', Pid, Reason} when is_map_key(exit, Receiving) ->
             transform_msg(Receiving, exit, #exit{pid = Pid, reason = Reason});
 
@@ -192,29 +183,30 @@ map_receiver(Receiver, F2) ->
     Channels = maps:map(Wrap, Receiver#receiver.channels),
     Receiver#receiver{channels = Channels}.
 
-system_msg({Pid, Ref}, Tag) ->
-    Prepare = fun(X) -> system_reply(Tag, Ref, X) end,
-    Sender = #sender{pid = Pid, prepare = {some, Prepare}},
+system_msg({_Pid, _Ref}, Tag) ->
+    % Prepare = fun(X) -> system_reply(Tag, Ref, X) end,
+    % Sender = #sender{pid = Pid, prepare = {some, Prepare}},
+    Sender = todo,
     {Tag, Sender}.
 
-system_reply(Tag, Ref, Reply) ->
-    Msg = case Tag of
-        resume -> ok;
-        suspend -> ok;
-        get_state -> Reply;
-        get_status -> process_status(Reply)
-    end,
-    {Ref, Msg}.
+% system_reply(Tag, Ref, Reply) ->
+%     Msg = case Tag of
+%         resume -> ok;
+%         suspend -> ok;
+%         get_state -> Reply;
+%         get_status -> process_status(Reply)
+%     end,
+%     {Ref, Msg}.
 
-process_status(Status) ->
-    #status_info{mode = Mode, parent = Parent, debug_state = Debug,
-                 state = State, mod = Mod} = Status,
-    Data = [
-        get(), Mode, Parent, Debug,
-        [{header, "Status for Gleam process " ++ pid_to_list(self())},
-         {data, [{'Status', Mode}, {'Parent', Parent}, {'State', State}]}]
-    ],
-    {status, self(), {module, Mod}, Data}.
+% process_status(Status) ->
+%     #status_info{mode = Mode, parent = Parent, debug_state = Debug,
+%                  state = State, mod = Mod} = Status,
+%     Data = [
+%         get(), Mode, Parent, Debug,
+%         [{header, "Status for Gleam process " ++ pid_to_list(self())},
+%          {data, [{'Status', Mode}, {'Parent', Parent}, {'State', State}]}]
+%     ],
+%     {status, self(), {module, Mod}, Data}.
 
 application_stopped() ->
     ok.
