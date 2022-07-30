@@ -65,11 +65,11 @@ fn assert_owner(task: Task(a)) -> Nil {
   let self = process.self()
   case task.owner == self {
     True -> Nil
-    False -> // process.send_exit(
-      //   to: self,
-      //   because: "awaited on a task that does not belong to this process",
-      // )
-      todo("gleam_erlang does not support send_exit yet")
+    False ->
+      process.send_abnormal_exit(
+        self,
+        "awaited on a task that does not belong to this process",
+      )
   }
 }
 
@@ -118,8 +118,7 @@ pub fn await(task: Task(value), timeout: Int) -> value {
 ///
 pub fn try_await_forever(task: Task(value)) -> Result(value, AwaitError) {
   assert_owner(task)
-  // case process.receive_forever(task.selector) {
-  case todo("gleam_erlang does not support receive_forever yet") {
+  case process.select_forever(task.selector) {
     // The task process has sent back a value
     FromSubject(x) -> Ok(x)
 

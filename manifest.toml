@@ -2,7 +2,7 @@
 # You typically do not need to edit this file
 
 packages = [
-  { name = "gleam_erlang", version = "0.10.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_erlang", source = "hex", outer_checksum = "C55D129F905422D4A7BB5097C40CFE41AA4059B7C53B1F2B8E256C9A39BBCD0F" },
+  { name = "gleam_erlang", version = "0.12.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_erlang", source = "hex", outer_checksum = "01AF0B9F02A236C199898439B028947767DA927A3160688789555C7980E6B82C" },
   { name = "gleam_stdlib", version = "0.22.1", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "9C6C66EDAAFD097267089565488DEDFC111A0497DE9CB2C42248E26330CC48E9" },
   { name = "gleeunit", version = "0.6.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "A006864621DB80C4FBB0746580703502FD81A4D38D23FCB20A8120984D353DF0" },
 ]

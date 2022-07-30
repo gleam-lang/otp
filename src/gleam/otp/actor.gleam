@@ -257,8 +257,7 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
 
     // Child did not finish initialising in time
     Error(Nil) -> {
-      // process.kill(child)
-      todo("gleam_erlang does not yet support killing processes yet")
+      process.kill(child)
       Error(InitTimeout)
     }
   }
