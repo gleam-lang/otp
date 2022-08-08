@@ -50,7 +50,7 @@ type ChildStartError {
 }
 
 pub opaque type Message {
-  Exit(legacy.Exit)
+  Exit(process.ExitMessage)
   RetryRestart(Pid)
 }
 
@@ -246,9 +246,7 @@ fn init(
   let selector =
     process.new_selector()
     |> process.selecting(retry, RetryRestart)
-    |> todo("gleam_erlang does not support selecting exit signals yet")
-
-  // |> process.selecting_exits(Exit)
+    |> process.selecting_trapped_exits(Exit)
   // Start any children
   let result =
     Starter(argument: spec.argument, exec: None)
@@ -316,7 +314,7 @@ fn handle_exit(pid: Pid, state: State(a)) -> actor.Next(State(a)) {
 
 fn loop(message: Message, state: State(argument)) -> actor.Next(State(argument)) {
   case message {
-    Exit(legacy.Exit(pid: pid, ..)) -> handle_exit(pid, state)
+    Exit(exit_message) -> handle_exit(exit_message.pid, state)
     RetryRestart(pid) -> handle_exit(pid, state)
   }
 }

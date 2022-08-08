@@ -3,7 +3,6 @@
 
 import gleam/erlang/process.{Subject}
 import gleam/otp/actor.{Continue, Ready, Spec, StartError}
-import gleam/option.{Some}
 import gleam/io
 
 pub fn periodic_actor(
@@ -22,13 +21,14 @@ pub fn periodic_actor(
     Ready(subject, selector)
   }
 
-  let loop = fn(_msg, sender) { // Send a message to itself in the future
-    // process.send_after(sender, period_milliseconds, Nil)
-    todo("gleam_erlang does not support send after yet")
+  let loop = fn(_msg, subject) {
+    // Send a message to itself in the future
+    process.send_after(subject, period_milliseconds, Nil)
     // Run the callback as the timer has triggered again
     callback()
     // We're done, await the next message
-    Continue(sender) }
+    Continue(subject)
+  }
 
   // Start the actor
   actor.start_spec(Spec(init: init, loop: loop, init_timeout: 50))

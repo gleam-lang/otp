@@ -5,6 +5,7 @@ import gleam/otp/system
 import gleam/dynamic.{Dynamic}
 import gleeunit/should
 import gleam/result
+import gleam/io
 
 pub fn get_state_test() {
   assert Ok(subject) =
@@ -75,6 +76,7 @@ pub fn subject_test() {
 
   subject
   |> process.subject_owner
+  |> io.debug
   |> system.get_state()
   |> should.equal(dynamic.from("state 1"))
 

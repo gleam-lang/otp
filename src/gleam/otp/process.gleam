@@ -1,5 +1,5 @@
 import gleam/erlang/atom.{Atom}
-import gleam/erlang/process.{Pid, Subject}
+import gleam/erlang/process.{Pid}
 import gleam/dynamic.{Dynamic}
 
 // TODO: implement decoder
@@ -68,10 +68,10 @@ pub type SystemMessage {
   // //   // {debug, {install, {Func, FuncState}}}
   // //   // {debug, {install, {FuncId, Func, FuncState}}}
   // //   // {debug, {remove, FuncOrId}}
-  GetStatus(Subject(StatusInfo))
-  Suspend(Subject(Nil))
-  Resume(Subject(Nil))
-  GetState(Subject(Dynamic))
+  Resume(fn() -> Nil)
+  Suspend(fn() -> Nil)
+  GetState(fn(Dynamic) -> Nil)
+  GetStatus(fn(StatusInfo) -> Nil)
 }
 // type KillFlag {
 //   Kill

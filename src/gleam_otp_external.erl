@@ -1,220 +1,43 @@
 -module(gleam_otp_external).
 
-% Channels
--export([close_channels/1]).
+-export([application_stopped/0, convert_system_message/2]).
 
-% Receivers
--export([new_receiver/1, flush_receiver/1, run_receiver/2, merge_receiver/2,
-         run_receiver_forever/1, bare_message_receiver/0, trap_exits/0,
-         map_receiver/2, stop_trapping_exits/0, system_receiver/0,
-         application_stopped/0]).
-
-% Pids
--export([pid_from_dynamic/1]).
-
-% import Gleam records
-
--include_lib("gleam_otp/include/gleam@otp@process_Exit.hrl").
--include_lib("gleam_otp/include/gleam@otp@process_StatusInfo.hrl").
-
-% Guards
-
--define(is_system_msg(Term), is_record(Term, system, 3)).
--define(is_monitor_msg(Term), is_record(Term, 'DOWN', 5)).
--define(is_exit_msg(Term), is_record(Term, 'EXIT', 3)).
--define(is_gen_reply(Term),
-        (is_tuple(Term) andalso tuple_size(Term) =:= 2 andalso
-        is_reference(element(1, Term)))).
-
--define(is_special_msg(Term),
-        (?is_system_msg(Term) orelse ?is_monitor_msg(Term) orelse
-         ?is_exit_msg(Term) orelse ?is_gen_reply(Term))).
-
-% Receivers
-
--record(receiver, {pid, channels}).
-
-new_receiver(Ref) ->
-    open_channel(Ref),
-    #receiver{pid = self(), channels = #{Ref => fun(M) -> M end}}.
-
-stop_trapping_exits() ->
-    erlang:process_flag(trap_exit, false),
-    nil.
-
-trap_exits() ->
-    erlang:process_flag(trap_exit, true),
-    #receiver{pid = self(), channels = #{exit => fun(M) -> M end}}.
-
-bare_message_receiver() ->
-    #receiver{pid = self(), channels = #{bare => fun(M) -> M end}}.
-
-system_receiver() ->
-    #receiver{pid = self(), channels = #{system => fun(M) -> M end}}.
-
-close_channel(Ref) when Ref =:= exit orelse Ref =:= bare ->
-    ok;
-close_channel({Kind, Ref}) when Kind =:= port orelse Kind =:= process ->
-    erlang:demonitor(Ref);
-close_channel(Ref) when is_reference(Ref) ->
-    update_channels(fun(Open) -> maps:remove(Ref, Open) end).
-
-close_channels(Receiver) ->
-    Channels = maps:keys(Receiver#receiver.channels),
-    lists:foreach(fun close_channel/1, Channels),
-    nil.
-
-assert_receiver_owner(#receiver{pid = Pid}) ->
-    Pid = self().
-
-currently_open_channels() ->
-    case get('$gleam_open_channels') of
-        undefined -> #{};
-        Channels -> Channels
-    end.
-
-update_channels(Fn) ->
-    put('$gleam_open_channels', Fn(currently_open_channels())).
-
-open_channel(Ref) ->
-    update_channels(fun(Refs) -> maps:put(Ref, [], Refs) end).
-
-merge_receiver(A, B) ->
-    assert_receiver_owner(A),
-    assert_receiver_owner(B),
-    Channels = maps:merge(A#receiver.channels, B#receiver.channels),
-    A#receiver{channels = Channels}.
-
-transform_msg(Map, Key, Msg) ->
-    Fn = maps:get(Key, Map),
-    {ok, Fn(Msg)}.
-
-run_receiver_forever(Receiver) ->
-    {ok, Msg} = run_receiver(Receiver, infinity),
-    Msg.
-
-run_receiver(Receiver, Timeout) ->
-    assert_receiver_owner(Receiver),
-    Receiving = Receiver#receiver.channels,
-    OpenChannels = currently_open_channels(),
-    receive
-        % Message on closed channels are discarded
-        {Ref, _} when is_reference(Ref) andalso (not is_map_key(Ref, OpenChannels)) ->
-            % TODO: shrink timeout if time has passed
-            run_receiver(Receiver, Timeout);
-
-        % Message on closed channels are discarded
-        {'DOWN', Ref, process, _, _} when not is_map_key({process, Ref}, OpenChannels) ->
-            % TODO: shrink timeout if time has passed
-            run_receiver(Receiver, Timeout);
-
-        {'DOWN', Ref, port, _, _} when not is_map_key({port, Ref}, OpenChannels) ->
-            % TODO: shrink timeout if time has passed
-            run_receiver(Receiver, Timeout);
-
-        {Ref, Msg} when is_map_key(Ref, Receiving) ->
-            transform_msg(Receiving, Ref, Msg);
-
-        {'EXIT', Pid, Reason} when is_map_key(exit, Receiving) ->
-            transform_msg(Receiving, exit, #exit{pid = Pid, reason = Reason});
-
-        {system, From, Request} when is_map_key(system, Receiving) ->
-            transform_msg(Receiving, system, system_msg(From, Request));
-
-        Msg when (not ?is_special_msg(Msg)) andalso is_map_key(bare, Receiving) ->
-            transform_msg(Receiving, bare, Msg)
-
-        % Msg when is_function(All) ->
-        %     {ok, All(Msg)};
-
-        % _ when FlushOther ->
-        %     % TODO: shrink timeout if time has passed
-        %     run_receiver(Receiver)
-    after
-        Timeout -> {error, nil}
-    end.
-
-flush_receiver(Receiver) ->
-    flush_receiver(Receiver, 0).
-
-flush_receiver(Receiver, N) ->
-    Flushing = Receiver#receiver.channels,
-    OpenChannels = currently_open_channels(),
-    receive
-        % Messages on closed channels are _always_ discarded
-        {Ref, _} when not is_map_key(Ref, OpenChannels) ->
-            flush_receiver(Receiver, N); % Don't count these messages
-
-        {Ref, _} when is_map_key(Ref, Flushing) ->
-            flush_receiver(Receiver, N + 1);
-
-        % Messages on closed channels are _always_ discarded
-        {'DOWN', Ref, port, _, _} when not is_map_key({port, Ref}, OpenChannels) ->
-            flush_receiver(Receiver, N); % Don't count these messages
-
-        {'DOWN', Ref, process, _, _} when not is_map_key({process, Ref}, OpenChannels) ->
-            flush_receiver(Receiver, N); % Don't count these messages
-
-        {'DOWN', Ref, port, _, _} when is_map_key({port, Ref}, Flushing) ->
-            flush_receiver(Receiver, N + 1);
-
-        {'DOWN', Ref, process, _, _} when is_map_key({process, Ref}, Flushing) ->
-            flush_receiver(Receiver, N + 1);
-
-        {'EXIT', _, _} when is_map_key(exit, Flushing) ->
-            flush_receiver(Receiver, N + 1);
-
-        % {system, _, _} when is_function(System) ->
-        %     flush_receiver(Receiver, N + 1);
-
-        Msg when (not ?is_special_msg(Msg)) andalso is_map_key(bare, Flushing) ->
-            flush_receiver(Receiver, N + 1)
-
-        % _ when is_function(All) ->
-        %     flush_receiver(Receiver, N + 1)
-    after
-        0 -> N
-    end.
-
-map_receiver(Receiver, F2) ->
-    Wrap = fun(_, F1) ->
-        fun(X) -> F2(F1(X)) end
+% TODO: support other system messages
+%   {replace_state, StateFn}
+%   {change_code, Mod, Vsn, Extra}
+%   {terminate, Reason}
+%   {debug, {log, Flag}}
+%   {debug, {trace, Flag}}
+%   {debug, {log_to_file, FileName}}
+%   {debug, {statistics, Flag}}
+%   {debug, no_debug}
+%   {debug, {install, {Func, FuncState}}}
+%   {debug, {install, {FuncId, Func, FuncState}}}
+%   {debug, {remove, FuncOrId}}
+%   GetStatus(Subject(StatusInfo))
+convert_system_message({From, Ref}, Request) when is_pid(From) ->
+    Reply = fun(Msg) ->
+        erlang:send(From, {Ref, Msg}),
+        nil
     end,
-    Channels = maps:map(Wrap, Receiver#receiver.channels),
-    Receiver#receiver{channels = Channels}.
+    System = fun(Callback) ->
+        {system, {Request, Callback}}
+    end,
+    case Request of
+        get_status -> System(fun(Status) -> Reply(process_status(Status)) end);
+        get_state -> System(Reply);
+        suspend -> System(fun() -> Reply(ok) end);
+        resume -> System(fun() -> Reply(ok) end);
+        Other -> {unexpeceted, Other}
+    end.
 
-system_msg({_Pid, _Ref}, Tag) ->
-    % Prepare = fun(X) -> system_reply(Tag, Ref, X) end,
-    % Sender = #sender{pid = Pid, prepare = {some, Prepare}},
-    Sender = todo,
-    {Tag, Sender}.
-
-% system_reply(Tag, Ref, Reply) ->
-%     Msg = case Tag of
-%         resume -> ok;
-%         suspend -> ok;
-%         get_state -> Reply;
-%         get_status -> process_status(Reply)
-%     end,
-%     {Ref, Msg}.
-
-% process_status(Status) ->
-%     #status_info{mode = Mode, parent = Parent, debug_state = Debug,
-%                  state = State, mod = Mod} = Status,
-%     Data = [
-%         get(), Mode, Parent, Debug,
-%         [{header, "Status for Gleam process " ++ pid_to_list(self())},
-%          {data, [{'Status', Mode}, {'Parent', Parent}, {'State', State}]}]
-%     ],
-%     {status, self(), {module, Mod}, Data}.
+process_status({status_info, Module, Parent, Mode, DebugState, State}) ->
+    Data = [
+        get(), Mode, Parent, DebugState,
+        [{header, "Status for Gleam process " ++ pid_to_list(self())},
+         {data, [{'Status', Mode}, {'Parent', Parent}, {'State', State}]}]
+    ],
+    {status, self(), {module, Module}, Data}.
 
 application_stopped() ->
     ok.
-
-% Pids 
-
-pid_from_dynamic(Dynamic) ->
-    case is_pid(Dynamic) of
-        true -> {ok, Dynamic};
-        false -> {error, [{decode_error, <<"Pid">>, gleam@dynamic:classify(Dynamic), []}]}
-    end.
