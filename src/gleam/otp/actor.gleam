@@ -18,10 +18,6 @@ type Message(message) {
   Unexpected(Dynamic)
 }
 
-type UnexpectedMessageError {
-  UnexpectedMessage(Dynamic)
-}
-
 /// The type used to indicate what to do after handling a message.
 ///
 pub type Next(state) {
@@ -162,8 +158,9 @@ fn loop(self: Self(state, msg)) -> ExitReason {
 
     // TODO: test
     Unexpected(message) -> {
-      io.debug(#("unexpected", message))
-      exit_process(Abnormal(dynamic.from(UnexpectedMessage(message))))
+      // TODO: Log about unexpected messages
+      io.debug(#("unexpected", process.self(), message))
+      loop(self)
     }
 
     Message(msg) ->
@@ -270,12 +267,13 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
       running: fn() { initialise_actor(spec, ack_subject) },
     )
 
+  let monitor = process.monitor_process(child)
   let selector =
     process.new_selector()
     |> process.selecting(ack_subject, Ack)
-    |> process.selecting_process_down(process.monitor_process(child), Mon)
+    |> process.selecting_process_down(monitor, Mon)
 
-  case process.select(selector, spec.init_timeout) {
+  let result = case process.select(selector, spec.init_timeout) {
     // Child started OK
     Ok(Ack(Ok(channel))) -> Ok(channel)
 
@@ -291,6 +289,12 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
       Error(InitTimeout)
     }
   }
+
+  // Remove the monitor used for the starting of the actor as to avoid an extra
+  // message arriving at the parent if the child dies later.
+  process.demonitor_process(monitor)
+
+  result
 }
 
 /// Start an actor with a given initial state and message handling loop
