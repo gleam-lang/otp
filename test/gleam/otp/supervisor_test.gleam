@@ -1,8 +1,6 @@
 import gleeunit/should
-import gleam/option.{None}
 import gleam/otp/supervisor.{add, returning, worker}
 import gleam/otp/actor
-import gleam/otp/process as legacy
 import gleam/erlang/process
 
 pub fn supervisor_test() {
@@ -47,16 +45,14 @@ pub fn supervisor_test() {
   assert Error(Nil) = process.receive(subject, 10)
 
   // Kill first child an assert they all restart
-  // process.send_exit(p, 1)
-  todo("gleam_erlang doesn't support process.send_exit yet")
+  process.send_exit(p)
   assert Ok(#(1, p1)) = process.receive(subject, 10)
   assert Ok(#(2, p2)) = process.receive(subject, 10)
   assert Ok(#(3, _)) = process.receive(subject, 10)
   assert Error(Nil) = process.receive(subject, 10)
 
   // Kill second child an assert they all restart
-  // process.send_exit(p2, 1)
-  todo("gleam_erlang doesn't support process.send_exit yet")
+  process.send_exit(p2)
   assert Ok(#(2, _)) = process.receive(subject, 10)
   assert Ok(#(3, _)) = process.receive(subject, 10)
   assert Error(Nil) = process.receive(subject, 10)

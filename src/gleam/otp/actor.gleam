@@ -13,6 +13,13 @@ type Message(message) {
 
   /// An OTP system message, for debugging or maintenance
   System(SystemMessage)
+
+  /// An unexpected message
+  Unexpected(Dynamic)
+}
+
+type UnexpectedMessageError {
+  UnexpectedMessage(Dynamic)
 }
 
 /// The type used to indicate what to do after handling a message.
@@ -89,19 +96,37 @@ fn exit_process(reason: ExitReason) -> ExitReason {
 }
 
 fn receive_message(self: Self(state, msg)) -> Message(msg) {
-  // let system_selector =
-  //   process.system_selector()
-  //   |> process.map_selector(System)
+  let selector = case self.mode {
+    // When suspended we only respond to system messages
+    Suspended ->
+      process.new_selector()
+      |> selecting_system_messages
 
-  // let selector = case self.mode {
-  //   Suspended -> system_selector
-  //   Running ->
-  //     self.selector
-  //     |> process.merge_selector(system_selector)
-  // }
-  // process.receive_forever(selector)
-  todo
+    // When running we respond to all messages
+    Running ->
+      // We add the handler for unexpected messages first so that the user
+      // supplied selector can override it if desired
+      process.new_selector()
+      |> process.selecting_anything(Unexpected)
+      |> process.merge_selector(self.selector)
+      |> selecting_system_messages
+  }
+
+  process.select_forever(selector)
 }
+
+fn selecting_system_messages(
+  selector: Selector(Message(msg)),
+) -> Selector(Message(msg)) {
+  selector
+  |> process.selecting_record3(
+    atom.create_from_string("system"),
+    convert_system_message,
+  )
+}
+
+external fn convert_system_message(Dynamic, Dynamic) -> Message(msg) =
+  "gleam_otp_external" "convert_system_message"
 
 fn process_status_info(self: Self(state, msg)) -> legacy.StatusInfo {
   legacy.StatusInfo(
@@ -115,24 +140,30 @@ fn process_status_info(self: Self(state, msg)) -> legacy.StatusInfo {
 
 fn loop(self: Self(state, msg)) -> ExitReason {
   case receive_message(self) {
-    System(GetState(caller)) -> {
-      process.send(caller, dynamic.from(self.state))
+    System(GetState(callback)) -> {
+      callback(dynamic.from(self.state))
       loop(self)
     }
 
-    System(Resume(caller)) -> {
-      process.send(caller, Nil)
+    System(Resume(callback)) -> {
+      callback()
       loop(Self(..self, mode: Running))
     }
 
-    System(Suspend(caller)) -> {
-      process.send(caller, Nil)
+    System(Suspend(callback)) -> {
+      callback()
       loop(Self(..self, mode: Suspended))
     }
 
-    System(GetStatus(caller)) -> {
-      process.send(caller, process_status_info(self))
+    System(GetStatus(callback)) -> {
+      callback(process_status_info(self))
       loop(self)
+    }
+
+    // TODO: test
+    Unexpected(message) -> {
+      io.debug(#("unexpected", message))
+      exit_process(Abnormal(dynamic.from(UnexpectedMessage(message))))
     }
 
     Message(msg) ->
@@ -141,7 +172,7 @@ fn loop(self: Self(state, msg)) -> ExitReason {
         Continue(state) -> loop(Self(..self, state: state))
       }
 
-    _unsupported_system_message -> {
+    System(_unsupported_system_message) -> {
       io.println("Gleam Action: unsupported system message dropped")
       loop(self)
     }
@@ -156,10 +187,9 @@ fn initialise_actor(
   case spec.init() {
     Ready(state, selector) -> {
       let selector =
-        selector
-        // |> process.map_selector(Message)
-        |> todo("gleam_erlang doesn't support mapping selectors yet")
-        |> todo("select for system messages")
+        process.new_selector()
+        |> process.selecting(subject, Message)
+        |> process.merge_selector(process.map_selector(selector, Message))
       // Signal to parent that the process has initialised successfully
       process.send(ack, Ok(subject))
       // Start message receive loop
