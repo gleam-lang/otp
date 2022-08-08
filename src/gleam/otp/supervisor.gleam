@@ -247,6 +247,7 @@ fn init(
     process.new_selector()
     |> process.selecting(retry, RetryRestart)
     |> process.selecting_trapped_exits(Exit)
+
   // Start any children
   let result =
     Starter(argument: spec.argument, exec: None)

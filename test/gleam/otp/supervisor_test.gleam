@@ -45,17 +45,16 @@ pub fn supervisor_test() {
   assert Error(Nil) = process.receive(subject, 10)
 
   // Kill first child an assert they all restart
-  process.send_exit(p)
+  process.kill(p)
   assert Ok(#(1, p1)) = process.receive(subject, 10)
   assert Ok(#(2, p2)) = process.receive(subject, 10)
   assert Ok(#(3, _)) = process.receive(subject, 10)
   assert Error(Nil) = process.receive(subject, 10)
 
-  // Kill second child an assert they all restart
-  process.send_exit(p2)
+  // Kill second child an assert the following children restart
+  process.kill(p2)
   assert Ok(#(2, _)) = process.receive(subject, 10)
   assert Ok(#(3, _)) = process.receive(subject, 10)
   assert Error(Nil) = process.receive(subject, 10)
-  process.is_alive(p1)
-  |> should.be_true
+  assert True = process.is_alive(p1)
 }
