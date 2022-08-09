@@ -1,6 +1,5 @@
 import gleam/otp/actor.{Continue}
 import gleam/erlang/process.{Pid}
-import gleam/otp/process as legacy
 import gleam/erlang/atom.{Atom}
 import gleam/otp/system
 import gleam/dynamic.{Dynamic}
@@ -32,7 +31,7 @@ pub fn get_status_test() {
 
 pub fn failed_init_test() {
   actor.Spec(
-    init: fn() { actor.Failed(dynamic.from(legacy.Normal)) },
+    init: fn() { actor.Failed("not enough wiggles") },
     loop: fn(_msg, state) { Continue(state) },
     init_timeout: 10,
   )

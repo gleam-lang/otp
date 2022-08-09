@@ -1,9 +1,9 @@
 // TODO: specify amount of time permitted for shut-down
 import gleam/result
 import gleam/dynamic
+import gleam/string
 import gleam/option.{None, Option, Some}
 import gleam/erlang/process.{Pid, Subject}
-import gleam/otp/process as legacy
 import gleam/otp/actor.{StartError}
 import gleam/otp/intensity_tracker.{IntensityTracker}
 import gleam/otp/node.{Node}
@@ -265,7 +265,21 @@ fn init(
         State(starter: starter, restarts: restarts, retry_restarts: retry)
       actor.Ready(state, selector)
     }
-    Failed(reason) -> actor.Failed(dynamic.from(reason))
+
+    Failed(error) ->
+      actor.Failed(case error.error {
+        actor.InitTimeout -> "Child initialisation timed out"
+        actor.InitCrashed(reason) ->
+          string.append(
+            "Child crashed during initialisation: ",
+            string.inspect(reason),
+          )
+        actor.InitFailed(reason) ->
+          string.append(
+            "Child failed to start during initialisation: ",
+            string.inspect(reason),
+          )
+      })
   }
 }
 
@@ -306,7 +320,9 @@ fn handle_exit(pid: Pid, state: State(a)) -> actor.Next(State(a)) {
       actor.Continue(state)
     }
     Error(TooManyRestarts) ->
-      actor.Stop(legacy.Abnormal(dynamic.from(TooManyRestarts)))
+      actor.Stop(process.Abnormal(
+        "Child processes restarted too many times within allowed period",
+      ))
   }
 }
 

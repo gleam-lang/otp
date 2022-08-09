@@ -1,10 +1,9 @@
-import gleam/erlang/process.{Pid, Selector, Subject}
+import gleam/erlang/process.{Abnormal, ExitReason, Pid, Selector, Subject}
 import gleam/erlang/charlist.{Charlist}
-import gleam/otp/process.{
-  Abnormal, DebugState, ExitReason, GetState, GetStatus, Mode, Resume, Running, Suspend,
-  Suspended, SystemMessage,
-} as legacy
-import gleam/io
+import gleam/otp/system.{
+  DebugState, GetState, GetStatus, Mode, Resume, Running, StatusInfo, Suspend, Suspended,
+  SystemMessage,
+}
 import gleam/string
 import gleam/dynamic.{Dynamic}
 import gleam/erlang/atom
@@ -44,7 +43,7 @@ pub type InitResult(state, message) {
   /// The actor has failed to initialise. The actor shuts down and an error is
   /// returned to the parent process.
   ///
-  Failed(Dynamic)
+  Failed(String)
 }
 
 type Self(state, msg) {
@@ -124,8 +123,8 @@ fn selecting_system_messages(
 external fn convert_system_message(Dynamic, Dynamic) -> Message(msg) =
   "gleam_otp_external" "convert_system_message"
 
-fn process_status_info(self: Self(state, msg)) -> legacy.StatusInfo {
-  legacy.StatusInfo(
+fn process_status_info(self: Self(state, msg)) -> StatusInfo {
+  StatusInfo(
     module: atom.create_from_string("gleam@otp@actor"),
     parent: self.parent,
     mode: self.mode,
@@ -136,25 +135,25 @@ fn process_status_info(self: Self(state, msg)) -> legacy.StatusInfo {
 
 fn loop(self: Self(state, msg)) -> ExitReason {
   case receive_message(self) {
-    System(GetState(callback)) -> {
-      callback(dynamic.from(self.state))
-      loop(self)
-    }
-
-    System(Resume(callback)) -> {
-      callback()
-      loop(Self(..self, mode: Running))
-    }
-
-    System(Suspend(callback)) -> {
-      callback()
-      loop(Self(..self, mode: Suspended))
-    }
-
-    System(GetStatus(callback)) -> {
-      callback(process_status_info(self))
-      loop(self)
-    }
+    System(system) ->
+      case system {
+        GetState(callback) -> {
+          callback(dynamic.from(self.state))
+          loop(self)
+        }
+        Resume(callback) -> {
+          callback()
+          loop(Self(..self, mode: Running))
+        }
+        Suspend(callback) -> {
+          callback()
+          loop(Self(..self, mode: Suspended))
+        }
+        GetStatus(callback) -> {
+          callback(process_status_info(self))
+          loop(self)
+        }
+      }
 
     Unexpected(message) -> {
       log_warning(
@@ -169,11 +168,6 @@ fn loop(self: Self(state, msg)) -> ExitReason {
         Stop(reason) -> exit_process(reason)
         Continue(state) -> loop(Self(..self, state: state))
       }
-
-    System(_unsupported_system_message) -> {
-      io.println("Gleam Action: unsupported system message dropped")
-      loop(self)
-    }
   }
 }
 
@@ -201,7 +195,7 @@ fn initialise_actor(
           parent: process.subject_owner(ack),
           selector: selector,
           message_handler: spec.loop,
-          debug_state: legacy.debug_state([]),
+          debug_state: system.debug_state([]),
           mode: Running,
         )
       loop(self)
