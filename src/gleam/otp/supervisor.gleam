@@ -1,6 +1,5 @@
 // TODO: specify amount of time permitted for shut-down
 import gleam/result
-import gleam/dynamic
 import gleam/string
 import gleam/option.{None, Option, Some}
 import gleam/erlang/process.{Pid, Subject}
