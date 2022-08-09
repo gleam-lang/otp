@@ -4,8 +4,9 @@ import gleam/otp/process as legacy
 import gleam/erlang/atom.{Atom}
 import gleam/otp/system
 import gleam/dynamic.{Dynamic}
-import gleeunit/should
 import gleam/result
+import gleam/function
+import gleeunit/should
 
 pub fn get_state_test() {
   assert Ok(subject) =
@@ -109,6 +110,27 @@ pub fn unexpected_message_test() {
   |> process.subject_owner
   |> system.get_state()
   |> should.equal(dynamic.from("state 2"))
+}
+
+pub fn unexpected_message_handled_test() {
+  assert Ok(subject) =
+    actor.start_spec(actor.Spec(
+      init: fn() {
+        let selector =
+          process.new_selector()
+          |> process.selecting_anything(function.identity)
+        actor.Ready(dynamic.from("init"), selector)
+      },
+      loop: fn(msg, _state) { Continue(msg) },
+      init_timeout: 10,
+    ))
+
+  raw_send(process.subject_owner(subject), "Unexpected message 1")
+
+  subject
+  |> process.subject_owner
+  |> system.get_state()
+  |> should.equal(dynamic.from("Unexpected message 1"))
 }
 
 external fn raw_send(Pid, anything) -> anything =
