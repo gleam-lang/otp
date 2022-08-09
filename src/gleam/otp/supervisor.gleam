@@ -1,4 +1,3 @@
-// TODO: test
 // TODO: specify amount of time permitted for shut-down
 import gleam/result
 import gleam/dynamic
@@ -266,9 +265,7 @@ fn init(
         State(starter: starter, restarts: restarts, retry_restarts: retry)
       actor.Ready(state, selector)
     }
-    Failed(reason) ->
-      // TODO: refine error type
-      actor.Failed(dynamic.from(reason))
+    Failed(reason) -> actor.Failed(dynamic.from(reason))
   }
 }
 
