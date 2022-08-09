@@ -35,7 +35,7 @@ pub fn periodic_actor(
 }
 
 pub fn main_test() {
-  let second = 1000
+  let five_seconds = 5000
   let say_hello = fn() { io.println("Hello, Joe!") }
-  periodic_actor(every: second, run: say_hello)
+  periodic_actor(every: five_seconds, run: say_hello)
 }
