@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.0 - Unreleased
+
+- Updated to use the process module in the `gleam_erlang` library`.
+
 ## v0.4.0 - 2022-04-16
 
 - The `gleam/otp/process` module gains the `pid_from_dynamic` function.
