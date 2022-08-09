@@ -76,7 +76,6 @@ pub fn subject_test() {
 
   subject
   |> process.subject_owner
-  |> io.debug
   |> system.get_state()
   |> should.equal(dynamic.from("state 1"))
 
