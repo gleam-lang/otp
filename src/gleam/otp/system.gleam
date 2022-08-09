@@ -1,5 +1,50 @@
 import gleam/dynamic.{Dynamic}
+import gleam/erlang/atom.{Atom}
 import gleam/erlang/process.{Pid}
+
+pub type Mode {
+  Running
+  Suspended
+}
+
+pub type DebugOption {
+  NoDebug
+}
+
+pub external type DebugState
+
+pub external fn debug_state(List(DebugOption)) -> DebugState =
+  "sys" "debug_options"
+
+pub type StatusInfo {
+  StatusInfo(
+    module: Atom,
+    parent: Pid,
+    mode: Mode,
+    debug_state: DebugState,
+    state: Dynamic,
+  )
+}
+
+// TODO: document
+// TODO: implement remaining messages
+pub type SystemMessage {
+  // {replace_state, StateFn}
+  // {change_code, Mod, Vsn, Extra}
+  // {terminate, Reason}
+  // {debug, {log, Flag}}
+  // {debug, {trace, Flag}}
+  // {debug, {log_to_file, FileName}}
+  // {debug, {statistics, Flag}}
+  // {debug, no_debug}
+  // {debug, {install, {Func, FuncState}}}
+  // {debug, {install, {FuncId, Func, FuncState}}}
+  // {debug, {remove, FuncOrId}}
+  Resume(fn() -> Nil)
+  Suspend(fn() -> Nil)
+  GetState(fn(Dynamic) -> Nil)
+  GetStatus(fn(StatusInfo) -> Nil)
+}
 
 external type DoNotLeak
 
