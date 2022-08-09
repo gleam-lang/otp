@@ -1,11 +1,11 @@
 import gleam/otp/actor.{Continue}
 import gleam/erlang/process.{Pid}
 import gleam/otp/process as legacy
+import gleam/erlang/atom.{Atom}
 import gleam/otp/system
 import gleam/dynamic.{Dynamic}
 import gleeunit/should
 import gleam/result
-import gleam/io
 
 pub fn get_state_test() {
   assert Ok(subject) =
@@ -86,3 +86,33 @@ pub fn subject_test() {
   |> system.get_state()
   |> should.equal(dynamic.from("state 2"))
 }
+
+pub fn unexpected_message_test() {
+  // Quieten the logger
+  logger_set_primary_config(
+    atom.create_from_string("level"),
+    atom.create_from_string("error"),
+  )
+
+  assert Ok(subject) = actor.start("state 1", fn(msg, _state) { Continue(msg) })
+
+  subject
+  |> process.subject_owner
+  |> system.get_state()
+  |> should.equal(dynamic.from("state 1"))
+
+  raw_send(process.subject_owner(subject), "Unexpected message 1")
+  actor.send(subject, "state 2")
+  raw_send(process.subject_owner(subject), "Unexpected message 2")
+
+  subject
+  |> process.subject_owner
+  |> system.get_state()
+  |> should.equal(dynamic.from("state 2"))
+}
+
+external fn raw_send(Pid, anything) -> anything =
+  "erlang" "send"
+
+external fn logger_set_primary_config(Atom, Atom) -> Nil =
+  "logger" "set_primary_config"

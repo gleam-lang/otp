@@ -1,11 +1,13 @@
 import gleam/erlang/process.{Pid, Selector, Subject}
+import gleam/erlang/charlist.{Charlist}
 import gleam/otp/process.{
   Abnormal, DebugState, ExitReason, GetState, GetStatus, Mode, Resume, Running, Suspend,
   Suspended, SystemMessage,
 } as legacy
 import gleam/io
-import gleam/erlang/atom
+import gleam/string
 import gleam/dynamic.{Dynamic}
+import gleam/erlang/atom
 
 type Message(message) {
   /// A regular message excepted by the process
@@ -39,8 +41,6 @@ pub type InitResult(state, message) {
   ///
   Ready(state: state, selector: Selector(message))
 
-  // TODO: exit reason
-  // Failed(ExitReason)
   /// The actor has failed to initialise. The actor shuts down and an error is
   /// returned to the parent process.
   ///
@@ -156,10 +156,11 @@ fn loop(self: Self(state, msg)) -> ExitReason {
       loop(self)
     }
 
-    // TODO: test
     Unexpected(message) -> {
-      // TODO: Log about unexpected messages
-      io.debug(#("unexpected", process.self(), message))
+      log_warning(
+        charlist.from_string("Actor discarding unexpected message: ~s"),
+        [charlist.from_string(string.inspect(message))],
+      )
       loop(self)
     }
 
@@ -175,6 +176,10 @@ fn loop(self: Self(state, msg)) -> ExitReason {
     }
   }
 }
+
+// TODO: replace this when we have Gleam bindings to the logger
+external fn log_warning(Charlist, List(Charlist)) -> Nil =
+  "logger" "warning"
 
 fn initialise_actor(
   spec: Spec(state, msg),
