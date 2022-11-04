@@ -31,7 +31,7 @@ pub fn async_await_test() {
   assert Error(task.Exit(_)) = task.try_await(t3, 35)
 }
 
-pub fn asyn_await_forever_test() {
+pub fn async_await_forever_test() {
   // Spawn 3 tasks, performing 45ms work collectively
   let t1 = task.async(work(1))
   let t2 = task.async(work(2))
