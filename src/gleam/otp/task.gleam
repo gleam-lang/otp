@@ -2,9 +2,9 @@
 //// down. Commonly tasks are used to convert sequential code into concurrent
 //// code by performing computation in another process.
 ////
-////    let t = task.async(fn() { do_some_work() })
-////    res = do_some_other_work()
-////    res + task.await(t, 100)
+////    let task = task.async(fn() { do_some_work() })
+////    let value = do_some_other_work()
+////    value + task.await(task, 100)
 ////
 //// Tasks spawned with async can be awaited on by their caller process (and
 //// only their caller) as shown in the example above. They are implemented by
