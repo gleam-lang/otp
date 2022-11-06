@@ -1,5 +1,15 @@
 import gleeunit/should
 import gleam/otp/task.{Timeout}
+import gleam/otp/actor.{Continue}
+import gleam/erlang/process
+import gleam/otp/system
+
+type Item {
+  MessageQueueLen
+}
+
+external fn process_info(pid: process.Pid, item: Item) -> #(Item, Int) =
+  "erlang" "process_info"
 
 external fn sleep(Int) -> Nil =
   "timer" "sleep"
@@ -32,6 +42,34 @@ pub fn async_await_test() {
   assert Error(Timeout) = task.try_await(t3, 35)
 }
 
+pub fn async_await_unmonitor_test() {
+  // Create an actor that performs an asynchronous task
+  // and monitors it until it's done
+  assert Ok(subject) =
+    actor.start(
+      0,
+      fn(_msg, state) {
+        task.async(fn() { state })
+        |> task.try_await(100)
+
+        Continue(state)
+      },
+    )
+
+  // We start the task in the actor
+  actor.send(subject, Nil)
+
+  // We suspend the actor, so any message sent to it
+  // will remain in its mailbox
+  let pid = process.subject_owner(subject)
+  system.suspend(pid)
+
+  // Actor's mailbox should not contain a "DOWN" message
+  // as it should not be monitoring the completed task
+  process_info(pid, MessageQueueLen)
+  |> should.equal(#(MessageQueueLen, 0))
+}
+
 pub fn async_await_forever_test() {
   // Spawn 3 tasks, performing 45ms work collectively
   let t1 = task.async(work(1))
@@ -58,4 +96,32 @@ pub fn async_await_forever_test() {
   |> should.equal(5)
   task.await_forever(t6)
   |> should.equal(6)
+}
+
+pub fn async_await_forever_unmonitor_test() {
+  // Create an actor that performs an asynchronous task
+  // and monitors it until it's done
+  assert Ok(subject) =
+    actor.start(
+      0,
+      fn(_msg, state) {
+        task.async(fn() { state })
+        |> task.try_await_forever
+
+        Continue(state)
+      },
+    )
+
+  // We start the task in the actor
+  actor.send(subject, Nil)
+
+  // We suspend the actor, so any message sent to it
+  // will remain in its mailbox
+  let pid = process.subject_owner(subject)
+  system.suspend(pid)
+
+  // Actor's mailbox should not contain a "DOWN" message
+  // as it should not be monitoring the completed task
+  process_info(pid, MessageQueueLen)
+  |> should.equal(#(MessageQueueLen, 0))
 }
