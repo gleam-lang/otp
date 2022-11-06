@@ -1,8 +1,8 @@
 import gleam/erlang/process.{Abnormal, ExitReason, Pid, Selector, Subject}
 import gleam/erlang/charlist.{Charlist}
 import gleam/otp/system.{
-  DebugState, GetState, GetStatus, Mode, Resume, Running, StatusInfo, Suspend, Suspended,
-  SystemMessage,
+  DebugState, GetState, GetStatus, Mode, Resume, Running, StatusInfo, Suspend,
+  Suspended, SystemMessage,
 }
 import gleam/string
 import gleam/dynamic.{Dynamic}
