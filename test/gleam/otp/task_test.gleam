@@ -1,5 +1,5 @@
 import gleeunit/should
-import gleam/otp/task
+import gleam/otp/task.{Timeout}
 
 external fn sleep(Int) -> Nil =
   "timer" "sleep"
@@ -25,10 +25,11 @@ pub fn async_await_test() {
   task.try_await(t3, 5)
   |> should.equal(Ok(3))
 
-  // Assert awaiting on previously retrieved tasks returns an error 
-  assert Error(task.Exit(_)) = task.try_await(t1, 35)
-  assert Error(task.Exit(_)) = task.try_await(t2, 35)
-  assert Error(task.Exit(_)) = task.try_await(t3, 35)
+  // Assert awaiting on previously retrieved tasks returns an error
+  // An already finished task will always time out! 
+  assert Error(Timeout) = task.try_await(t1, 35)
+  assert Error(Timeout) = task.try_await(t2, 35)
+  assert Error(Timeout) = task.try_await(t3, 35)
 }
 
 pub fn async_await_forever_test() {
@@ -44,11 +45,6 @@ pub fn async_await_forever_test() {
   |> should.equal(Ok(2))
   task.try_await_forever(t3)
   |> should.equal(Ok(3))
-
-  // Assert awaiting on previously retrieved tasks returns an error 
-  assert Error(task.Exit(_)) = task.try_await_forever(t1)
-  assert Error(task.Exit(_)) = task.try_await_forever(t2)
-  assert Error(task.Exit(_)) = task.try_await_forever(t3)
 
   //  Spawn 3 more tasks, performing 45ms work collectively
   let t4 = task.async(work(4))
