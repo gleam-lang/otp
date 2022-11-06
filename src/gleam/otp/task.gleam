@@ -27,11 +27,16 @@
 ////
 
 // TODO: await_many
-import gleam/erlang/process.{Pid, Selector}
+import gleam/erlang/process.{Pid, ProcessMonitor, Selector}
 import gleam/dynamic.{Dynamic}
 
 pub opaque type Task(value) {
-  Task(owner: Pid, pid: Pid, selector: Selector(Message(value)))
+  Task(
+    owner: Pid,
+    pid: Pid,
+    monitor: ProcessMonitor,
+    selector: Selector(Message(value)),
+  )
 }
 
 // TODO: test
@@ -51,7 +56,7 @@ pub fn async(work: fn() -> value) -> Task(value) {
     process.new_selector()
     |> process.selecting_process_down(monitor, FromMonitor)
     |> process.selecting(subject, FromSubject)
-  Task(owner: owner, pid: pid, selector: selector)
+  Task(owner: owner, pid: pid, monitor: monitor, selector: selector)
 }
 
 pub type AwaitError {
@@ -88,7 +93,10 @@ pub fn try_await(task: Task(value), timeout: Int) -> Result(value, AwaitError) {
   assert_owner(task)
   case process.select(task.selector, timeout) {
     // The task process has sent back a value
-    Ok(FromSubject(x)) -> Ok(x)
+    Ok(FromSubject(x)) -> {
+      process.demonitor_process(task.monitor)
+      Ok(x)
+    }
 
     // The task process crashed without sending a value
     Ok(FromMonitor(process.ProcessDown(reason: reason, ..))) ->
@@ -120,7 +128,10 @@ pub fn try_await_forever(task: Task(value)) -> Result(value, AwaitError) {
   assert_owner(task)
   case process.select_forever(task.selector) {
     // The task process has sent back a value
-    FromSubject(x) -> Ok(x)
+    FromSubject(x) -> {
+      process.demonitor_process(task.monitor)
+      Ok(x)
+    }
 
     // The task process crashed without sending a value
     FromMonitor(process.ProcessDown(reason: reason, ..)) -> Error(Exit(reason))
