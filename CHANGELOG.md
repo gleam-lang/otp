@@ -3,6 +3,7 @@
 ## v0.5.0 - Unreleased
 
 - Updated to use the process module in the `gleam_erlang` library`.
+- Fixed bug: tasks are now unmonitored by their parent after completion.
 
 ## v0.4.0 - 2022-04-16
 
