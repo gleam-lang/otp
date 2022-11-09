@@ -4,11 +4,14 @@ import gleam/otp/actor.{Continue}
 import gleam/erlang/process
 import gleam/otp/system
 
-type Item {
+type MessageQueueLen {
   MessageQueueLen
 }
 
-external fn process_info(pid: process.Pid, item: Item) -> #(Item, Int) =
+external fn process_info(
+  pid: process.Pid,
+  length: MessageQueueLen,
+) -> #(MessageQueueLen, Int) =
   "erlang" "process_info"
 
 external fn sleep(Int) -> Nil =
