@@ -1,18 +1,12 @@
 import gleeunit/should
 import gleam/otp/task.{Timeout}
-import gleam/otp/actor.{Continue}
-import gleam/erlang/process
-import gleam/otp/system
+import gleam/erlang/process.{Pid}
 
-type MessageQueueLen {
-  MessageQueueLen
-}
+external fn flush() -> Nil =
+  "gleam_otp_test_external" "flush"
 
-external fn process_info(
-  pid: process.Pid,
-  length: MessageQueueLen,
-) -> #(MessageQueueLen, Int) =
-  "erlang" "process_info"
+external fn get_message_queue_length(pid: Pid) -> Int =
+  "gleam_otp_test_external" "get_message_queue_length"
 
 external fn sleep(Int) -> Nil =
   "timer" "sleep"
@@ -46,31 +40,20 @@ pub fn async_await_test() {
 }
 
 pub fn async_await_unmonitor_test() {
-  // Create an actor that performs an asynchronous task
-  // and monitors it until it's done
-  assert Ok(subject) =
-    actor.start(
-      0,
-      fn(_msg, state) {
-        task.async(fn() { state })
-        |> task.try_await(100)
+  // Start with an empty mailbox
+  flush()
 
-        Continue(state)
-      },
-    )
+  // Perform an asynchronous task
+  // and monitor it until it's done
+  let _result =
+    task.async(work(1))
+    |> task.try_await(50)
 
-  // We start the task in the actor
-  actor.send(subject, Nil)
-
-  // We suspend the actor, so any message sent to it
-  // will remain in its mailbox
-  let pid = process.subject_owner(subject)
-  system.suspend(pid)
-
-  // Actor's mailbox should not contain a "DOWN" message
-  // as it should not be monitoring the completed task
-  process_info(pid, MessageQueueLen)
-  |> should.equal(#(MessageQueueLen, 0))
+  // Mailbox should be empty;
+  // no "DOWN" message should have been sent
+  process.self()
+  |> get_message_queue_length
+  |> should.equal(0)
 }
 
 pub fn async_await_forever_test() {
@@ -102,29 +85,18 @@ pub fn async_await_forever_test() {
 }
 
 pub fn async_await_forever_unmonitor_test() {
-  // Create an actor that performs an asynchronous task
-  // and monitors it until it's done
-  assert Ok(subject) =
-    actor.start(
-      0,
-      fn(_msg, state) {
-        task.async(fn() { state })
-        |> task.try_await_forever
+  // Start with an empty mailbox
+  flush()
 
-        Continue(state)
-      },
-    )
+  // Perform an asynchronous task
+  // and monitor it until it's done
+  let _result =
+    task.async(work(1))
+    |> task.try_await_forever
 
-  // We start the task in the actor
-  actor.send(subject, Nil)
-
-  // We suspend the actor, so any message sent to it
-  // will remain in its mailbox
-  let pid = process.subject_owner(subject)
-  system.suspend(pid)
-
-  // Actor's mailbox should not contain a "DOWN" message
-  // as it should not be monitoring the completed task
-  process_info(pid, MessageQueueLen)
-  |> should.equal(#(MessageQueueLen, 0))
+  // Mailbox should be empty;
+  // no "DOWN" message should have been sent
+  process.self()
+  |> get_message_queue_length
+  |> should.equal(0)
 }
