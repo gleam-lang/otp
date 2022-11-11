@@ -1,9 +1,12 @@
 # Changelog
 
-## v0.5.0 - Unreleased
+## v0.5.1 - 2022-11-11
+
+- Fixed bug: tasks are now unmonitored by their parent after completion.
+
+## v0.5.0 - 2022-08-09
 
 - Updated to use the process module in the `gleam_erlang` library`.
-- Fixed bug: tasks are now unmonitored by their parent after completion.
 
 ## v0.4.0 - 2022-04-16
 
@@ -32,7 +35,7 @@
 
 ## v0.1.4 - 2020-12-31
 
-- Port messages are no longer treated as regular channel messages by 
+- Port messages are no longer treated as regular channel messages by
   receivers.
 
 ## v0.1.3 - 2020-11-07
