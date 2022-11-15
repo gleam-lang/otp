@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.2 - 2022-11-15
+
+- Updated for latest `gleam_erlang` and Gleam versions.
+
 ## v0.5.1 - 2022-11-11
 
 - Fixed bug: tasks are now unmonitored by their parent after completion.
