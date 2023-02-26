@@ -1,3 +1,26 @@
+//// This module provides the _Actor_ abstraction, one of the most common
+//// building blocks of Gleam OTP programs.
+//// 
+//// An Actor is a process like any other BEAM process and can be be used to hold
+//// state, execute code, and communicate with other processes by sending and
+//// receiving messages. The advantage of using the actor abstraction over a bare
+//// process is that it provides a single interface for commonly needed
+//// functionality, including support for the [tracing and debugging
+//// features in OTP](erlang-sys).
+////
+//// Gleam's Actor is similar to Erlang's `gen_server` and Elixir's `GenServer`
+//// but differs in that it offers a fully typed interface. This different API is
+//// why Gleam uses the name Actor rather than some variation of generic-server.
+////
+//// [erlang-sys]: https://www.erlang.org/doc/man/sys.html
+////
+//// ## Example
+////
+//// An Actor can be used to create a client-server interaction between an Actor
+//// (the server) and other processes (the clients). In this example we have an
+//// Actor that works as a stack, allowing clients to push and pop elements.
+////
+
 import gleam/erlang/process.{Abnormal, ExitReason, Pid, Selector, Subject}
 import gleam/erlang/charlist.{Charlist}
 import gleam/otp/system.{
