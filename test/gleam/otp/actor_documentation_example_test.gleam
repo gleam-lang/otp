@@ -1,15 +1,18 @@
 import gleam/erlang/process.{Subject}
-import gleam/otp/actor.{StartError}
+import gleam/otp/actor
 
 pub fn example_test() {
-  // Start the actor. We assert that it starts successfully.
-  let assert Ok(actor) = start_stack_actor()
+  // Start the actor with initial state of an empty list, and the
+  // `handle_message` callback function (defined below).
+  // We assert that it starts successfully.
+  // 
+  // In real-world Gleam OTP programs we would likely write a wrapper functions
+  // called `start`, `push` `pop`, `shutdown` to start and interact with the
+  // Actor. We are not doing that here for the sake of showing how the Actor 
+  // API works.
+  let assert Ok(actor) = actor.start([], handle_message)
 
   // We can send a message to the actor to push elements onto the stack.
-  //
-  // In real-world Gleam OTP programs we would likely write a wrapper functions
-  // called `push` and `pop` to send these messages. We are not doing that here
-  // to show how the message sending functions are used.
   process.send(actor, Push("Joe"))
   process.send(actor, Push("Mike"))
   process.send(actor, Push("Robert"))
@@ -29,7 +32,7 @@ pub fn example_test() {
   let assert Ok("Joe") = process.call(actor, Pop, 10)
 
   // The stack is now empty, so if we pop again the actor replies with an error.
-  let assert Error(StackWasEmpty) = process.call(actor, Pop, 10)
+  let assert Error(Nil) = process.call(actor, Pop, 10)
 
   // Lastly, we can send a message to the actor asking it to shut down.
   process.send(actor, Shutdown)
@@ -38,18 +41,9 @@ pub fn example_test() {
 pub type Message(element) {
   Push(push: element)
 
-  Pop(reply_with: Subject(Result(element, PopError)))
+  Pop(reply_with: Subject(Result(element, Nil)))
 
   Shutdown
-}
-
-pub type PopError {
-  StackWasEmpty
-}
-
-fn start_stack_actor() -> Result(Subject(Message(element)), StartError) {
-  let initial_state = []
-  actor.start(initial_state, handle_message)
 }
 
 fn handle_message(message: Message(e), stack: List(e)) -> actor.Next(List(e)) {
@@ -61,7 +55,7 @@ fn handle_message(message: Message(e), stack: List(e)) -> actor.Next(List(e)) {
     Pop(client) ->
       case stack {
         [] -> {
-          process.send(client, Error(StackWasEmpty))
+          process.send(client, Error(Nil))
           actor.Continue([])
         }
 
