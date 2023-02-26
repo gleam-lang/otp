@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Updated for Gleam v0.27.
+
 ## v0.5.2 - 2022-11-15
 
 - Updated for latest `gleam_erlang` and Gleam versions.
