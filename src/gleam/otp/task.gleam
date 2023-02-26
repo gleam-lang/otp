@@ -114,7 +114,7 @@ pub fn try_await(task: Task(value), timeout: Int) -> Result(value, AwaitError) {
 /// task process crashes then this function crashes.
 ///
 pub fn await(task: Task(value), timeout: Int) -> value {
-  assert Ok(value) = try_await(task, timeout)
+  let assert Ok(value) = try_await(task, timeout)
   value
 }
 
@@ -146,6 +146,6 @@ pub fn try_await_forever(task: Task(value)) -> Result(value, AwaitError) {
 /// If the task process crashes then this function crashes.
 ///
 pub fn await_forever(task: Task(value)) -> value {
-  assert Ok(value) = try_await_forever(task)
+  let assert Ok(value) = try_await_forever(task)
   value
 }

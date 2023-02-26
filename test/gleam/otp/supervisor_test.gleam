@@ -39,22 +39,22 @@ pub fn supervisor_test() {
   |> should.be_ok
 
   // Assert children have started
-  assert Ok(#(1, p)) = process.receive(subject, 10)
-  assert Ok(#(2, _)) = process.receive(subject, 10)
-  assert Ok(#(3, _)) = process.receive(subject, 10)
-  assert Error(Nil) = process.receive(subject, 10)
+  let assert Ok(#(1, p)) = process.receive(subject, 10)
+  let assert Ok(#(2, _)) = process.receive(subject, 10)
+  let assert Ok(#(3, _)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
 
   // Kill first child an assert they all restart
   process.kill(p)
-  assert Ok(#(1, p1)) = process.receive(subject, 10)
-  assert Ok(#(2, p2)) = process.receive(subject, 10)
-  assert Ok(#(3, _)) = process.receive(subject, 10)
-  assert Error(Nil) = process.receive(subject, 10)
+  let assert Ok(#(1, p1)) = process.receive(subject, 10)
+  let assert Ok(#(2, p2)) = process.receive(subject, 10)
+  let assert Ok(#(3, _)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
 
   // Kill second child an assert the following children restart
   process.kill(p2)
-  assert Ok(#(2, _)) = process.receive(subject, 10)
-  assert Ok(#(3, _)) = process.receive(subject, 10)
-  assert Error(Nil) = process.receive(subject, 10)
-  assert True = process.is_alive(p1)
+  let assert Ok(#(2, _)) = process.receive(subject, 10)
+  let assert Ok(#(3, _)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+  let assert True = process.is_alive(p1)
 }

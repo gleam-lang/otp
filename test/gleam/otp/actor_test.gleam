@@ -8,7 +8,7 @@ import gleam/function
 import gleeunit/should
 
 pub fn get_state_test() {
-  assert Ok(subject) =
+  let assert Ok(subject) =
     actor.start("Test state", fn(_msg, state) { Continue(state) })
 
   subject
@@ -21,7 +21,7 @@ external fn get_status(Pid) -> Dynamic =
   "sys" "get_status"
 
 pub fn get_status_test() {
-  assert Ok(subject) = actor.start(Nil, fn(_msg, state) { Continue(state) })
+  let assert Ok(subject) = actor.start(Nil, fn(_msg, state) { Continue(state) })
 
   subject
   |> process.subject_owner
@@ -41,7 +41,7 @@ pub fn failed_init_test() {
 }
 
 pub fn suspend_resume_test() {
-  assert Ok(subject) = actor.start(0, fn(_msg, iter) { Continue(iter + 1) })
+  let assert Ok(subject) = actor.start(0, fn(_msg, iter) { Continue(iter + 1) })
 
   // Suspend process
   subject
@@ -72,7 +72,8 @@ pub fn suspend_resume_test() {
 }
 
 pub fn subject_test() {
-  assert Ok(subject) = actor.start("state 1", fn(msg, _state) { Continue(msg) })
+  let assert Ok(subject) =
+    actor.start("state 1", fn(msg, _state) { Continue(msg) })
 
   subject
   |> process.subject_owner
@@ -94,7 +95,8 @@ pub fn unexpected_message_test() {
     atom.create_from_string("error"),
   )
 
-  assert Ok(subject) = actor.start("state 1", fn(msg, _state) { Continue(msg) })
+  let assert Ok(subject) =
+    actor.start("state 1", fn(msg, _state) { Continue(msg) })
 
   subject
   |> process.subject_owner
@@ -112,7 +114,7 @@ pub fn unexpected_message_test() {
 }
 
 pub fn unexpected_message_handled_test() {
-  assert Ok(subject) =
+  let assert Ok(subject) =
     actor.start_spec(actor.Spec(
       init: fn() {
         let selector =

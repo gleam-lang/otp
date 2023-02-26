@@ -83,9 +83,10 @@ fn start_child(
   child_spec: ChildSpec(msg, argument_in, argument_out),
   argument: argument_in,
 ) -> Result(Child(argument_out), ChildStartError) {
-  try subject =
+  use subject <- result.then(
     child_spec.start(argument)
-    |> result.map_error(ChildStartError(None, _))
+    |> result.map_error(ChildStartError(None, _)),
+  )
 
   Ok(Child(
     pid: process.subject_owner(subject),
@@ -117,7 +118,7 @@ fn perform_instruction_for_child(
     // instruction. Either way it and its younger siblings need to be restarted.
     _ -> {
       shutdown_child(current, child_spec)
-      try child = start_child(child_spec, argument)
+      use child <- result.then(start_child(child_spec, argument))
       Ok(#(child, StartAll))
     }
   }
@@ -131,19 +132,18 @@ fn add_child_to_starter(
   let starter = fn(instruction) {
     // Restart the older children. We use `try` to return early if the older
     // children failed to start
-    try #(starter, instruction) = case starter.exec {
+    use #(starter, instruction) <- result.then(case starter.exec {
       Some(start) -> start(instruction)
       None -> Ok(#(starter, instruction))
-    }
+    })
 
     // Perform the instruction, restarting the child as required
-    try #(child, instruction) =
-      perform_instruction_for_child(
-        starter.argument,
-        instruction,
-        child_spec,
-        child,
-      )
+    use #(child, instruction) <- result.then(perform_instruction_for_child(
+      starter.argument,
+      instruction,
+      child_spec,
+      child,
+    ))
 
     // Create a new starter for the next time the supervisor needs to restart
     let starter = add_child_to_starter(starter, child_spec, child)
@@ -290,20 +290,22 @@ type HandleExitError {
 fn handle_exit(pid: Pid, state: State(a)) -> actor.Next(State(a)) {
   let outcome = {
     // If we are handling an exit then we must have some children
-    assert Some(start) = state.starter.exec
+    let assert Some(start) = state.starter.exec
 
     // Check to see if there has been too many restarts in this period
-    try restarts =
+    use restarts <- result.then(
       state.restarts
       |> intensity_tracker.add_event
-      |> result.map_error(fn(_) { TooManyRestarts })
+      |> result.map_error(fn(_) { TooManyRestarts }),
+    )
 
     // Restart the exited child and any following children
-    try #(starter, _) =
+    use #(starter, _) <- result.then(
       start(StartFrom(pid))
       |> result.map_error(fn(e: ChildStartError) {
         RestartFailed(option.unwrap(e.previous_pid, pid), restarts)
-      })
+      }),
+    )
 
     Ok(State(..state, starter: starter, restarts: restarts))
   }

@@ -34,9 +34,9 @@ pub fn async_await_test() {
 
   // Assert awaiting on previously retrieved tasks returns an error
   // An already finished task will always time out! 
-  assert Error(Timeout) = task.try_await(t1, 35)
-  assert Error(Timeout) = task.try_await(t2, 35)
-  assert Error(Timeout) = task.try_await(t3, 35)
+  let assert Error(Timeout) = task.try_await(t1, 35)
+  let assert Error(Timeout) = task.try_await(t2, 35)
+  let assert Error(Timeout) = task.try_await(t3, 35)
 }
 
 pub fn async_await_unmonitor_test() {
