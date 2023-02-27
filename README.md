@@ -12,10 +12,15 @@ future!
 
 Gleam’s actor system is built with a few primary goals:
 
- - Full type safety of actors and messages.
- - Be compatible with Erlang’s OTP actor framework.
- - Provide fault tolerance and self-healing through supervisors.
- - Have equivalent performance to Erlang’s OTP.
+- Full type safety of actors and messages.
+- Be compatible with Erlang’s OTP actor framework.
+- Provide fault tolerance and self-healing through supervisors.
+- Have equivalent performance to Erlang’s OTP.
+
+This library documents its abstractions and functionality, but you may also wish
+to read the documentation or other material on Erlang’s OTP framework to get a
+fuller understanding of OTP, the problems it solves, and and the motivations for
+its design.
 
 ## Usage
 
@@ -25,25 +30,10 @@ Add this library to your Gleam project.
 gleam add gleam_otp
 ```
 
-### How to understand the Gleam OTP library
-
-1. Read the rest of this README.
-2. Understand Erlang's OTP library.
-3. this [blog post](https://gleam.run/news/gleam-v0.12-and-gleam-otp-v0.1-released/) is a decent jumping off point.
-4. [Gleam OTP test suite](https://github.com/gleam-lang/otp/tree/main/test/gleam/otp) demonstrates what the library offers in more detail.
-
 ## Actor hierarchy
 
-This library defines several different types of actor that can be used in
+This library provides several different types of actor that can be used in
 Gleam programs.
-
-```
-      Process
-      ↙    ↘
-   Actor   Task
-     ↓
-Supervisor
-```
 
 ### Process
 
@@ -52,17 +42,25 @@ built on top of processes either directly or indirectly. Typically this
 abstraction would be not be used very often in Gleam applications, favour
 other actor types that provide more functionality.
 
+Gleam's process module is defined in the `gleam_erlang` library.
+[[Documentation]](https://hexdocs.pm/gleam_erlang/gleam/erlang/process.html)
+
 ### Actor
 
 The `actor` is the most commonly used process type in Gleam and serves as a good
-building block for other abstractions. Like Erlang's `gen_server` it will
-automatically handle OTP's debug system messages for you.
+building block for other abstractions. Like Erlang's `gen_server` it handles
+OTP's system messages automatically to enable OTP's debugging and tracing
+functionality.
+
+[[Documentation]](https://hexdocs.pm/gleam_otp/gleam/otp/actor.html)
 
 ### Task
 
 A task is a kind of process that performs a single task and then shuts down.
 Commonly tasks are used to convert sequential code into concurrent code by
 performing computation in another process.
+
+[[Documentation]](https://hexdocs.pm/gleam_otp/gleam/otp/task.html)
 
 ### Supervisor
 
@@ -71,12 +69,19 @@ restarting them if they crash. Supervisors can start other supervisors,
 resulting in a hierarchical process structure called a supervision tree,
 providing fault tolerance to a Gleam application.
 
+[[Documentation]](https://hexdocs.pm/gleam_otp/gleam/otp/supervisor.html)
+
 ## Limitations and known issues
 
 This library is experimental there are some limitations that not yet been resolved.
 
-- There is no support for named processes.
-- Actors do not yet support all OTP system messages. Unsupported messages are dropped.
+- There is no support for named processes. They are untyped global mutable
+  variables which may be uninitialized, more research is needed to find a
+  suitable type safe alternative.
+- There are relatively few actor abstractions provided by this library. More
+  will be added in the future.
+- Actors do not yet support all OTP system messages. Unsupported messages are
+  dropped.
 - Supervisors do not yet support different shutdown periods per child. In
   practice this means that children that are supervisors do not get an
   unlimited amount of time to shut down, as is expected in Erlang or Elixir.
