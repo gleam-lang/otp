@@ -43,6 +43,7 @@ abstraction would be not be used very often in Gleam applications, favour
 other actor types that provide more functionality.
 
 Gleam's process module is defined in the `gleam_erlang` library.
+
 [[Documentation]](https://hexdocs.pm/gleam_erlang/gleam/erlang/process.html)
 
 ### Actor
