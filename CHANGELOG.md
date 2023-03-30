@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.5.3 - 2023-03-30
 
 - Updated for Gleam v0.27.
 
