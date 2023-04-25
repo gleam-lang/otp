@@ -346,8 +346,12 @@ pub fn start_spec(spec: Spec(a, b)) -> Result(Subject(Message), StartError) {
 
 /// Start a supervisor from a given `init` function.
 ///
-/// If you wish to have more control over the configuration of the supervisor
-/// see the `start_spec` function.
+/// The init argument passed to children will be `Nil` and the maximum restart
+/// intensity will be 1 restart per 5 seconds (the same as the default for
+/// [Erlang supervisors][erl-sup]). If you wish to specify these values, see
+/// the `start_spec` function and the `Spec` type.
+///
+/// [erl-sup]: https://www.erlang.org/doc/design_principles/sup_princ.html#maximum-restart-intensity
 ///
 pub fn start(
   init: fn(Children(Nil)) -> Children(a),
@@ -355,8 +359,8 @@ pub fn start(
   start_spec(Spec(
     init: init,
     argument: Nil,
-    max_frequency: 5,
-    frequency_period: 1,
+    max_frequency: 1,
+    frequency_period: 5,
   ))
 }
 
