@@ -70,7 +70,10 @@ pub type Message(element) {
 //
 // The function takes the message and the current state, and returns a data
 // structure that indicates what to do next, along with the new state.
-fn handle_message(message: Message(e), stack: List(e)) -> actor.Next(List(e)) {
+fn handle_message(
+  message: Message(e),
+  stack: List(e),
+) -> actor.Next(List(e), Message(e)) {
   case message {
     // For the `Shutdown` message we return the `actor.Stop` value, which causes
     // the actor to discard any remaining messages and stop.
