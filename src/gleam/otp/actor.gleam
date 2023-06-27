@@ -91,7 +91,10 @@
 //// //
 //// // The function takes the message and the current state, and returns a data
 //// // structure that indicates what to do next, along with the new state.
-//// fn handle_message(message: Message(e), stack: List(e)) -> actor.Next(List(e)) {
+//// fn handle_message(
+////  message: Message(e),
+////  stack: List(e),
+//// ) -> actor.Next(List(e), Message(e)) {
 ////   case message {
 ////     // For the `Shutdown` message we return the `actor.Stop` value, which causes
 ////     // the actor to discard any remaining messages and stop.
@@ -150,10 +153,14 @@ type Message(message) {
 
 /// The type used to indicate what to do after handling a message.
 ///
-pub type Next(state) {
+pub type Next(state, message) {
   /// Continue handling messages.
   ///
   Continue(state)
+
+  /// Continue with a new selector.
+  ///
+  ContinueWithSelector(state, Selector(message))
 
   /// Stop handling messages and shut down.
   ///
@@ -182,7 +189,7 @@ type Self(state, msg) {
     state: state,
     selector: Selector(Message(msg)),
     debug_state: DebugState,
-    message_handler: fn(msg, state) -> Next(state),
+    message_handler: fn(msg, state) -> Next(state, msg),
   )
 }
 
@@ -209,7 +216,7 @@ pub type Spec(state, msg) {
     init_timeout: Int,
     /// This function is called to handle each message that the actor receives.
     ///
-    loop: fn(msg, state) -> Next(state),
+    loop: fn(msg, state) -> Next(state, msg),
   )
 }
 
@@ -296,6 +303,14 @@ fn loop(self: Self(state, msg)) -> ExitReason {
       case self.message_handler(msg, self.state) {
         Stop(reason) -> exit_process(reason)
         Continue(state) -> loop(Self(..self, state: state))
+        ContinueWithSelector(state, selector) ->
+          loop(
+            Self(
+              ..self,
+              state: state,
+              selector: init_selector(process.new_subject(), selector),
+            ),
+          )
       }
   }
 }
@@ -311,10 +326,7 @@ fn initialise_actor(
   let subject = process.new_subject()
   case spec.init() {
     Ready(state, selector) -> {
-      let selector =
-        process.new_selector()
-        |> process.selecting(subject, Message)
-        |> process.merge_selector(process.map_selector(selector, Message))
+      let selector = init_selector(subject, selector)
       // Signal to parent that the process has initialised successfully
       process.send(ack, Ok(subject))
       // Start message receive loop
@@ -335,6 +347,12 @@ fn initialise_actor(
       exit_process(Abnormal(reason))
     }
   }
+}
+
+fn init_selector(subject, selector) {
+  process.new_selector()
+  |> process.selecting(subject, Message)
+  |> process.merge_selector(process.map_selector(selector, Message))
 }
 
 pub type StartError {
@@ -437,7 +455,7 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
 ///
 pub fn start(
   state: state,
-  loop: fn(msg, state) -> Next(state),
+  loop: fn(msg, state) -> Next(state, msg),
 ) -> Result(Subject(msg), StartError) {
   start_spec(Spec(
     init: fn() { Ready(state, process.new_selector()) },

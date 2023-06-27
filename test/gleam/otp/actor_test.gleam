@@ -1,5 +1,5 @@
-import gleam/otp/actor.{Continue}
-import gleam/erlang/process.{Pid}
+import gleam/otp/actor.{Continue, ContinueWithSelector}
+import gleam/erlang/process.{Pid, Selector}
 import gleam/erlang/atom.{Atom}
 import gleam/otp/system
 import gleam/dynamic.{Dynamic}
@@ -132,6 +132,45 @@ pub fn unexpected_message_handled_test() {
   |> process.subject_owner
   |> system.get_state()
   |> should.equal(dynamic.from("Unexpected message 1"))
+}
+
+type ActorMessage(inner) {
+  UserMessage(inner)
+  ReplaceSelector(selector: Selector(ActorMessage(inner)))
+}
+
+pub fn replace_selector_test() {
+  let assert Ok(subject) =
+    actor.start(
+      "init",
+      fn(msg: ActorMessage(String), state) {
+        case msg {
+          UserMessage(string) -> Continue("user message: " <> string)
+          ReplaceSelector(selector) -> ContinueWithSelector(state, selector)
+        }
+      },
+    )
+
+  process.send(subject, UserMessage("test 1"))
+
+  process.send(
+    subject,
+    ReplaceSelector(
+      process.new_selector()
+      |> process.selecting_anything(fn(data) {
+        data
+        |> dynamic.unsafe_coerce
+        |> UserMessage
+      }),
+    ),
+  )
+
+  raw_send(process.subject_owner(subject), "test 2")
+
+  subject
+  |> process.subject_owner
+  |> system.get_state()
+  |> should.equal(dynamic.from("user message: test 2"))
 }
 
 @external(erlang, "erlang", "send")
