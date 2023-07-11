@@ -1,4 +1,4 @@
-import gleam/otp/actor.{Continue, ContinueWithSelector}
+import gleam/otp/actor.{Continue, Selecting}
 import gleam/erlang/process.{Pid, Selector}
 import gleam/erlang/atom.{Atom}
 import gleam/otp/system
@@ -146,12 +146,17 @@ pub fn replace_selector_test() {
       fn(msg: ActorMessage(String), state) {
         case msg {
           UserMessage(string) -> Continue("user message: " <> string)
-          ReplaceSelector(selector) -> ContinueWithSelector(state, selector)
+          ReplaceSelector(selector) -> Selecting(state, selector)
         }
       },
     )
 
   process.send(subject, UserMessage("test 1"))
+
+  subject
+  |> process.subject_owner
+  |> system.get_state()
+  |> should.equal(dynamic.from("user message: test 1"))
 
   process.send(
     subject,
@@ -171,6 +176,13 @@ pub fn replace_selector_test() {
   |> process.subject_owner
   |> system.get_state()
   |> should.equal(dynamic.from("user message: test 2"))
+
+  process.send(subject, UserMessage("test 3"))
+
+  subject
+  |> process.subject_owner
+  |> system.get_state()
+  |> should.equal(dynamic.from("user message: test 3"))
 }
 
 @external(erlang, "erlang", "send")
