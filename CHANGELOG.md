@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add `Selecting` constructor to `actor.Next` allowing for replacement of an actor's selector from the loop function.
+
 ## v0.6.0 - 2023-07-27
 
 - Updated for Gleam v0.30.

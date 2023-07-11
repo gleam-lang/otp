@@ -158,9 +158,9 @@ pub type Next(state, message) {
   ///
   Continue(state)
 
-  /// Continue with a new selector.
+  /// Continue handling messages with a new selector.
   ///
-  ContinueWithSelector(state, Selector(message))
+  Selecting(state, Selector(message))
 
   /// Stop handling messages and shut down.
   ///
@@ -187,6 +187,7 @@ type Self(state, msg) {
     mode: Mode,
     parent: Pid,
     state: state,
+    subject: Subject(msg),
     selector: Selector(Message(msg)),
     debug_state: DebugState,
     message_handler: fn(msg, state) -> Next(state, msg),
@@ -303,12 +304,12 @@ fn loop(self: Self(state, msg)) -> ExitReason {
       case self.message_handler(msg, self.state) {
         Stop(reason) -> exit_process(reason)
         Continue(state) -> loop(Self(..self, state: state))
-        ContinueWithSelector(state, selector) ->
+        Selecting(state, selector) ->
           loop(
             Self(
               ..self,
               state: state,
-              selector: init_selector(process.new_subject(), selector),
+              selector: init_selector(self.subject, selector),
             ),
           )
       }
@@ -334,6 +335,7 @@ fn initialise_actor(
         Self(
           state: state,
           parent: process.subject_owner(ack),
+          subject: subject,
           selector: selector,
           message_handler: spec.loop,
           debug_state: system.debug_state([]),
