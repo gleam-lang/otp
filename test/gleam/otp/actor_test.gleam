@@ -1,8 +1,9 @@
 import gleam/otp/actor.{Continue, Selecting}
-import gleam/erlang/process.{Pid, Selector}
+import gleam/erlang/process.{Pid, Subject}
 import gleam/erlang/atom.{Atom}
 import gleam/otp/system
 import gleam/dynamic.{Dynamic}
+import gleam/int
 import gleam/result
 import gleam/function
 import gleeunit/should
@@ -134,55 +135,98 @@ pub fn unexpected_message_handled_test() {
   |> should.equal(dynamic.from("Unexpected message 1"))
 }
 
-type ActorMessage(inner) {
-  UserMessage(inner)
-  ReplaceSelector(selector: Selector(ActorMessage(inner)))
+type ActorMessage {
+  UserMessage(String)
+  Unknown(Dynamic)
+  SetStringSelector(
+    reply: Subject(Subject(String)),
+    mapper: fn(String) -> ActorMessage,
+  )
+  SetIntSelector(reply: Subject(Subject(Int)), mapper: fn(Int) -> ActorMessage)
 }
 
 pub fn replace_selector_test() {
   let assert Ok(subject) =
     actor.start(
       "init",
-      fn(msg: ActorMessage(String), state) {
+      fn(msg: ActorMessage, state) {
         case msg {
           UserMessage(string) -> Continue("user message: " <> string)
-          ReplaceSelector(selector) -> Selecting(state, selector)
+          Unknown(val) -> Continue("unknown message: " <> dynamic.classify(val))
+          SetStringSelector(reply, mapper) -> {
+            let #(subject, selector) = mapped_selector(mapper)
+            process.send(reply, subject)
+
+            Selecting(state, selector)
+          }
+          SetIntSelector(reply, mapper) -> {
+            let #(subject, selector) = mapped_selector(mapper)
+            process.send(reply, subject)
+
+            Selecting(state, selector)
+          }
         }
       },
     )
 
+  // Send initial user message to original subject
   process.send(subject, UserMessage("test 1"))
-
-  subject
-  |> process.subject_owner
-  |> system.get_state()
+  // Check state
+  get_actor_state(subject)
   |> should.equal(dynamic.from("user message: test 1"))
 
-  process.send(
-    subject,
-    ReplaceSelector(
-      process.new_selector()
-      |> process.selecting_anything(fn(data) {
-        data
-        |> dynamic.unsafe_coerce
-        |> UserMessage
-      }),
-    ),
-  )
-
-  raw_send(process.subject_owner(subject), "test 2")
-
-  subject
-  |> process.subject_owner
-  |> system.get_state()
+  // Get a new subject with string selector
+  let str_subj = process.call(subject, SetStringSelector(_, UserMessage), 1000)
+  // Send to new string subject
+  process.send(str_subj, "test 2")
+  // Check state
+  get_actor_state(subject)
   |> should.equal(dynamic.from("user message: test 2"))
 
-  process.send(subject, UserMessage("test 3"))
+  // Get a new subject with int selector
+  let int_subj =
+    process.call(
+      subject,
+      SetIntSelector(_, fn(n: Int) {
+        { "test " <> int.to_string(n) }
+        |> UserMessage
+      }),
+      1000,
+    )
+  // Send to new int subject
+  process.send(int_subj, 3)
+  // Check state
+  get_actor_state(subject)
+  |> should.equal(dynamic.from("user message: test 3"))
 
+  // Try to send to old string subject
+  process.send(str_subj, "test 4")
+  // Check state
+  get_actor_state(subject)
+  |> should.equal(dynamic.from("unknown message: String"))
+}
+
+fn mapped_selector(mapper: fn(a) -> ActorMessage) {
+  let subject = process.new_subject()
+
+  let selector =
+    process.new_selector()
+    |> process.selecting(subject, mapper)
+    // Always create a selector that catches unknown messages
+    |> process.selecting_anything(fn(data) {
+      data
+      |> dynamic.element(1, dynamic.dynamic)
+      |> result.unwrap(dynamic.from("unknown"))
+      |> Unknown
+    })
+
+  #(subject, selector)
+}
+
+fn get_actor_state(subject: Subject(a)) {
   subject
   |> process.subject_owner
-  |> system.get_state()
-  |> should.equal(dynamic.from("user message: test 3"))
+  |> system.get_state
 }
 
 @external(erlang, "erlang", "send")
