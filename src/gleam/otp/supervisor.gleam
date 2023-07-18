@@ -287,7 +287,7 @@ type HandleExitError {
   TooManyRestarts
 }
 
-fn handle_exit(pid: Pid, state: State(a)) -> actor.Next(State(a), Message) {
+fn handle_exit(pid: Pid, state: State(a)) -> actor.Next(Message, State(a)) {
   let outcome = {
     // If we are handling an exit then we must have some children
     let assert Some(start) = state.starter.exec
@@ -330,7 +330,7 @@ fn handle_exit(pid: Pid, state: State(a)) -> actor.Next(State(a), Message) {
 fn loop(
   message: Message,
   state: State(argument),
-) -> actor.Next(State(argument), Message) {
+) -> actor.Next(Message, State(argument)) {
   case message {
     Exit(exit_message) -> handle_exit(exit_message.pid, state)
     RetryRestart(pid) -> handle_exit(pid, state)
