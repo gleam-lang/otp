@@ -94,7 +94,7 @@
 //// fn handle_message(
 ////  message: Message(e),
 ////  stack: List(e),
-//// ) -> actor.Next(List(e), Message(e)) {
+//// ) -> actor.Next(Message(e), List(e)) {
 ////   case message {
 ////     // For the `Shutdown` message we return the `actor.Stop` value, which causes
 ////     // the actor to discard any remaining messages and stop.
@@ -153,7 +153,7 @@ type Message(message) {
 
 /// The type used to indicate what to do after handling a message.
 ///
-pub type Next(state, message) {
+pub type Next(message, state) {
   /// Continue handling messages.
   ///
   Continue(state)
@@ -190,7 +190,7 @@ type Self(state, msg) {
     subject: Subject(msg),
     selector: Selector(Message(msg)),
     debug_state: DebugState,
-    message_handler: fn(msg, state) -> Next(state, msg),
+    message_handler: fn(msg, state) -> Next(msg, state),
   )
 }
 
@@ -217,7 +217,7 @@ pub type Spec(state, msg) {
     init_timeout: Int,
     /// This function is called to handle each message that the actor receives.
     ///
-    loop: fn(msg, state) -> Next(state, msg),
+    loop: fn(msg, state) -> Next(msg, state),
   )
 }
 
@@ -457,7 +457,7 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
 ///
 pub fn start(
   state: state,
-  loop: fn(msg, state) -> Next(state, msg),
+  loop: fn(msg, state) -> Next(msg, state),
 ) -> Result(Subject(msg), StartError) {
   start_spec(Spec(
     init: fn() { Ready(state, process.new_selector()) },
