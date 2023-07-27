@@ -380,10 +380,10 @@ pub type ApplicationStartMode {
   Failover(Node)
 }
 
-pub external type ApplicationStop
+pub type ApplicationStop
 
-pub external fn application_stopped() -> ApplicationStop =
-  "gleam_otp_external" "application_stopped"
+@external(erlang, "gleam_otp_external", "application_stopped")
+pub fn application_stopped() -> ApplicationStop
 
 /// The result of starting a Gleam actor.
 ///

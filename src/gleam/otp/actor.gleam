@@ -249,8 +249,8 @@ fn selecting_system_messages(
   )
 }
 
-external fn convert_system_message(Dynamic, Dynamic) -> Message(msg) =
-  "gleam_otp_external" "convert_system_message"
+@external(erlang, "gleam_otp_external", "convert_system_message")
+fn convert_system_message(a: Dynamic, b: Dynamic) -> Message(msg)
 
 fn process_status_info(self: Self(state, msg)) -> StatusInfo {
   StatusInfo(
@@ -301,8 +301,8 @@ fn loop(self: Self(state, msg)) -> ExitReason {
 }
 
 // TODO: replace this when we have Gleam bindings to the logger
-external fn log_warning(Charlist, List(Charlist)) -> Nil =
-  "logger" "warning"
+@external(erlang, "logger", "warning")
+fn log_warning(a: Charlist, b: List(Charlist)) -> Nil
 
 fn initialise_actor(
   spec: Spec(state, msg),

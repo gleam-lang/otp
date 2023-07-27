@@ -16,8 +16,8 @@ pub fn new(limit limit: Int, period period: Int) -> IntensityTracker {
   IntensityTracker(limit: limit, period: period, events: [])
 }
 
-external fn monotonic_time(Int) -> Int =
-  "erlang" "monotonic_time"
+@external(erlang, "erlang", "monotonic_time")
+fn monotonic_time(a: Int) -> Int
 
 fn now_seconds() -> Int {
   monotonic_time(1)

@@ -6,4 +6,4 @@
 ///
 /// [1]: https://erlang.org/doc/reference_manual/ports.html
 ///
-pub external type Port
+pub type Port

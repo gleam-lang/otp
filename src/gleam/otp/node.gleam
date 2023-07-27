@@ -1,1 +1,1 @@
-pub external type Node
+pub type Node

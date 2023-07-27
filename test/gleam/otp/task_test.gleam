@@ -2,14 +2,14 @@ import gleeunit/should
 import gleam/otp/task.{Timeout}
 import gleam/erlang/process.{Pid}
 
-external fn flush() -> Nil =
-  "gleam_otp_test_external" "flush"
+@external(erlang, "gleam_otp_test_external", "flush")
+fn flush() -> Nil
 
-external fn get_message_queue_length(pid: Pid) -> Int =
-  "gleam_otp_test_external" "get_message_queue_length"
+@external(erlang, "gleam_otp_test_external", "get_message_queue_length")
+fn get_message_queue_length(pid pid: Pid) -> Int
 
-external fn sleep(Int) -> Nil =
-  "timer" "sleep"
+@external(erlang, "timer", "sleep")
+fn sleep(a: Int) -> Nil
 
 fn work(x) {
   fn() {

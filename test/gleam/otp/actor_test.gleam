@@ -17,8 +17,8 @@ pub fn get_state_test() {
   |> should.equal(dynamic.from("Test state"))
 }
 
-external fn get_status(Pid) -> Dynamic =
-  "sys" "get_status"
+@external(erlang, "sys", "get_status")
+fn get_status(a: Pid) -> Dynamic
 
 pub fn get_status_test() {
   let assert Ok(subject) = actor.start(Nil, fn(_msg, state) { Continue(state) })
@@ -134,8 +134,8 @@ pub fn unexpected_message_handled_test() {
   |> should.equal(dynamic.from("Unexpected message 1"))
 }
 
-external fn raw_send(Pid, anything) -> anything =
-  "erlang" "send"
+@external(erlang, "erlang", "send")
+fn raw_send(a: Pid, b: anything) -> anything
 
-external fn logger_set_primary_config(Atom, Atom) -> Nil =
-  "logger" "set_primary_config"
+@external(erlang, "logger", "set_primary_config")
+fn logger_set_primary_config(a: Atom, b: Atom) -> Nil

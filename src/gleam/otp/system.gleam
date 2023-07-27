@@ -11,10 +11,10 @@ pub type DebugOption {
   NoDebug
 }
 
-pub external type DebugState
+pub type DebugState
 
-pub external fn debug_state(List(DebugOption)) -> DebugState =
-  "sys" "debug_options"
+@external(erlang, "sys", "debug_options")
+pub fn debug_state(a: List(DebugOption)) -> DebugState
 
 pub type StatusInfo {
   StatusInfo(
@@ -46,7 +46,7 @@ pub type SystemMessage {
   GetStatus(fn(StatusInfo) -> Nil)
 }
 
-external type DoNotLeak
+type DoNotLeak
 
 /// Get the state of a given OTP compatible process. This function is only
 /// intended for debugging.
@@ -55,11 +55,11 @@ external type DoNotLeak
 ///
 /// [1]: https://erlang.org/doc/man/sys.html#get_state-1
 ///
-pub external fn get_state(from: Pid) -> Dynamic =
-  "sys" "get_state"
+@external(erlang, "sys", "get_state")
+pub fn get_state(from from: Pid) -> Dynamic
 
-external fn erl_suspend(Pid) -> DoNotLeak =
-  "sys" "suspend"
+@external(erlang, "sys", "suspend")
+fn erl_suspend(a: Pid) -> DoNotLeak
 
 /// Request an OTP compatible process to suspend, causing it to only handle
 /// system messages.
@@ -73,8 +73,8 @@ pub fn suspend(pid: Pid) -> Nil {
   Nil
 }
 
-external fn erl_resume(from: Pid) -> DoNotLeak =
-  "sys" "resume"
+@external(erlang, "sys", "resume")
+fn erl_resume(from from: Pid) -> DoNotLeak
 
 /// Request a suspended OTP compatible process to result, causing it to handle
 /// all messages rather than only system messages.
