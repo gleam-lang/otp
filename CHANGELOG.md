@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.7.0 - 2023-08-30
 
 - The `actor.Continue` record now contains an optional `Selector`, which can be
   used to change the messages the actor is selecting. The `continue` and
