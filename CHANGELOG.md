@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-- Add `Selecting` constructor to `actor.Next` allowing for replacement of an
-  actor's selector from the loop function.
+- The `actor.Continue` record now contains an optional `Selector`, which can be
+  used to change the messages the actor is selecting. The `continue` and
+  `with_selector` builder functions have been added to aid with construction of
+  `Next` values.
 - The `gleam/otp/node` module has been removed in favour of the
   `gleam/erlang/node` module in the `gleam_erlang` package.
 

@@ -16,7 +16,7 @@ pub fn supervisor_test() {
           actor.Ready(name, process.new_selector())
         },
         init_timeout: 10,
-        loop: fn(_msg, state) { actor.Continue(state) },
+        loop: fn(_msg, state) { actor.continue(state) },
       ))
     })
 

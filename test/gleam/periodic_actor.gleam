@@ -2,7 +2,7 @@
 //// time (or when it is sent a message by another process).
 
 import gleam/erlang/process.{Subject}
-import gleam/otp/actor.{Continue, Ready, Spec, StartError}
+import gleam/otp/actor.{Ready, Spec, StartError}
 import gleam/io
 
 pub fn periodic_actor(
@@ -27,7 +27,7 @@ pub fn periodic_actor(
     // Run the callback as the timer has triggered again
     callback()
     // We're done, await the next message
-    Continue(subject)
+    actor.continue(subject)
   }
 
   // Start the actor

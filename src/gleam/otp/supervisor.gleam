@@ -311,14 +311,14 @@ fn handle_exit(pid: Pid, state: State(a)) -> actor.Next(Message, State(a)) {
   }
 
   case outcome {
-    Ok(state) -> actor.Continue(state)
+    Ok(state) -> actor.continue(state)
     Error(RestartFailed(failed_child, restarts)) -> {
       // Asynchronously enqueue the restarting of this child again as we were
       // unable to restart them this time. We do this asynchronously as we want
       // to have a chance to handle any system messages that have come in.
       process.send(state.retry_restarts, failed_child)
       let state = State(..state, restarts: restarts)
-      actor.Continue(state)
+      actor.continue(state)
     }
     Error(TooManyRestarts) ->
       actor.Stop(process.Abnormal(

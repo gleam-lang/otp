@@ -101,11 +101,11 @@
 ////     Shutdown -> actor.Stop(process.Normal)
 //// 
 ////     // For the `Push` message we add the new element to the stack and return
-////     // `actor.Continue` with this new stack, causing the actor to process any
+////     // `actor.continue` with this new stack, causing the actor to process any
 ////     // queued messages or wait for more.
 ////     Push(value) -> {
 ////       let new_state = [value, ..stack]
-////       actor.Continue(new_state)
+////       actor.continue(new_state)
 ////     }
 //// 
 ////     // For the `Pop` message we attempt to remove an element from the stack,
@@ -116,14 +116,14 @@
 ////           // When the stack is empty we can't pop an element, so we send an
 ////           // error back.
 ////           process.send(client, Error(Nil))
-////           actor.Continue([])
+////           actor.continue([])
 ////         }
 //// 
 ////         [first, ..rest] -> {
 ////           // Otherwise we send the first element back and use the remaining
 ////           // elements as the new state.
 ////           process.send(client, Ok(first))
-////           actor.Continue(rest)
+////           actor.continue(rest)
 ////         }
 ////       }
 ////   }
@@ -139,6 +139,7 @@ import gleam/otp/system.{
 import gleam/string
 import gleam/dynamic.{Dynamic}
 import gleam/erlang/atom
+import gleam/option.{None, Option, Some}
 
 type Message(message) {
   /// A regular message excepted by the process
@@ -156,15 +157,25 @@ type Message(message) {
 pub type Next(message, state) {
   /// Continue handling messages.
   ///
-  Continue(state)
-
-  /// Continue handling messages with a new selector.
-  ///
-  Selecting(state, Selector(message))
+  Continue(state: state, selector: Option(Selector(message)))
 
   /// Stop handling messages and shut down.
   ///
   Stop(ExitReason)
+}
+
+pub fn continue(state: state) -> Next(message, state) {
+  Continue(state, None)
+}
+
+pub fn with_selector(
+  value: Next(message, state),
+  selector: Selector(message),
+) -> Next(message, state) {
+  case value {
+    Continue(state, _) -> Continue(state, Some(selector))
+    _ -> value
+  }
 }
 
 /// The type used to indicate whether an actor has started successfully or not.
@@ -303,15 +314,13 @@ fn loop(self: Self(state, msg)) -> ExitReason {
     Message(msg) ->
       case self.message_handler(msg, self.state) {
         Stop(reason) -> exit_process(reason)
-        Continue(state) -> loop(Self(..self, state: state))
-        Selecting(state, selector) ->
-          loop(
-            Self(
-              ..self,
-              state: state,
-              selector: init_selector(self.subject, selector),
-            ),
-          )
+        Continue(state: state, selector: new_selector) -> {
+          let selector =
+            new_selector
+            |> option.map(init_selector(self.subject, _))
+            |> option.unwrap(self.selector)
+          loop(Self(..self, state: state, selector: selector))
+        }
       }
   }
 }

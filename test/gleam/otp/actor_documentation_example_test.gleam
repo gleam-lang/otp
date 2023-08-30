@@ -84,7 +84,7 @@ fn handle_message(
     // queued messages or wait for more.
     Push(value) -> {
       let new_state = [value, ..stack]
-      actor.Continue(new_state)
+      actor.continue(new_state)
     }
 
     // For the `Pop` message we attempt to remove an element from the stack,
@@ -95,14 +95,14 @@ fn handle_message(
           // When the stack is empty we can't pop an element, so we send an
           // error back.
           process.send(client, Error(Nil))
-          actor.Continue([])
+          actor.continue([])
         }
 
         [first, ..rest] -> {
           // Otherwise we send the first element back and use the remaining
           // elements as the new state.
           process.send(client, Ok(first))
-          actor.Continue(rest)
+          actor.continue(rest)
         }
       }
   }

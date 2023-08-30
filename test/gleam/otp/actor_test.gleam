@@ -1,4 +1,4 @@
-import gleam/otp/actor.{Continue, Selecting}
+import gleam/otp/actor
 import gleam/erlang/process.{Pid, Subject}
 import gleam/erlang/atom.{Atom}
 import gleam/otp/system
@@ -10,7 +10,7 @@ import gleeunit/should
 
 pub fn get_state_test() {
   let assert Ok(subject) =
-    actor.start("Test state", fn(_msg, state) { Continue(state) })
+    actor.start("Test state", fn(_msg, state) { actor.continue(state) })
 
   subject
   |> process.subject_owner
@@ -22,7 +22,8 @@ pub fn get_state_test() {
 fn get_status(a: Pid) -> Dynamic
 
 pub fn get_status_test() {
-  let assert Ok(subject) = actor.start(Nil, fn(_msg, state) { Continue(state) })
+  let assert Ok(subject) =
+    actor.start(Nil, fn(_msg, state) { actor.continue(state) })
 
   subject
   |> process.subject_owner
@@ -33,7 +34,7 @@ pub fn get_status_test() {
 pub fn failed_init_test() {
   actor.Spec(
     init: fn() { actor.Failed("not enough wiggles") },
-    loop: fn(_msg, state) { Continue(state) },
+    loop: fn(_msg, state) { actor.continue(state) },
     init_timeout: 10,
   )
   |> actor.start_spec
@@ -42,7 +43,8 @@ pub fn failed_init_test() {
 }
 
 pub fn suspend_resume_test() {
-  let assert Ok(subject) = actor.start(0, fn(_msg, iter) { Continue(iter + 1) })
+  let assert Ok(subject) =
+    actor.start(0, fn(_msg, iter) { actor.continue(iter + 1) })
 
   // Suspend process
   subject
@@ -74,7 +76,7 @@ pub fn suspend_resume_test() {
 
 pub fn subject_test() {
   let assert Ok(subject) =
-    actor.start("state 1", fn(msg, _state) { Continue(msg) })
+    actor.start("state 1", fn(msg, _state) { actor.continue(msg) })
 
   subject
   |> process.subject_owner
@@ -97,7 +99,7 @@ pub fn unexpected_message_test() {
   )
 
   let assert Ok(subject) =
-    actor.start("state 1", fn(msg, _state) { Continue(msg) })
+    actor.start("state 1", fn(msg, _state) { actor.continue(msg) })
 
   subject
   |> process.subject_owner
@@ -123,7 +125,7 @@ pub fn unexpected_message_handled_test() {
           |> process.selecting_anything(function.identity)
         actor.Ready(dynamic.from("init"), selector)
       },
-      loop: fn(msg, _state) { Continue(msg) },
+      loop: fn(msg, _state) { actor.continue(msg) },
       init_timeout: 10,
     ))
 
@@ -151,19 +153,22 @@ pub fn replace_selector_test() {
       "init",
       fn(msg: ActorMessage, state) {
         case msg {
-          UserMessage(string) -> Continue("user message: " <> string)
-          Unknown(val) -> Continue("unknown message: " <> dynamic.classify(val))
+          UserMessage(string) -> actor.continue("user message: " <> string)
+          Unknown(val) ->
+            actor.continue("unknown message: " <> dynamic.classify(val))
           SetStringSelector(reply, mapper) -> {
             let #(subject, selector) = mapped_selector(mapper)
             process.send(reply, subject)
 
-            Selecting(state, selector)
+            actor.continue(state)
+            |> actor.with_selector(selector)
           }
           SetIntSelector(reply, mapper) -> {
             let #(subject, selector) = mapped_selector(mapper)
             process.send(reply, subject)
 
-            Selecting(state, selector)
+            actor.continue(state)
+            |> actor.with_selector(selector)
           }
         }
       },
@@ -187,10 +192,7 @@ pub fn replace_selector_test() {
   let int_subj =
     process.call(
       subject,
-      SetIntSelector(_, fn(n: Int) {
-        { "test " <> int.to_string(n) }
-        |> UserMessage
-      }),
+      SetIntSelector(_, fn(n: Int) { UserMessage("test " <> int.to_string(n)) }),
       1000,
     )
   // Send to new int subject
