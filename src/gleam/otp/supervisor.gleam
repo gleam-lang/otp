@@ -5,7 +5,7 @@ import gleam/option.{None, Option, Some}
 import gleam/erlang/process.{Pid, Subject}
 import gleam/otp/actor.{StartError}
 import gleam/otp/intensity_tracker.{IntensityTracker}
-import gleam/otp/node.{Node}
+import gleam/erlang/node.{Node}
 
 /// This data structure holds all the values required by the `start_spec`
 /// function in order to create an supervisor.

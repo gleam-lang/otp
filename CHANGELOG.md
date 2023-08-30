@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-- Add `Selecting` constructor to `actor.Next` allowing for replacement of an actor's selector from the loop function.
+- Add `Selecting` constructor to `actor.Next` allowing for replacement of an
+  actor's selector from the loop function.
+- The `gleam/otp/node` module has been removed in favour of the
+  `gleam/erlang/node` module in the `gleam_erlang` package.
 
 ## v0.6.0 - 2023-07-27
 
