@@ -383,10 +383,6 @@ pub type StartResult(msg) =
 
 /// An Erlang supervisor compatible process start result.
 ///
-/// If you wish to convert this into a `StartResult` compatible with Gleam
-/// supervisors see the `from_erlang_start_result` and `wrap_erlang_starter`
-/// functions.
-///
 pub type ErlangStartResult =
   Result(Pid, Dynamic)
 
