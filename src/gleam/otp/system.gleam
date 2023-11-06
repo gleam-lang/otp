@@ -1,6 +1,6 @@
-import gleam/dynamic.{Dynamic}
-import gleam/erlang/atom.{Atom}
-import gleam/erlang/process.{Pid}
+import gleam/dynamic.{type Dynamic}
+import gleam/erlang/atom.{type Atom}
+import gleam/erlang/process.{type Pid}
 
 pub type Mode {
   Running

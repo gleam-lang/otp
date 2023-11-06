@@ -1,8 +1,8 @@
 import gleam/otp/actor
-import gleam/erlang/process.{Pid, Subject}
-import gleam/erlang/atom.{Atom}
+import gleam/erlang/process.{type Pid, type Subject}
+import gleam/erlang/atom.{type Atom}
 import gleam/otp/system
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic.{type Dynamic}
 import gleam/int
 import gleam/result
 import gleam/function

@@ -1,7 +1,7 @@
 //// If you update this file be sure to update the documentation in the actor
 //// module which includes a copy of this.
 
-import gleam/erlang/process.{Subject}
+import gleam/erlang/process.{type Subject}
 import gleam/otp/actor
 
 pub fn example_test() {

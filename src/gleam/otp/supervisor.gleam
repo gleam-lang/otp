@@ -1,11 +1,11 @@
 // TODO: specify amount of time permitted for shut-down
 import gleam/result
 import gleam/string
-import gleam/option.{None, Option, Some}
-import gleam/erlang/process.{Pid, Subject}
-import gleam/otp/actor.{StartError}
-import gleam/otp/intensity_tracker.{IntensityTracker}
-import gleam/erlang/node.{Node}
+import gleam/option.{type Option, None, Some}
+import gleam/erlang/process.{type Pid, type Subject}
+import gleam/otp/actor.{type StartError}
+import gleam/otp/intensity_tracker.{type IntensityTracker}
+import gleam/erlang/node.{type Node}
 
 /// This data structure holds all the values required by the `start_spec`
 /// function in order to create an supervisor.

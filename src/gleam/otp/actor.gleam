@@ -130,16 +130,18 @@
 //// }
 //// ```
 
-import gleam/erlang/process.{Abnormal, ExitReason, Pid, Selector, Subject}
-import gleam/erlang/charlist.{Charlist}
+import gleam/erlang/process.{
+  type ExitReason, type Pid, type Selector, type Subject, Abnormal,
+}
+import gleam/erlang/charlist.{type Charlist}
 import gleam/otp/system.{
-  DebugState, GetState, GetStatus, Mode, Resume, Running, StatusInfo, Suspend,
-  Suspended, SystemMessage,
+  type DebugState, type Mode, type StatusInfo, type SystemMessage, GetState,
+  GetStatus, Resume, Running, StatusInfo, Suspend, Suspended,
 }
 import gleam/string
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom
-import gleam/option.{None, Option, Some}
+import gleam/option.{type Option, None, Some}
 
 type Message(message) {
   /// A regular message excepted by the process
