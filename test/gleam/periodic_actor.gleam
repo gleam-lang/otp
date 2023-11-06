@@ -1,8 +1,8 @@
 //// An example of an actor that concurrently does something every X amount of
 //// time (or when it is sent a message by another process).
 
-import gleam/erlang/process.{Subject}
-import gleam/otp/actor.{Ready, Spec, StartError}
+import gleam/erlang/process.{type Subject}
+import gleam/otp/actor.{type StartError, Ready, Spec}
 import gleam/io
 
 pub fn periodic_actor(
