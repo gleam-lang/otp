@@ -1,9 +1,9 @@
 # Changelog
 
-## Unreleased
+## v0.8.0 - 2023-11-06
 
-- Version requirement for `gleam_erlang` updated to `~> 0.22` to match actual
-  requirements.
+- Updated for Gleam v0.32.0.
+- Version requirement for `gleam_erlang` updated to `~> 0.22`.
 
 ## v0.7.0 - 2023-08-30
 
