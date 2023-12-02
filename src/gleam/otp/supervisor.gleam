@@ -213,8 +213,8 @@ pub fn supervisor(
 /// ## Examples
 ///
 /// ```gleam
-/// worker(fn(supervisor_settings) {
-///  actor.start(supervisor_settings.initial_state, my_actor_loop)
+/// worker(fn(argument) {
+///  my_actor.start(argument)
 /// })
 /// ``` 
 ///
@@ -351,7 +351,7 @@ fn loop(
 /// ## Examples
 /// 
 /// ```gleam
-/// let worker = worker(actor.start(_, my_worker))
+/// let worker = worker(my_actor.start)
 ///
 /// let children = fn(children) {
 ///   children
@@ -387,7 +387,7 @@ pub fn start_spec(spec: Spec(a, b)) -> Result(Subject(Message), StartError) {
 /// ## Examples
 /// 
 /// ```gleam
-/// let worker = worker(actor.start(_, my_worker))
+/// let worker = worker(my_actor.start)
 ///
 /// let children = fn(children) {
 ///   children
