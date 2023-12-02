@@ -210,6 +210,14 @@ pub fn supervisor(
 /// If you wish to change the type of the argument for later children see the
 /// `returning` function.
 ///
+/// ## Examples
+///
+/// ```gleam
+/// worker(fn(supervisor_settings) {
+///  actor.start(supervisor_settings.initial_state, my_actor_loop)
+/// })
+/// ``` 
+///
 pub fn worker(
   start: fn(argument) -> Result(Subject(msg), StartError),
 ) -> ChildSpec(msg, argument, argument) {
@@ -339,6 +347,26 @@ fn loop(
 
 /// Start a supervisor from a given specification.
 ///
+///
+/// ## Examples
+/// 
+/// ```gleam
+/// let worker = worker(actor.start(_, my_worker))
+///
+/// let children = fn(children) {
+///   children
+///   |> add(worker)
+///   |> add(worker)
+/// }
+///
+/// start_spec(Spec(
+///   argument: initial_state,
+///   frequency_period: 1,
+///   max_frequency: 5,
+///   init: children,
+/// ))
+/// ```
+///
 pub fn start_spec(spec: Spec(a, b)) -> Result(Subject(Message), StartError) {
   actor.start_spec(actor.Spec(
     init: fn() { init(spec) },
@@ -355,6 +383,20 @@ pub fn start_spec(spec: Spec(a, b)) -> Result(Subject(Message), StartError) {
 /// the `start_spec` function and the `Spec` type.
 ///
 /// [erl-sup]: https://www.erlang.org/doc/design_principles/sup_princ.html#maximum-restart-intensity
+///
+/// ## Examples
+/// 
+/// ```gleam
+/// let worker = worker(actor.start(_, my_worker))
+///
+/// let children = fn(children) {
+///   children
+///   |> add(worker)
+///   |> add(worker)
+/// }
+///
+/// start(children)
+/// ```
 ///
 pub fn start(
   init: fn(Children(Nil)) -> Children(a),
