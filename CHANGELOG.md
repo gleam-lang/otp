@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.9.0 - 2024-01-03
+
+- The useless `gleam_otp` module has been removed.
+
 ## v0.8.0 - 2023-11-06
 
 - Updated for Gleam v0.32.0.
