@@ -159,6 +159,10 @@ type Message(message) {
 pub type Next(message, state) {
   /// Continue handling messages.
   ///
+  /// An optional selector can be provided to changes the messages that the
+  /// actor is handling. This replaces any selector that was previously given
+  /// in the actor's `init` callback, or in any previous `Next` value.
+  ///
   Continue(state: state, selector: Option(Selector(message)))
 
   /// Stop handling messages and shut down.
@@ -170,6 +174,10 @@ pub fn continue(state: state) -> Next(message, state) {
   Continue(state, None)
 }
 
+/// Provide a selector to change the messages that the actor is handling
+/// going forward. This replaces any selector that was previously given
+/// in the actor's `init` callback, or in any previous `Next` value.
+///
 pub fn with_selector(
   value: Next(message, state),
   selector: Selector(message),
@@ -197,12 +205,20 @@ pub type InitResult(state, message) {
 
 type Self(state, msg) {
   Self(
+    /// The mode the actor is currently in, either active or suspended.
     mode: Mode,
+    /// The pid of the process that started this actor.
     parent: Pid,
+    /// The state of this actor, provided by the programmer.
     state: state,
+    /// The subject that was created by this actor during initialisation.
     subject: Subject(msg),
+    /// The selector that actor is currently using to reveive messages. This
+    /// can be changed by the `Next` value returned by the actor's `loop` callback.
     selector: Selector(Message(msg)),
+    /// An opaque value used by the OTP system debug APIs.
     debug_state: DebugState,
+    /// The message handling code provided by the programmer.
     message_handler: fn(msg, state) -> Next(msg, state),
   )
 }
@@ -249,8 +265,19 @@ fn receive_message(self: Self(state, msg)) -> Message(msg) {
 
     // When running we respond to all messages
     Running ->
+      // The actor needs to handle various different messages:
+      //
+      // - OTP system messages. These are handled by the actor for the
+      //   programmer, they don't need to do anything.
+      // - Messages sent to the subject the actor creates during initialisation
+      //   and returns to the parent.
+      // - Any arbitrary messages the programmer expects the actor to receive.
+      //   For example, messages sent by a pubsub system where it does not
+      //   support using the actor's subject.
+      // - Any unexpected messages.
+      //
       // We add the handler for unexpected messages first so that the user
-      // supplied selector can override it if desired
+      // supplied selector can override it if desired.
       process.new_selector()
       |> process.selecting_anything(Unexpected)
       |> process.merge_selector(self.selector)
@@ -285,6 +312,8 @@ fn process_status_info(self: Self(state, msg)) -> StatusInfo {
 
 fn loop(self: Self(state, msg)) -> ExitReason {
   case receive_message(self) {
+    // An OTP system message. This is handled by the actor for the programmer,
+    // behind the scenes.
     System(system) ->
       case system {
         GetState(callback) -> {
@@ -305,6 +334,8 @@ fn loop(self: Self(state, msg)) -> ExitReason {
         }
       }
 
+    // An unexpected message. It this is reached then the programmer has not
+    // handled this, so log a warning.
     Unexpected(message) -> {
       log_warning(
         charlist.from_string("Actor discarding unexpected message: ~s"),
@@ -313,9 +344,12 @@ fn loop(self: Self(state, msg)) -> ExitReason {
       loop(self)
     }
 
+    // A regular message that the programmer is expecting, either over the
+    // subject or some other messsage that the programmer's selector expects.
     Message(msg) ->
       case self.message_handler(msg, self.state) {
         Stop(reason) -> exit_process(reason)
+
         Continue(state: state, selector: new_selector) -> {
           let selector =
             new_selector
@@ -331,12 +365,22 @@ fn loop(self: Self(state, msg)) -> ExitReason {
 @external(erlang, "logger", "warning")
 fn log_warning(a: Charlist, b: List(Charlist)) -> Nil
 
+// Run automatically when the actor is first started.
 fn initialise_actor(
   spec: Spec(state, msg),
   ack: Subject(Result(Subject(msg), ExitReason)),
-) {
+) -> ExitReason {
+  // This is the main subject for the actor, the one that the actor.start
+  // functions return.
+  // Once the actor has been initialised this will be sent to the parent for
+  // the function to return.
   let subject = process.new_subject()
-  case spec.init() {
+
+  // Run the programmer supplied initialisation code.
+  let result = spec.init()
+
+  case result {
+    // Init was OK, send the subject to the parent and start handling messages.
     Ready(state, selector) -> {
       let selector = init_selector(subject, selector)
       // Signal to parent that the process has initialised successfully
@@ -355,6 +399,7 @@ fn initialise_actor(
       loop(self)
     }
 
+    // The init failed. Exit with an error.
     Failed(reason) -> {
       process.send(ack, Error(Abnormal(reason)))
       exit_process(Abnormal(reason))
@@ -417,10 +462,9 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
   let ack_subject = process.new_subject()
 
   let child =
-    process.start(
-      linked: True,
-      running: fn() { initialise_actor(spec, ack_subject) },
-    )
+    process.start(linked: True, running: fn() {
+      initialise_actor(spec, ack_subject)
+    })
 
   let monitor = process.monitor_process(child)
   let selector =
@@ -481,7 +525,6 @@ pub fn send(subject: Subject(msg), msg: msg) -> Nil {
   process.send(subject, msg)
 }
 
-// TODO: test
 /// Send a synchronous message and wait for a response from the receiving
 /// process.
 ///

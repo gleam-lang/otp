@@ -3,7 +3,9 @@ import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid}
 
 pub type Mode {
+  /// Currently handling message as normal.
   Running
+  /// Termporarily not handling messages, other than system messages.
   Suspended
 }
 
