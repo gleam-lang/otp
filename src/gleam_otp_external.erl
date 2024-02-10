@@ -25,7 +25,7 @@ convert_system_message({From, Ref}, Request) when is_pid(From) ->
     end,
     case Request of
         get_status -> System(fun(Status) -> Reply(process_status(Status)) end);
-        get_state -> System(Reply);
+        get_state -> System(fun(State) -> Reply({ok, State}) end);
         suspend -> System(fun() -> Reply(ok) end);
         resume -> System(fun() -> Reply(ok) end);
         Other -> {unexpeceted, Other}

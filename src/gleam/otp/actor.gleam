@@ -317,7 +317,7 @@ fn loop(self: Self(state, msg)) -> ExitReason {
     System(system) ->
       case system {
         GetState(callback) -> {
-          callback(Ok(dynamic.from(self.state)))
+          callback(dynamic.from(self.state))
           loop(self)
         }
         Resume(callback) -> {
