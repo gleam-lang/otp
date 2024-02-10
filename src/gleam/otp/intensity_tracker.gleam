@@ -3,7 +3,6 @@
 
 import gleam/list
 
-// TODO: test
 pub opaque type IntensityTracker {
   IntensityTracker(limit: Int, period: Int, events: List(Int))
 }
@@ -27,7 +26,7 @@ pub fn trim_window(events: List(Int), now: Int, period: Int) -> List(Int) {
   case events {
     [] -> []
     [event, ..events] ->
-      case now >= event + period {
+      case now < event + period {
         True -> [event, ..trim_window(events, now, period)]
         False -> []
       }
@@ -39,7 +38,7 @@ pub fn add_event(
 ) -> Result(IntensityTracker, TooIntense) {
   let now = now_seconds()
   let events = trim_window([now, ..tracker.events], now, tracker.period)
-  case list.length(events) >= tracker.limit {
+  case list.length(events) > tracker.limit {
     True -> Error(TooIntense)
     False -> Ok(IntensityTracker(..tracker, events: events))
   }
