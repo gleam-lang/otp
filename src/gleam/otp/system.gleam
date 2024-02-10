@@ -44,7 +44,7 @@ pub type SystemMessage {
   // {debug, {remove, FuncOrId}}
   Resume(fn() -> Nil)
   Suspend(fn() -> Nil)
-  GetState(fn(Dynamic) -> Nil)
+  GetState(fn(Result(Dynamic, Nil)) -> Nil)
   GetStatus(fn(StatusInfo) -> Nil)
 }
 
@@ -53,9 +53,13 @@ type DoNotLeak
 /// Get the state of a given OTP compatible process. This function is only
 /// intended for debugging.
 ///
-/// For more information see the [Erlang documentation][1].
+/// Requires Erlang/OTP 26.1 or newer, as the underlying interface changed
+/// in [OTP-18633][1] from a literal type to a result type.
 ///
-/// [1]: https://erlang.org/doc/man/sys.html#get_state-1
+/// For more information see the [Erlang documentation][2].
+///
+/// [1]: https://www.erlang.org/patches/otp-26.1#stdlib-5.1
+/// [2]: https://erlang.org/doc/man/sys.html#get_state-1
 ///
 @external(erlang, "sys", "get_state")
 pub fn get_state(from from: Pid) -> Dynamic
