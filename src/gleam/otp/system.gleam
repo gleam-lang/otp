@@ -44,7 +44,7 @@ pub type SystemMessage {
   // {debug, {remove, FuncOrId}}
   Resume(fn() -> Nil)
   Suspend(fn() -> Nil)
-  GetState(fn(Result(Dynamic, Nil)) -> Nil)
+  GetState(fn(Dynamic) -> Nil)
   GetStatus(fn(StatusInfo) -> Nil)
 }
 
