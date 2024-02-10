@@ -1,5 +1,9 @@
 # Changelog
 
+- Fixed `gleam/otp/system.get_state/1` calls that break in Erlang/OTP >= 26.1.
+  `get_state/1` (used in debugging and tests) will error on Erlang/OTP <=
+  26.0 with "No case clause matched".
+
 ## v0.9.0 - 2024-01-03
 
 - The useless `gleam_otp` module has been removed.
