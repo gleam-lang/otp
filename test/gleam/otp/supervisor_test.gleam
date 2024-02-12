@@ -10,14 +10,16 @@ pub fn supervisor_test() {
   // initialisation so that we can tell they (re)started
   let child =
     worker(fn(name) {
-      actor.start_spec(actor.Spec(
-        init: fn() {
-          process.send(subject, #(name, process.self()))
-          actor.Ready(name, process.new_selector())
-        },
-        init_timeout: 10,
-        loop: fn(_msg, state) { actor.continue(state) },
-      ))
+      actor.start_spec(
+        actor.Spec(
+          init: fn() {
+            process.send(subject, #(name, process.self()))
+            actor.Ready(name, process.new_selector())
+          },
+          init_timeout: 10,
+          loop: fn(_msg, state) { actor.continue(state) },
+        ),
+      )
     })
 
   // Each child returns the next name, which is their name + 1
@@ -25,17 +27,19 @@ pub fn supervisor_test() {
     child
     |> returning(fn(name, _subject) { name + 1 })
 
-  supervisor.start_spec(supervisor.Spec(
-    argument: 1,
-    frequency_period: 1,
-    max_frequency: 5,
-    init: fn(children) {
-      children
-      |> add(child)
-      |> add(child)
-      |> add(child)
-    },
-  ))
+  supervisor.start_spec(
+    supervisor.Spec(
+      argument: 1,
+      frequency_period: 1,
+      max_frequency: 5,
+      init: fn(children) {
+        children
+        |> add(child)
+        |> add(child)
+        |> add(child)
+      },
+    ),
+  )
   |> should.be_ok
 
   // Assert children have started

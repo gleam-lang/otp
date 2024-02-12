@@ -149,30 +149,27 @@ type ActorMessage {
 
 pub fn replace_selector_test() {
   let assert Ok(subject) =
-    actor.start(
-      "init",
-      fn(msg: ActorMessage, state) {
-        case msg {
-          UserMessage(string) -> actor.continue("user message: " <> string)
-          Unknown(val) ->
-            actor.continue("unknown message: " <> dynamic.classify(val))
-          SetStringSelector(reply, mapper) -> {
-            let #(subject, selector) = mapped_selector(mapper)
-            process.send(reply, subject)
+    actor.start("init", fn(msg: ActorMessage, state) {
+      case msg {
+        UserMessage(string) -> actor.continue("user message: " <> string)
+        Unknown(val) ->
+          actor.continue("unknown message: " <> dynamic.classify(val))
+        SetStringSelector(reply, mapper) -> {
+          let #(subject, selector) = mapped_selector(mapper)
+          process.send(reply, subject)
 
-            actor.continue(state)
-            |> actor.with_selector(selector)
-          }
-          SetIntSelector(reply, mapper) -> {
-            let #(subject, selector) = mapped_selector(mapper)
-            process.send(reply, subject)
-
-            actor.continue(state)
-            |> actor.with_selector(selector)
-          }
+          actor.continue(state)
+          |> actor.with_selector(selector)
         }
-      },
-    )
+        SetIntSelector(reply, mapper) -> {
+          let #(subject, selector) = mapped_selector(mapper)
+          process.send(reply, subject)
+
+          actor.continue(state)
+          |> actor.with_selector(selector)
+        }
+      }
+    })
 
   // Send initial user message to original subject
   process.send(subject, UserMessage("test 1"))
