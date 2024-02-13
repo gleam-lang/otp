@@ -17,8 +17,9 @@ pub fn errors_when_too_intense_test() {
 
 pub fn cools_down_after_period_test() {
   let count = 1000
-  let limiter = new(limit: count, period: 1)
-  |> add_events(count, _)
+  let limiter =
+    new(limit: count, period: 1)
+    |> add_events(count, _)
 
   // Since the intensity_tracker is enforced in seconds,
   // wait for that second to pass
