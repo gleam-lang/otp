@@ -62,6 +62,9 @@
 //// Here is the code that is used to implement this actor:
 ////
 //// ```gleam
+//// import gleam/erlang/process.{type Subject}
+//// import gleam/otp/actor
+////
 //// // First step of implementing the stack Actor is to define the message type that
 //// // it can receive.
 //// //
