@@ -1,5 +1,7 @@
 # Changelog
 
+## v0.10.0 - 2024-03-11
+
 - Fixed bug: supervisors now abort restarting children if limits are exceeded.
 - Fixed `gleam/otp/system.get_state/1` calls that break in Erlang/OTP >= 26.1.
   `get_state/1` (used in debugging and tests) will error on Erlang/OTP <=
