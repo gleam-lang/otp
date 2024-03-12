@@ -39,7 +39,7 @@ Gleam programs.
 
 The process is the lowest level building block of OTP, all other actors are
 built on top of processes either directly or indirectly. Typically this
-abstraction would be not be used very often in Gleam applications, favour
+abstraction would not be used very often in Gleam applications, favour
 other actor types that provide more functionality.
 
 Gleam's process module is defined in the `gleam_erlang` library.
