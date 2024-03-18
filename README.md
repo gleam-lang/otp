@@ -7,9 +7,6 @@
 A Gleam library for building fault tolerant multi-core programs using the
 actor model. It is compatible with Erlang's OTP framework.
 
-This library is experimental and will likely have many breaking changes in the
-future!
-
 Gleam’s actor system is built with a few primary goals:
 
 - Full type safety of actors and messages.
@@ -21,6 +18,10 @@ This library documents its abstractions and functionality, but you may also wish
 to read the documentation or other material on Erlang’s OTP framework to get a
 fuller understanding of OTP, the problems it solves, and and the motivations for
 its design.
+
+Not all Erlang/OTP functionality is included in this library. Some is not
+possible to represent in a type safe way, so it is not included. Other features
+are still in development, such as further process supervision strategies.
 
 ## Usage
 
