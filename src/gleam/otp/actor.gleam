@@ -26,7 +26,7 @@
 ////   // `handle_message` callback function (defined below).
 ////   // We assert that it starts successfully.
 ////   // 
-////   // In real-world Gleam OTP programs we would likely write a wrapper functions
+////   // In real-world Gleam OTP programs we would likely write wrapper functions
 ////   // called `start`, `push` `pop`, `shutdown` to start and interact with the
 ////   // Actor. We are not doing that here for the sake of showing how the Actor 
 ////   // API works.
@@ -68,7 +68,7 @@
 //// // First step of implementing the stack Actor is to define the message type that
 //// // it can receive.
 //// //
-//// // The type of the elements in the stack is no fixed so a type parameter is used
+//// // The type of the elements in the stack is not fixed so a type parameter is used
 //// // for it instead of a concrete type such as `String` or `Int`.
 //// pub type Message(element) {
 ////   // The `Shutdown` message is used to tell the actor to stop.
@@ -88,7 +88,7 @@
 //// 
 //// // The last part is to implement the `handle_message` callback function.
 //// //
-//// // This function is called by the Actor each for each message it receives.
+//// // This function is called by the Actor for each message it receives.
 //// // Actor is single threaded only does one thing at a time, so it handles
 //// // messages sequentially and one at a time, in the order they are received.
 //// //
