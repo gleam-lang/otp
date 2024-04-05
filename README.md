@@ -75,7 +75,8 @@ providing fault tolerance to a Gleam application.
 
 ## Limitations and known issues
 
-This library is experimental there are some limitations that not yet been resolved.
+This library does not currently replicate all of the Erlang/OTP functionality.
+Some limitations include:
 
 - There is no support for named processes. They are untyped global mutable
   variables which may be uninitialized, more research is needed to find a
