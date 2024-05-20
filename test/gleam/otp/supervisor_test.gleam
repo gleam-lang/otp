@@ -1,7 +1,7 @@
-import gleeunit/should
-import gleam/otp/supervisor.{add, returning, worker}
-import gleam/otp/actor
 import gleam/erlang/process
+import gleam/otp/actor
+import gleam/otp/supervisor.{add, returning, worker}
+import gleeunit/should
 
 pub fn supervisor_test() {
   let subject = process.new_subject()

@@ -1,6 +1,6 @@
-import gleeunit/should
-import gleam/otp/task.{Timeout}
 import gleam/erlang/process.{type Pid}
+import gleam/otp/task.{Timeout}
+import gleeunit/should
 
 @external(erlang, "gleam_otp_test_external", "flush")
 fn flush() -> Nil

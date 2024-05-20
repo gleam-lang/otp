@@ -2,15 +2,16 @@
 //// time (or when it is sent a message by another process).
 
 import gleam/erlang/process.{type Subject}
-import gleam/otp/actor.{type StartError, Ready, Spec}
 import gleam/io
+import gleam/otp/actor.{type StartError, Ready, Spec}
 
 pub fn periodic_actor(
   every period_milliseconds: Int,
   run callback: fn() -> Nil,
 ) -> Result(Subject(Nil), StartError) {
-  let init = fn() {
+  let init = fn(
     // Create a channel to periodically send a message to the actor on
+  ) {
     let subject = process.new_subject()
     let selector =
       process.new_selector()
@@ -21,8 +22,11 @@ pub fn periodic_actor(
     Ready(subject, selector)
   }
 
-  let loop = fn(_msg, subject) {
+  let loop = fn(
+    _msg,
+    subject,
     // Send a message to itself in the future
+  ) {
     process.send_after(subject, period_milliseconds, Nil)
     // Run the callback as the timer has triggered again
     callback()

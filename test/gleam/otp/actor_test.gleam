@@ -1,11 +1,11 @@
-import gleam/otp/actor
-import gleam/erlang/process.{type Pid, type Subject}
-import gleam/erlang/atom.{type Atom}
-import gleam/otp/system
 import gleam/dynamic.{type Dynamic}
-import gleam/int
-import gleam/result
+import gleam/erlang/atom.{type Atom}
+import gleam/erlang/process.{type Pid, type Subject}
 import gleam/function
+import gleam/int
+import gleam/otp/actor
+import gleam/otp/system
+import gleam/result
 import gleeunit/should
 
 pub fn get_state_test() {

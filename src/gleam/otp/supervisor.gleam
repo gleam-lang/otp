@@ -1,11 +1,11 @@
 // TODO: specify amount of time permitted for shut-down
-import gleam/result
-import gleam/string
-import gleam/option.{type Option, None, Some}
+import gleam/erlang/node.{type Node}
 import gleam/erlang/process.{type Pid, type Subject}
+import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type StartError}
 import gleam/otp/intensity_tracker.{type IntensityTracker}
-import gleam/erlang/node.{type Node}
+import gleam/result
+import gleam/string
 
 /// This data structure holds all the values required by the `start_spec`
 /// function in order to create an supervisor.
@@ -129,9 +129,11 @@ fn add_child_to_starter(
   child_spec: ChildSpec(msg, argument_in, argument_out),
   child: Child(argument_out),
 ) -> Starter(argument_out) {
-  let starter = fn(instruction) {
+  let starter = fn(
+    instruction,
     // Restart the older children. We use `try` to return early if the older
     // children failed to start
+  ) {
     use #(starter, instruction) <- result.then(case starter.exec {
       Some(start) -> start(instruction)
       None -> Ok(#(starter, instruction))

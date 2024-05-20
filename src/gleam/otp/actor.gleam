@@ -133,18 +133,20 @@
 //// }
 //// ```
 
+//
+
+import gleam/dynamic.{type Dynamic}
+import gleam/erlang/atom
+import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process.{
   type ExitReason, type Pid, type Selector, type Subject, Abnormal,
 }
-import gleam/erlang/charlist.{type Charlist}
+import gleam/option.{type Option, None, Some}
 import gleam/otp/system.{
   type DebugState, type Mode, type StatusInfo, type SystemMessage, GetState,
   GetStatus, Resume, Running, StatusInfo, Suspend, Suspended,
 }
 import gleam/string
-import gleam/dynamic.{type Dynamic}
-import gleam/erlang/atom
-import gleam/option.{type Option, None, Some}
 
 type Message(message) {
   /// A regular message excepted by the process
@@ -542,5 +544,5 @@ pub fn call(
   make_message: fn(Subject(reply)) -> message,
   timeout: Int,
 ) -> reply {
-  process.call(selector, make_message, timeout)
+  process.call(subject, make_message, timeout)
 }

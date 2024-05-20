@@ -27,8 +27,8 @@
 ////
 
 // TODO: await_many
-import gleam/erlang/process.{type Pid, type ProcessMonitor, type Selector}
 import gleam/dynamic.{type Dynamic}
+import gleam/erlang/process.{type Pid, type ProcessMonitor, type Selector}
 
 pub opaque type Task(value) {
   Task(
