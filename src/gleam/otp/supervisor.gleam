@@ -415,7 +415,7 @@ pub fn start(
 /// is starting.
 ///
 /// For more information see the [Erlang distributed application
-/// documentation][1] and the Learn Your Some Erlang chapter on [distributed
+/// documentation][1] and the Learn You Some Erlang chapter on [distributed
 /// applications][2].
 ///
 /// [1]: https://erlang.org/doc/design_principles/distributed_applications.html
