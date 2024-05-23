@@ -30,12 +30,12 @@
 ////   // called `start`, `push` `pop`, `shutdown` to start and interact with the
 ////   // Actor. We are not doing that here for the sake of showing how the Actor 
 ////   // API works.
-////   let assert Ok(actor) = actor.start([], handle_message)
+////   let assert Ok(my_actor) = actor.start([], handle_message)
 //// 
 ////   // We can send a message to the actor to push elements onto the stack.
-////   process.send(actor, Push("Joe"))
-////   process.send(actor, Push("Mike"))
-////   process.send(actor, Push("Robert"))
+////   process.send(my_actor, Push("Joe"))
+////   process.send(my_actor, Push("Mike"))
+////   process.send(my_actor, Push("Robert"))
 //// 
 ////   // The `Push` message expects no response, these messages are sent purely for
 ////   // the side effect of mutating the state held by the actor.
@@ -47,15 +47,15 @@
 ////   // In this instance we are giving the actor 10 milliseconds to reply, if the
 ////   // `call` function doesn't get a reply within this time it will panic and
 ////   // crash the client process.
-////   let assert Ok("Robert") = process.call(actor, Pop, 10)
-////   let assert Ok("Mike") = process.call(actor, Pop, 10)
-////   let assert Ok("Joe") = process.call(actor, Pop, 10)
+////   let assert Ok("Robert") = process.call(my_actor, Pop, 10)
+////   let assert Ok("Mike") = process.call(my_actor, Pop, 10)
+////   let assert Ok("Joe") = process.call(my_actor, Pop, 10)
 //// 
 ////   // The stack is now empty, so if we pop again the actor replies with an error.
-////   let assert Error(Nil) = process.call(actor, Pop, 10)
+////   let assert Error(Nil) = process.call(my_actor, Pop, 10)
 //// 
 ////   // Lastly, we can send a message to the actor asking it to shut down.
-////   process.send(actor, Shutdown)
+////   process.send(my_actor, Shutdown)
 //// }
 //// ```
 ////
