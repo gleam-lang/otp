@@ -6,7 +6,7 @@
 //// receiving messages. The advantage of using the actor abstraction over a bare
 //// process is that it provides a single interface for commonly needed
 //// functionality, including support for the [tracing and debugging
-//// features in OTP](erlang-sys).
+//// features in OTP][erlang-sys].
 ////
 //// Gleam's Actor is similar to Erlang's `gen_server` and Elixir's `GenServer`
 //// but differs in that it offers a fully typed interface. This different API is
