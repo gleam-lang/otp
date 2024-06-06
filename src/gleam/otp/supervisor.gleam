@@ -152,6 +152,8 @@ fn shutdown_child_brutal_kill(pid: Pid) {
   }
 }
 
+// We call unlink in order to guarantee that the 'EXIT' has arrived
+// from the dead process. See the [unlink](https://www.erlang.org/doc/apps/erts/erlang.html#unlink/1) docs for details.
 fn unlink_flush(pid) {
   process.unlink(pid)
   let result =
