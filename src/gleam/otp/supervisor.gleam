@@ -1,6 +1,9 @@
 // TODO: specify amount of time permitted for shut-down
+import gleam/dynamic
+import gleam/erlang/atom
 import gleam/erlang/node.{type Node}
 import gleam/erlang/process.{type Pid, type Subject}
+import gleam/io
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor.{type StartError}
 import gleam/otp/intensity_tracker.{type IntensityTracker}
@@ -40,6 +43,7 @@ pub opaque type ChildSpec(msg, argument, returning) {
     // TODO: merge this into one field
     start: fn(argument) -> Result(Subject(msg), StartError),
     returning: fn(argument, Subject(msg)) -> returning,
+    shutdown: Shutdown,
   )
 }
 
@@ -55,6 +59,11 @@ pub opaque type Message {
 type Instruction {
   StartAll
   StartFrom(Pid)
+}
+
+type Shutdown {
+  BrutalKill
+  Timeout(Int)
 }
 
 type State(a) {
@@ -96,10 +105,67 @@ fn start_child(
   ))
 }
 
-// TODO: more sophsiticated stopping of processes. i.e. give supervisors
-// more time to shut down.
-fn shutdown_child(pid: Pid, _spec: ChildSpec(msg, arg_1, arg_2)) -> Nil {
+fn shutdown_child(pid: Pid, spec: ChildSpec(msg, arg_1, arg_2)) {
+  case spec.shutdown {
+    BrutalKill -> shutdown_child_brutal_kill(pid)
+    Timeout(timeout) -> shutdown_child_timeout(pid, timeout)
+  }
+}
+
+fn shutdown_child_timeout(pid: Pid, timeout: Int) {
+  let monitor = process.monitor_process(pid)
   process.send_exit(pid)
+
+  let result =
+    process.new_selector()
+    |> process.selecting_process_down(monitor, fn(a) { a })
+    |> process.select(timeout)
+
+  case result {
+    Ok(process.ProcessDown(pid, _reason)) -> {
+      unlink_flush(pid)
+    }
+
+    Error(Nil) -> {
+      process.kill(pid)
+
+      let result =
+        process.new_selector()
+        |> process.selecting_process_down(monitor, fn(a) { a })
+        |> process.select_forever()
+
+      case result {
+        process.ProcessDown(pid, _reason) -> unlink_flush(pid)
+      }
+    }
+  }
+}
+
+fn shutdown_child_brutal_kill(pid: Pid) {
+  let monitor = process.monitor_process(pid)
+  process.kill(pid)
+
+  let result =
+    process.new_selector()
+    |> process.selecting_process_down(monitor, fn(a) { a })
+    |> process.select_forever()
+
+  case result {
+    process.ProcessDown(pid, _reason) -> unlink_flush(pid)
+  }
+}
+
+fn unlink_flush(pid) {
+  process.unlink(pid)
+  let result =
+    process.new_selector()
+    |> process.selecting_anything(fn(a) { a })
+    |> process.select(0)
+
+  case result {
+    Error(Nil) -> Nil
+    Ok(_) -> Nil
+  }
 }
 
 fn perform_instruction_for_child(
@@ -201,7 +267,11 @@ pub fn add(
 pub fn supervisor(
   start: fn(argument) -> Result(Subject(msg), StartError),
 ) -> ChildSpec(msg, argument, argument) {
-  ChildSpec(start: start, returning: fn(argument, _channel) { argument })
+  ChildSpec(
+    start: start,
+    returning: fn(argument, _channel) { argument },
+    shutdown: Timeout(5000),
+  )
 }
 
 /// Prepare a new worker type child.
@@ -223,7 +293,11 @@ pub fn supervisor(
 pub fn worker(
   start: fn(argument) -> Result(Subject(msg), StartError),
 ) -> ChildSpec(msg, argument, argument) {
-  ChildSpec(start: start, returning: fn(argument, _channel) { argument })
+  ChildSpec(
+    start: start,
+    returning: fn(argument, _channel) { argument },
+    shutdown: Timeout(5000),
+  )
 }
 
 // TODO: test
@@ -237,7 +311,21 @@ pub fn returning(
   child: ChildSpec(msg, argument_a, argument_b),
   updater: fn(argument_a, Subject(msg)) -> argument_c,
 ) -> ChildSpec(msg, argument_a, argument_c) {
-  ChildSpec(start: child.start, returning: updater)
+  ChildSpec(start: child.start, returning: updater, shutdown: child.shutdown)
+}
+
+/// Change the shutdown timeout
+pub fn shutdown_timeout(
+  child: ChildSpec(msg, argument_a, argument_b),
+  timeout: Int,
+) -> ChildSpec(msg, argument_a, argument_b) {
+  ChildSpec(..child, shutdown: Timeout(timeout))
+}
+
+pub fn shutdown_brutal_kill(
+  child: ChildSpec(msg, argument_a, argument_b),
+) -> ChildSpec(msg, argument_a, argument_b) {
+  ChildSpec(..child, shutdown: BrutalKill)
 }
 
 fn init(
