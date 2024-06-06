@@ -40,7 +40,7 @@ pub opaque type ChildSpec(msg, argument, returning) {
     // TODO: merge this into one field
     start: fn(argument) -> Result(Subject(msg), StartError),
     returning: fn(argument, Subject(msg)) -> returning,
-    shutdown: Shutdown,
+    shutdown: ShutdownOptions,
   )
 }
 
@@ -58,7 +58,7 @@ type Instruction {
   StartFrom(Pid)
 }
 
-type Shutdown {
+type ShutdownOptions {
   BrutalKill
   Timeout(Int)
 }
