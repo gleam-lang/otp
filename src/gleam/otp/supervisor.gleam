@@ -1,4 +1,4 @@
-// TODO: specify amount of time permitted for shut-down
+import gleam/erlang/atom
 import gleam/erlang/node.{type Node}
 import gleam/erlang/process.{type Pid, type Subject}
 import gleam/option.{type Option, None, Some}
@@ -102,6 +102,9 @@ fn start_child(
   ))
 }
 
+@external(erlang, "erlang", "exit")
+fn erlang_exit(pid: Pid, reason: atom.Atom) -> Nil
+
 fn shutdown_child(pid: Pid, spec: ChildSpec(msg, arg_1, arg_2)) {
   case spec.shutdown {
     BrutalKill -> shutdown_child_brutal_kill(pid)
@@ -111,7 +114,7 @@ fn shutdown_child(pid: Pid, spec: ChildSpec(msg, arg_1, arg_2)) {
 
 fn shutdown_child_timeout(pid: Pid, timeout: Int) {
   let monitor = process.monitor_process(pid)
-  process.send_exit(pid)
+  erlang_exit(pid, atom.create_from_string("shutdown"))
 
   let result =
     process.new_selector()
