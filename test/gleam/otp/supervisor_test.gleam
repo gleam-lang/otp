@@ -26,7 +26,6 @@ pub fn supervisor_test() {
   let child =
     child
     |> returning(fn(name, _subject) { name + 1 })
-    |> supervisor.shutdown_timeout(5)
 
   supervisor.start_spec(
     supervisor.Spec(
