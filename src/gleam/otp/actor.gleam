@@ -231,7 +231,7 @@ type Self(state, msg) {
 /// This data structure holds all the values required by the `start_spec`
 /// function in order to create an actor.
 ///
-/// If you do not need to configure the initialisation behaviour of your actor
+/// If you do not need to configure the initialization behaviour of your actor
 /// consider using the `start` function.
 ///
 pub type Spec(state, msg) {
@@ -438,7 +438,7 @@ pub type StartResult(msg) =
 pub type ErlangStartResult =
   Result(Pid, Dynamic)
 
-/// Convert a Gleam actor start result into an Erlang supervisor compatible
+/// Convert a Gleam actor start result into an Erlang supervisor-compatible
 /// process start result.
 ///
 pub fn to_erlang_start_result(res: StartResult(msg)) -> ErlangStartResult {
@@ -460,7 +460,7 @@ type StartInitMessage(msg) {
 /// returns an error or does not return within `init_timeout` then an error is
 /// returned.
 ///
-/// If you do not need to specify the initialisation behaviour of your actor
+/// If you do not need to specify the initialization behaviour of your actor
 /// consider using the `start` function.
 ///
 pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
@@ -534,7 +534,7 @@ pub fn send(subject: Subject(msg), msg: msg) -> Nil {
 /// process.
 ///
 /// If a reply is not received within the given timeout then the sender process
-/// crashes. If you wish receive a `Result` rather than crashing see the
+/// crashes. If you wish to receive a `Result` rather than crashing see the
 /// `process.try_call` function.
 ///
 /// This is a re-export of `process.call`, for the sake of convenience.
