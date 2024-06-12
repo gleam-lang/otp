@@ -231,7 +231,7 @@ type Self(state, msg) {
 /// This data structure holds all the values required by the `start_spec`
 /// function in order to create an actor.
 ///
-/// If you do not need to configure the initialization behaviour of your actor
+/// If you do not need to configure the initialisation behaviour of your actor
 /// consider using the `start` function.
 ///
 pub type Spec(state, msg) {
@@ -460,7 +460,7 @@ type StartInitMessage(msg) {
 /// returns an error or does not return within `init_timeout` then an error is
 /// returned.
 ///
-/// If you do not need to specify the initialization behaviour of your actor
+/// If you do not need to specify the initialisation behaviour of your actor
 /// consider using the `start` function.
 ///
 pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
