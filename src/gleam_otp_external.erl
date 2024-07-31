@@ -28,7 +28,7 @@ convert_system_message({From, Ref}, Request) when is_pid(From) ->
         get_state -> System(fun(State) -> Reply({ok, State}) end);
         suspend -> System(fun() -> Reply(ok) end);
         resume -> System(fun() -> Reply(ok) end);
-        Other -> {unexpeceted, Other}
+        Other -> {unexpected, Other}
     end.
 
 process_status({status_info, Module, Parent, Mode, DebugState, State}) ->
