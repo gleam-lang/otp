@@ -46,4 +46,3 @@ process_status({status_info, Module, Parent, Mode, DebugState, State}) ->
 
 application_stopped() ->
     ok.
-
