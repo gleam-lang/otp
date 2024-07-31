@@ -1,6 +1,6 @@
 -module(gleam_otp_external).
 
--export([application_stopped/0, convert_system_message/2]).
+-export([application_stopped/0, convert_system_message/2, port_from_dynamic/1]).
 
 % TODO: support other system messages
 %   {replace_state, StateFn}
@@ -31,6 +31,11 @@ convert_system_message({From, Ref}, Request) when is_pid(From) ->
         Other -> {unexpeceted, Other}
     end.
 
+port_from_dynamic(Data) when is_port(Data) ->
+    {ok, Data};
+port_from_dynamic(Data) ->
+    {error, [{decode_error, <<"Port">>, gleam@dynamic:classify(Data), []}]}.
+
 process_status({status_info, Module, Parent, Mode, DebugState, State}) ->
     Data = [
         get(), Mode, Parent, DebugState,
@@ -41,3 +46,4 @@ process_status({status_info, Module, Parent, Mode, DebugState, State}) ->
 
 application_stopped() ->
     ok.
+
