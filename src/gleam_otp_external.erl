@@ -2,7 +2,7 @@
 
 -export([
     application_stopped/0, convert_system_message/2,
-    static_supervisor_start_link/1
+    static_supervisor_start_link/1, port_from_dynamic/1
 ]).
 
 % TODO: support other system messages
@@ -33,6 +33,11 @@ convert_system_message({From, Ref}, Request) when is_pid(From) ->
         resume -> System(fun() -> Reply(ok) end);
         Other -> {unexpected, Other}
     end.
+
+port_from_dynamic(Data) when is_port(Data) ->
+    {ok, Data};
+port_from_dynamic(Data) ->
+    {error, [{decode_error, <<"Port">>, gleam@dynamic:classify(Data), []}]}.
 
 process_status({status_info, Module, Parent, Mode, DebugState, State}) ->
     Data = [
