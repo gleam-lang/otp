@@ -6,8 +6,7 @@ type PortName {
   Spawn(String)
 }
 
-type PortSetting {
-}
+type PortSetting
 
 pub type PortMsg {
   Port(port: port.Port)
