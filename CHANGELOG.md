@@ -4,6 +4,8 @@
 
 - The `gleam/otp/static_supervisor` module has been added, containing bindings
   to Erlang/OTP's supervisor module.
+- Add `port_from_dynamic` for decoding an 
+  [Erlang Port](https://www.erlang.org/doc/system/ports). 
 
 ## v0.10.0 - 2024-03-11
 
