@@ -10,4 +10,3 @@ flush() ->
 get_message_queue_length(Pid) ->
   {_, Length} = process_info(Pid, message_queue_len),
   Length.
-
