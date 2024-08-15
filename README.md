@@ -43,9 +43,7 @@ built on top of processes either directly or indirectly. Typically this
 abstraction would not be used very often in Gleam applications, favour
 other actor types that provide more functionality.
 
-Gleam's process module is defined in the `gleam_erlang` library.
-
-[[Documentation]](https://hexdocs.pm/gleam_erlang/gleam/erlang/process.html)
+Gleam's [process](https://hexdocs.pm/gleam_erlang/gleam/erlang/process.html) module is defined in the `gleam_erlang` library.
 
 ### Actor
 
@@ -54,7 +52,7 @@ building block for other abstractions. Like Erlang's `gen_server` it handles
 OTP's system messages automatically to enable OTP's debugging and tracing
 functionality.
 
-[[Documentation]](https://hexdocs.pm/gleam_otp/gleam/otp/actor.html)
+[Documentation](https://hexdocs.pm/gleam_otp/gleam/otp/actor.html)
 
 ### Task
 
@@ -62,7 +60,8 @@ A task is a kind of process that performs a single task and then shuts down.
 Commonly tasks are used to convert sequential code into concurrent code by
 performing computation in another process.
 
-[[Documentation]](https://hexdocs.pm/gleam_otp/gleam/otp/task.html)
+- [gleam/otp/task](https://hexdocs.pm/gleam_otp/gleam/otp/task.html)
+documentation.
 
 ### Supervisor
 
@@ -71,7 +70,9 @@ restarting them if they crash. Supervisors can start other supervisors,
 resulting in a hierarchical process structure called a supervision tree,
 providing fault tolerance to a Gleam application.
 
-[[Documentation]](https://hexdocs.pm/gleam_otp/gleam/otp/supervisor.html)
+- [gleam/otp/static_supervisor](https://hexdocs.pm/gleam_otp/gleam/otp/static_supervisor.html) documentation.
+- [gleam/otp/supervisor](https://hexdocs.pm/gleam_otp/gleam/otp/supervisor.html)
+  documentation.
 
 ## Limitations and known issues
 

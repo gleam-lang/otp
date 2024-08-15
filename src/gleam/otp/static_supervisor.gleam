@@ -74,7 +74,7 @@ pub opaque type Builder {
 pub fn new(strategy strategy: Strategy) -> Builder {
   Builder(
     strategy: strategy,
-    intensity: 1,
+    intensity: 2,
     period: 5,
     auto_shutdown: Never,
     children: [],
