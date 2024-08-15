@@ -25,4 +25,8 @@ pub fn port_dynamic_test() {
   msg
   |> dynamic.decode1(Port, port.port_from_dynamic)
   |> should.be_ok()
+
+  dynamic.from("")
+  |> dynamic.decode1(Port, port.port_from_dynamic)
+  |> should.be_error()
 }
