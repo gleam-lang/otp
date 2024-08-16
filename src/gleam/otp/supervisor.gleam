@@ -1,3 +1,8 @@
+//// A supervisor that can pass state from older children to younger ones.
+////
+//// If you don't need this consider using the `gleam/otp/static_supervisor`
+//// module instead.
+
 // TODO: specify amount of time permitted for shut-down
 import gleam/erlang/node.{type Node}
 import gleam/erlang/process.{type Pid, type Subject}
