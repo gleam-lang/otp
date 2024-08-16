@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.11.0 - 2024-08-16
 
 - The `gleam/otp/static_supervisor` module has been added, containing bindings
   to Erlang/OTP's supervisor module.
