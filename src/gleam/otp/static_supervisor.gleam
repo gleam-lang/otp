@@ -199,7 +199,7 @@ pub fn worker_child(
   run starter: fn() -> Result(Pid, whatever),
 ) -> ChildBuilder {
   ChildBuilder(
-    id:,
+    id: id,
     starter: fn() { starter() |> result.map_error(dynamic.from) },
     restart: Permanent,
     significant: False,
@@ -221,7 +221,7 @@ pub fn supervisor_child(
   run starter: fn() -> Result(Pid, whatever),
 ) -> ChildBuilder {
   ChildBuilder(
-    id:,
+    id: id,
     starter: fn() { starter() |> result.map_error(dynamic.from) },
     restart: Permanent,
     significant: False,

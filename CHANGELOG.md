@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.11.1 - 2024-08-19
+
+- Fixed support for older versions of Gleam.
+
 ## v0.11.0 - 2024-08-16
 
 - The `gleam/otp/static_supervisor` module has been added, containing bindings
