@@ -239,7 +239,7 @@ pub fn supervisor_child(
 ///
 /// The default value for significance is `False`.
 pub fn significant(child: ChildBuilder, significant: Bool) -> ChildBuilder {
-  ChildBuilder(..child, significant:)
+  ChildBuilder(..child, significant: significant)
 }
 
 /// This defines the amount of milliseconds a child has to shut down before
@@ -261,7 +261,7 @@ pub fn timeout(child: ChildBuilder, ms ms: Int) -> ChildBuilder {
 ///
 /// The default value for significance is `Permenent`.
 pub fn restart(child: ChildBuilder, restart: Restart) -> ChildBuilder {
-  ChildBuilder(..child, restart:)
+  ChildBuilder(..child, restart: restart)
 }
 
 fn convert_child(child: ChildBuilder) -> Dict(Atom, Dynamic) {
