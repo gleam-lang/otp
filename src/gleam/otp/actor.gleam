@@ -89,7 +89,7 @@
 //// // The last part is to implement the `handle_message` callback function.
 //// //
 //// // This function is called by the Actor for each message it receives.
-//// // Actor is single threaded only does one thing at a time, so it handles
+//// // Actor is single threaded and only does one thing at a time, so it handles
 //// // messages sequentially and one at a time, in the order they are received.
 //// //
 //// // The function takes the message and the current state, and returns a data
