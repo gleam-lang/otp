@@ -34,7 +34,6 @@ convert_system_message({From, Ref}, Request) when is_pid(From) ->
         Other -> {unexpected, Other}
     end.
 
-
 process_status({status_info, Module, Parent, Mode, DebugState, State}) ->
     Data = [
         get(), Mode, Parent, DebugState,
