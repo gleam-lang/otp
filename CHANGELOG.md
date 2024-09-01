@@ -4,7 +4,8 @@
 
 - The `gleam/otp/static_supervisor` module has been added, containing bindings
   to Erlang/OTP's supervisor module.
-- Deprecated `Port`.  Use `gleam_erlang` `Port` instead.
+- `Port` type has been deprecated in favour of the `gleam_erlang`
+  package `Port` type.
 
 ## v0.10.0 - 2024-03-11
 
