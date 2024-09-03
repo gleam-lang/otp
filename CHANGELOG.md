@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.12.0 - 2024-09-03
+
+- `Port` type has been deprecated in favour of the `gleam_erlang`
+  package `Port` type.
+
 ## v0.11.2 - 2024-08-21
 
 - Fixed support for older versions of Gleam.
@@ -12,8 +17,6 @@
 
 - The `gleam/otp/static_supervisor` module has been added, containing bindings
   to Erlang/OTP's supervisor module.
-- `Port` type has been deprecated in favour of the `gleam_erlang`
-  package `Port` type.
 
 ## v0.10.0 - 2024-03-11
 

@@ -1,5 +1,5 @@
 name = "gleam_otp"
-version = "0.11.2"
+version = "0.12.0"
 licences = ["Apache-2.0"]
 description = "Fault tolerant multicore Gleam programs with OTP"
 
