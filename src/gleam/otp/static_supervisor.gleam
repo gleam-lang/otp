@@ -259,7 +259,7 @@ pub fn timeout(child: ChildBuilder, ms ms: Int) -> ChildBuilder {
 /// When the child is to be restarted. See the `Restart` documentation for
 /// more.
 ///
-/// The default value for restart is `Permenent`.
+/// The default value for restart is `Permanent`.
 pub fn restart(child: ChildBuilder, restart: Restart) -> ChildBuilder {
   ChildBuilder(..child, restart: restart)
 }
