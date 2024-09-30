@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.12.1 - 2024-09-30
+
+- The minimum required Gleam version in `gleam.toml` has been increased to match
+  the actual requirement for this package.
+
 ## v0.12.0 - 2024-09-03
 
 - `Port` type has been deprecated in favour of the `gleam_erlang`
