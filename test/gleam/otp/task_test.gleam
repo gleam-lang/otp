@@ -138,6 +138,25 @@ pub fn try_await2_timeout_test() {
   |> should.equal(#(Ok(1), Error(Timeout)))
 }
 
+pub fn try_await3_test() {
+  // Start with an empty mailbox
+  flush()
+
+  let work = fn(x) {
+    fn() {
+      sleep(5)
+      x
+    }
+  }
+
+  let task1 = task.async(work(1))
+  let task2 = task.async(work(2))
+  let task3 = task.async(work(3))
+
+  task.try_await3(task1, task2, task3, 8)
+  |> should.equal(#(Ok(1), Ok(2), Ok(3)))
+}
+
 pub fn try_await3_timeout_test() {
   // Start with an empty mailbox
   flush()
@@ -152,7 +171,49 @@ pub fn try_await3_timeout_test() {
   // 1 will not finish in time
   let task1 = task.async(work(1, 100))
   let task2 = task.async(work(2, 1))
+  let task3 = task.async(work(3, 1))
 
-  task.try_await2(task1, task2, 20)
-  |> should.equal(#(Error(Timeout), Ok(2)))
+  task.try_await3(task1, task2, task3, 20)
+  |> should.equal(#(Error(Timeout), Ok(2), Ok(3)))
+}
+
+pub fn try_await4_test() {
+  // Start with an empty mailbox
+  flush()
+
+  let work = fn(x) {
+    fn() {
+      sleep(5)
+      x
+    }
+  }
+
+  let task1 = task.async(work(1))
+  let task2 = task.async(work(2))
+  let task3 = task.async(work(3))
+  let task4 = task.async(work(4))
+
+  task.try_await4(task1, task2, task3, task4, 8)
+  |> should.equal(#(Ok(1), Ok(2), Ok(3), Ok(4)))
+}
+
+pub fn try_await4_timeout_test() {
+  // Start with an empty mailbox
+  flush()
+
+  let work = fn(x, y) {
+    fn() {
+      sleep(y)
+      x
+    }
+  }
+
+  // 1 will not finish in time
+  let task1 = task.async(work(1, 100))
+  let task2 = task.async(work(2, 1))
+  let task3 = task.async(work(3, 1))
+  let task4 = task.async(work(4, 1))
+
+  task.try_await4(task1, task2, task3, task4, 20)
+  |> should.equal(#(Error(Timeout), Ok(2), Ok(3), Ok(4)))
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- The `try_await_forever` function in the `gleam/otp/task` module has been deprecated.
+- The `gleam/otp/task` module gains the `pid`, `await2`, `await3`, and `await4`
+  functions.
+- Tasks are no longer monitored.
+
 ## v0.12.1 - 2024-09-30
 
 - The minimum required Gleam version in `gleam.toml` has been increased to match
