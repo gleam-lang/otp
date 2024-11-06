@@ -16,7 +16,8 @@
 //// There are some important things to consider when using tasks:
 ////
 //// 1. If you are using async tasks, you must await a reply as they are always
-////    sent.
+////    sent. If you do not need a reply from an async operation, look at using 
+////    the `gleam/erlang/process` module's `start` function instead.
 ////
 //// 2. Tasks link the caller and the spawned process. This means that,
 ////    if the caller crashes, the task will crash too and vice-versa. This is
