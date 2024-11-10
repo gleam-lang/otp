@@ -56,11 +56,9 @@ functionality.
 
 ### Task
 
-A task is a kind of process that performs a single task, returns the result to
-the parent process, and then shuts down. Commonly tasks are used to convert
-sequential code into concurrent code by performing computation in another
-process. All tasks must return a value. If you are looking to run a function
-with no return value concurrently, see the process module's `start` function.
+A task is a kind of process that computes a value and then sends the result back
+to its parent. Commonly multiple tasks are used to compute multiple things at
+once.
 
 - [gleam/otp/task](https://hexdocs.pm/gleam_otp/gleam/otp/task.html)
   documentation.
