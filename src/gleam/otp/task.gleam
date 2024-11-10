@@ -1,6 +1,9 @@
-//// A task is a kind of process that performs a single task and then shuts
-//// down. Commonly tasks are used to convert sequential code into concurrent
-//// code by performing computation in another process.
+//// A task is a kind of process that computes a value and then sends the result back
+//// to its parent. Commonly multiple tasks are used to compute multiple things at
+//// once.
+////
+//// If you do not care to receive a result back at the end then you should not
+//// use this module, `actor` or `process` are likely more suitable.
 ////
 //// ```gleam
 //// let task = task.async(fn() { do_some_work() })
