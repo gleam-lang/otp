@@ -410,7 +410,12 @@ pub fn try_await_all(
   try_await_all_loop(dict.new(), tasks_count, timer, selector)
 }
 
-fn try_await_all_loop(values, tasks_count, timer, selector) {
+fn try_await_all_loop(
+  values: dict.Dict(Int, Result(b, AwaitError)),
+  tasks_count: Int,
+  timer: process.Timer,
+  selector: Selector(Message(b)),
+) -> List(Result(b, AwaitError)) {
   case dict.size(values) == tasks_count {
     // If there's no more values to receive then we can return the list...
     True -> {
