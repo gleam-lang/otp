@@ -33,7 +33,7 @@ pub fn async_await_test() {
   |> should.equal(Ok(3))
 
   // Assert awaiting on previously retrieved tasks returns an error
-  // An already finished task will always time out! 
+  // An already finished task will always time out!
   let assert Error(Timeout) = task.try_await(t1, 35)
   let assert Error(Timeout) = task.try_await(t2, 35)
   let assert Error(Timeout) = task.try_await(t3, 35)
@@ -216,4 +216,46 @@ pub fn try_await4_timeout_test() {
 
   task.try_await4(task1, task2, task3, task4, 20)
   |> should.equal(#(Error(Timeout), Ok(2), Ok(3), Ok(4)))
+}
+
+pub fn try_await_all_test() {
+  // Start with an empty mailbox
+  flush()
+
+  let work = fn(x) {
+    fn() {
+      sleep(5)
+      x
+    }
+  }
+
+  let task1 = task.async(work(1))
+  let task2 = task.async(work(2))
+  let task3 = task.async(work(3))
+  let task4 = task.async(work(4))
+
+  task.try_await_all([task1, task2, task3, task4], 8)
+  |> should.equal([Ok(1), Ok(2), Ok(3), Ok(4)])
+}
+
+pub fn try_await_all_timeout_test() {
+  // Start with an empty mailbox
+  flush()
+
+  let work = fn(x, y) {
+    fn() {
+      sleep(y)
+      x
+    }
+  }
+
+  // 3 and 5 will not finish in time
+  let task1 = task.async(work(1, 1))
+  let task2 = task.async(work(2, 1))
+  let task3 = task.async(work(3, 100))
+  let task4 = task.async(work(4, 1))
+  let task5 = task.async(work(5, 50))
+
+  task.try_await_all([task1, task2, task3, task4, task5], 20)
+  |> should.equal([Ok(1), Ok(2), Error(Timeout), Ok(4), Error(Timeout)])
 }
