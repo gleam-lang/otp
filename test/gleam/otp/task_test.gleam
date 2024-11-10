@@ -1,5 +1,10 @@
+import gleam/dynamic
+import gleam/erlang/atom
 import gleam/erlang/process.{type Pid}
-import gleam/otp/task.{Timeout}
+import gleam/function
+import gleam/io
+import gleam/otp/task.{Exit, Timeout}
+import gleam/string
 import gleeunit/should
 
 @external(erlang, "gleam_otp_test_external", "flush")
@@ -117,6 +122,20 @@ pub fn try_await2_test() {
 
   task.try_await2(task1, task2, 8)
   |> should.equal(#(Ok(1), Ok(2)))
+
+  // We want to make sure timers don't leak!
+  assert_no_leftover_messages()
+}
+
+fn assert_no_leftover_messages() -> Nil {
+  let selector =
+    process.new_selector()
+    |> process.selecting_anything(function.identity)
+
+  case process.select(selector, 20) {
+    Error(Nil) -> Nil
+    Ok(_) -> panic as "leftover message"
+  }
 }
 
 pub fn try_await2_timeout_test() {
@@ -136,6 +155,10 @@ pub fn try_await2_timeout_test() {
 
   task.try_await2(task1, task2, 5)
   |> should.equal(#(Ok(1), Error(Timeout)))
+
+  // We don't want task messages to leak so we still have to wait for the ones
+  // that timed out earlier!
+  task.await_forever(task2)
 }
 
 pub fn try_await3_test() {
@@ -155,6 +178,9 @@ pub fn try_await3_test() {
 
   task.try_await3(task1, task2, task3, 8)
   |> should.equal(#(Ok(1), Ok(2), Ok(3)))
+
+  // We want to make sure timers don't leak!
+  assert_no_leftover_messages()
 }
 
 pub fn try_await3_timeout_test() {
@@ -175,6 +201,10 @@ pub fn try_await3_timeout_test() {
 
   task.try_await3(task1, task2, task3, 20)
   |> should.equal(#(Error(Timeout), Ok(2), Ok(3)))
+
+  // We don't want task messages to leak so we still have to wait for the ones
+  // that timed out earlier!
+  task.await_forever(task1)
 }
 
 pub fn try_await4_test() {
@@ -195,6 +225,9 @@ pub fn try_await4_test() {
 
   task.try_await4(task1, task2, task3, task4, 8)
   |> should.equal(#(Ok(1), Ok(2), Ok(3), Ok(4)))
+
+  // We want to make sure timers don't leak!
+  assert_no_leftover_messages()
 }
 
 pub fn try_await4_timeout_test() {
@@ -216,6 +249,10 @@ pub fn try_await4_timeout_test() {
 
   task.try_await4(task1, task2, task3, task4, 20)
   |> should.equal(#(Error(Timeout), Ok(2), Ok(3), Ok(4)))
+
+  // We don't want task messages to leak so we still have to wait for the ones
+  // that timed out earlier!
+  task.await_forever(task1)
 }
 
 pub fn try_await_all_test() {
@@ -236,6 +273,9 @@ pub fn try_await_all_test() {
 
   task.try_await_all([task1, task2, task3, task4], 8)
   |> should.equal([Ok(1), Ok(2), Ok(3), Ok(4)])
+
+  // We want to make sure timers don't leak!
+  assert_no_leftover_messages()
 }
 
 pub fn try_await_all_timeout_test() {
@@ -252,10 +292,15 @@ pub fn try_await_all_timeout_test() {
   // 3 and 5 will not finish in time
   let task1 = task.async(work(1, 1))
   let task2 = task.async(work(2, 1))
-  let task3 = task.async(work(3, 100))
+  let task3 = task.async(work(3, 50))
   let task4 = task.async(work(4, 1))
-  let task5 = task.async(work(5, 50))
+  let task5 = task.async(work(5, 100))
 
   task.try_await_all([task1, task2, task3, task4, task5], 20)
   |> should.equal([Ok(1), Ok(2), Error(Timeout), Ok(4), Error(Timeout)])
+
+  // We don't want task messages to leak so we still have to wait for the ones
+  // that timed out earlier!
+  task.await_forever(task3)
+  task.await_forever(task5)
 }
