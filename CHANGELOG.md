@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.14.1 - 2024-11-10
 
 - The `gleam/otp/task` gains the `try_await_all` function.
 
