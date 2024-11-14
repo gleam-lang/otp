@@ -286,6 +286,7 @@ fn convert_child(child: ChildBuilder) -> Dict(Atom, Dynamic) {
   |> property("id", child.id)
   |> property("start", mfa)
   |> property("restart", child.restart)
+  |> property("significant", child.significant)
   |> property("type", type_)
   |> property("shutdown", shutdown)
 }
