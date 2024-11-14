@@ -1,7 +1,7 @@
 //// This module provides the _Actor_ abstraction, one of the most common
 //// building blocks of Gleam OTP programs.
 //// 
-//// An Actor is a process like any other BEAM process and can be be used to hold
+//// An Actor is a process like any other BEAM process and can be used to hold
 //// state, execute code, and communicate with other processes by sending and
 //// receiving messages. The advantage of using the actor abstraction over a bare
 //// process is that it provides a single interface for commonly needed
