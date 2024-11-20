@@ -1,6 +1,11 @@
 # Changelog
 
-## v0.14.1 - 2024-11-10
+## v0.14.1 - 2024-11-15
+
+- Fixed a bug where the `significant` parameter would not be passed to the
+  supervisor in `static_supervisor`.
+
+## v0.14.0 - 2024-11-10
 
 - The `gleam/otp/task` gains the `try_await_all` function.
 
