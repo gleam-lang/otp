@@ -18,8 +18,6 @@
 //// }
 //// ```
 
-import gleam/io
-
 import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
@@ -29,7 +27,8 @@ import gleam/list
 import gleam/result
 
 pub opaque type Supervisor {
-  Supervisor(pid: Pid, strategy: Strategy)
+  Supervisor(pid: Pid)
+  SimpleOneForOneSupervisor(pid: Pid)
 }
 
 pub type Strategy {
@@ -200,7 +199,10 @@ pub fn start_link(builder: Builder) -> Result(Supervisor, LinkStartError) {
     erlang_start_link(#(flags, children))
     |> result.map_error(fn(erlang_error) { ErlangError(erlang_error) }),
   )
-  Supervisor(supervisor_pid, builder.strategy)
+  case builder.strategy {
+    SimpleOneForOne -> SimpleOneForOneSupervisor(supervisor_pid)
+    _ -> Supervisor(supervisor_pid)
+  }
 }
 
 pub fn get_pid(supervisor: Supervisor) -> Pid {
@@ -211,23 +213,23 @@ pub fn start_child_with_args(
   supervisor: Supervisor,
   args: List(Dynamic),
 ) -> Result(Pid, SupervisorError) {
-  use <- bool.guard(
-    supervisor.strategy != SimpleOneForOne,
-    Error(SupervisorNotSimpleOneForOne),
-  )
-  erlang_start_child(supervisor.pid, args |> dynamic.from)
+  use pid <- result.try(case supervisor {
+    SimpleOneForOneSupervisor(pid) -> Ok(pid)
+    _ -> Error(SupervisorNotSimpleOneForOne)
+  })
+  erlang_start_child(pid, args |> dynamic.from)
 }
 
 pub fn start_child_with_builder(
   supervisor: Supervisor,
   child_builder: ChildBuilder,
 ) -> Result(Pid, SupervisorError) {
-  use <- bool.guard(
-    supervisor.strategy == SimpleOneForOne,
-    Error(SimpleOneForOneForbidden),
-  )
+  use pid <- result.try(case supervisor {
+    SimpleOneForOneSupervisor(pid) -> Ok(pid)
+    _ -> Error(SupervisorNotSimpleOneForOne)
+  })
   erlang_start_child(
-    supervisor.pid,
+    pid,
     child_builder |> child_builder_to_erlang |> dynamic.from,
   )
 }
@@ -258,11 +260,6 @@ pub fn terminate_child_with_id(
   supervisor: Supervisor,
   id: String,
 ) -> Result(Nil, SupervisorError) {
-  use <- bool.guard(
-    supervisor.strategy == SimpleOneForOne,
-    Error(SimpleOneForOneForbidden),
-  )
-
   let termination_result =
     erlang_terminate_child(supervisor.pid, id |> dynamic.from)
 
@@ -279,13 +276,12 @@ pub fn terminate_child_with_pid(
   supervisor: Supervisor,
   child: Pid,
 ) -> Result(Nil, SupervisorError) {
-  use <- bool.guard(
-    supervisor.strategy != SimpleOneForOne,
-    Error(SupervisorNotSimpleOneForOne),
-  )
+  use pid <- result.try(case supervisor {
+    SimpleOneForOneSupervisor(pid) -> Ok(pid)
+    _ -> Error(SupervisorNotSimpleOneForOne)
+  })
 
-  let termination_result =
-    erlang_terminate_child(supervisor.pid, child |> dynamic.from)
+  let termination_result = erlang_terminate_child(pid, child |> dynamic.from)
 
   case
     termination_result
