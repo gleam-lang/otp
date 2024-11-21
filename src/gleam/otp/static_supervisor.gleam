@@ -225,8 +225,8 @@ pub fn start_child_with_builder(
   child_builder: ChildBuilder,
 ) -> Result(Pid, SupervisorError) {
   use pid <- result.try(case supervisor {
-    SimpleOneForOneSupervisor(pid) -> Ok(pid)
-    _ -> Error(SupervisorNotSimpleOneForOne)
+    SimpleOneForOneSupervisor(_) -> Error(SimpleOneForOneForbidden)
+    _ -> Ok(supervisor.pid)
   })
   erlang_start_child(
     pid,
@@ -260,8 +260,12 @@ pub fn terminate_child_with_id(
   supervisor: Supervisor,
   id: String,
 ) -> Result(Nil, SupervisorError) {
-  let termination_result =
-    erlang_terminate_child(supervisor.pid, id |> dynamic.from)
+  use pid <- result.try(case supervisor {
+    SimpleOneForOneSupervisor(_) -> Error(SimpleOneForOneForbidden)
+    _ -> Ok(supervisor.pid)
+  })
+
+  let termination_result = erlang_terminate_child(pid, id |> dynamic.from)
 
   case
     termination_result
