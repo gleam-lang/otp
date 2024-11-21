@@ -18,6 +18,7 @@
 //// }
 //// ```
 
+import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom.{type Atom}
@@ -172,7 +173,17 @@ pub opaque type ChildBuilder {
   )
 }
 
-pub fn start_link(builder: Builder) -> Result(Supervisor, Dynamic) {
+pub type LinkStartError {
+  ErlangError(Dynamic)
+  SimpleOneForOneMultipleChildrenError
+}
+
+pub fn start_link(builder: Builder) -> Result(Supervisor, LinkStartError) {
+  use <- bool.guard(
+    { builder.strategy == SimpleOneForOne && list.length(builder.children) > 1 },
+    Error(SimpleOneForOneMultipleChildrenError),
+  )
+
   let flags =
     dict.new()
     |> property("strategy", builder.strategy)
@@ -183,7 +194,10 @@ pub fn start_link(builder: Builder) -> Result(Supervisor, Dynamic) {
   let children =
     builder.children |> list.reverse |> list.map(child_builder_to_erlang)
 
-  use supervisor_pid <- result.map(erlang_start_link(#(flags, children)))
+  use supervisor_pid <- result.map(
+    erlang_start_link(#(flags, children))
+    |> result.map_error(fn(erlang_error) { ErlangError(erlang_error) }),
+  )
   Supervisor(supervisor_pid, builder.strategy)
 }
 

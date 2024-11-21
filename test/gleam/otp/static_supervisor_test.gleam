@@ -153,6 +153,13 @@ pub fn one_for_all_test() {
 pub fn simple_one_for_one_test() {
   let subject = process.new_subject()
 
+  // Ensuring a simple-one-for-one can not have multiple child specs 
+  let assert Error(sup.SimpleOneForOneMultipleChildrenError) =
+    sup.new(sup.SimpleOneForOne)
+    |> sup.add(init_notifier_child(subject, "0"))
+    |> sup.add(init_notifier_child(subject, "1"))
+    |> sup.start_link
+
   let assert Ok(supervisor) =
     sup.new(sup.SimpleOneForOne)
     |> sup.add(init_notifier_child(subject, "0"))
