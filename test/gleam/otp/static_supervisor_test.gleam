@@ -1,6 +1,13 @@
+import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process.{type Pid, type Subject}
 import gleam/otp/actor
 import gleam/otp/static_supervisor as sup
+
+@external(erlang, "supervisor", "which_children")
+fn erlang_which_children(sup_ref: Pid) -> Dynamic
+
+@external(erlang, "supervisor", "get_childspec")
+fn erlang_get_childspec(sup_ref: Pid, id: Dynamic) -> Result(Dynamic, Dynamic)
 
 fn actor_child(name name, init init, loop loop) -> sup.ChildBuilder {
   sup.worker_child(name, fn() {
