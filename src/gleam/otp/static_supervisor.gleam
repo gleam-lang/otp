@@ -209,12 +209,17 @@ pub fn start_child_with_args(
   supervisor: Supervisor,
   args: List(Dynamic),
 ) -> Result(Pid, StartChildErr) {
+  use <- bool.guard(
+    supervisor.strategy != SimpleOneForOne,
+    Error(SupervisorNotSimpleOneForOne),
+  )
   erlang_start_child(supervisor.pid, args)
 }
 
 pub type StartChildErr {
   AlreadyPresent
   AlreadyStart(Dynamic)
+  SupervisorNotSimpleOneForOne
 }
 
 @external(erlang, "supervisor", "start_child")

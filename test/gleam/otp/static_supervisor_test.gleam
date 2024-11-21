@@ -36,6 +36,11 @@ pub fn one_for_one_test() {
     |> sup.add(init_notifier_child(subject, "3"))
     |> sup.start_link
 
+  // Assert starting children using args does not work
+  // (Should only work for a simple-one-for-one supervisor)
+  let assert Error(sup.SupervisorNotSimpleOneForOne) =
+    sup.start_child_with_args(supervisor, [])
+
   // Assert children have started
   let assert Ok(#("1", p1)) = process.receive(subject, 10)
   let assert Ok(#("2", p2)) = process.receive(subject, 10)
@@ -74,6 +79,11 @@ pub fn rest_for_one_test() {
     |> sup.add(init_notifier_child(subject, "2"))
     |> sup.add(init_notifier_child(subject, "3"))
     |> sup.start_link
+
+  // Assert starting children using args does not work
+  // (Should only work for a simple-one-for-one supervisor)
+  let assert Error(sup.SupervisorNotSimpleOneForOne) =
+    sup.start_child_with_args(supervisor, [])
 
   // Assert children have started
   let assert Ok(#("1", p1)) = process.receive(subject, 10)
@@ -116,6 +126,11 @@ pub fn one_for_all_test() {
     |> sup.add(init_notifier_child(subject, "2"))
     |> sup.add(init_notifier_child(subject, "3"))
     |> sup.start_link
+
+  // Assert starting children using args does not work
+  // (Should only work for a simple-one-for-one supervisor)
+  let assert Error(sup.SupervisorNotSimpleOneForOne) =
+    sup.start_child_with_args(supervisor, [])
 
   // Assert children have started
   let assert Ok(#("1", p1)) = process.receive(subject, 10)
