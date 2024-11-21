@@ -95,6 +95,11 @@ pub fn one_for_one_test() {
   let assert Error(sup.SupervisorNotSimpleOneForOne) =
     sup.terminate_child_with_pid(supervisor, p4)
 
+  // Terminate fourth child and assert it is not restarting
+  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "4")
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert False = process.is_alive(p4)
+
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
   process.send_exit(supervisor_pid)
@@ -173,6 +178,11 @@ pub fn rest_for_one_test() {
   // (Reserved for simple-one-for-one strategy)
   let assert Error(sup.SupervisorNotSimpleOneForOne) =
     sup.terminate_child_with_pid(supervisor, p4)
+
+  // Terminate fourth child and assert it is not restarting
+  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "4")
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert False = process.is_alive(p4)
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
@@ -259,6 +269,11 @@ pub fn one_for_all_test() {
   let assert Error(sup.SupervisorNotSimpleOneForOne) =
     sup.terminate_child_with_pid(supervisor, p4)
 
+  // Terminate fourth child and assert it is not restarting
+  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "4")
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert False = process.is_alive(p4)
+
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
   process.send_exit(supervisor_pid)
@@ -329,6 +344,11 @@ pub fn simple_one_for_one_test() {
   let assert Ok(_) = sup.terminate_child_with_pid(supervisor, p3)
   let assert Error(Nil) = process.receive(subject, 100)
   let assert False = process.is_alive(p3)
+
+  // Assert that we cannot terminate a child with its id
+  // (Not available for simple-one-for-one strategy)
+  let assert Error(sup.SimpleOneForOneForbidden) =
+    sup.terminate_child_with_id(supervisor, "0")
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
