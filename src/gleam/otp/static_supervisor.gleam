@@ -240,6 +240,9 @@ pub type SupervisorError {
   SupervisorNotSimpleOneForOne
   SimpleOneForOneForbidden
   ChildNotFound
+  ChildRunning
+  ChildRestarting
+  UnknownError(details: String)
 }
 
 @external(erlang, "supervisor", "start_child")
@@ -253,8 +256,43 @@ fn erlang_start_link(
   args: #(Dict(Atom, Dynamic), List(Dict(Atom, Dynamic))),
 ) -> Result(Pid, Dynamic)
 
+// This should definitely not be returning a dynamic, but the actual
+// return type is really annoying (it's an "ok" atom without a record)
+// https://www.erlang.org/doc/apps/stdlib/supervisor.html#terminate_child/2
 @external(erlang, "supervisor", "terminate_child")
 fn erlang_terminate_child(supervisor: Pid, id_or_pid: Dynamic) -> Dynamic
+
+// The return type could be improved
+@external(erlang, "supervisor", "restart_child")
+fn erlang_restart_child(supervisor: Pid, id: Dynamic) -> Result(Pid, Dynamic)
+
+pub fn restart_child(
+  supervisor: Supervisor,
+  id: String,
+) -> Result(Pid, SupervisorError) {
+  use pid <- result.try(case supervisor {
+    SimpleOneForOneSupervisor(_) -> Error(SimpleOneForOneForbidden)
+    _ -> Ok(supervisor.pid)
+  })
+  erlang_restart_child(pid, id |> dynamic.from)
+  |> result.map_error(fn(e) {
+    case atom.from_dynamic(e) {
+      Error(_) ->
+        UnknownError(
+          "failed to parse erlang's supervisor:restart_child/2 return to an atomic",
+        )
+      Ok(err_msg) ->
+        case atom.to_string(err_msg) {
+          "running" -> ChildRunning
+          "restarting" -> ChildRestarting
+          "not_found" -> ChildNotFound
+          "simple_one_for_one" ->
+            panic as "simple-one-for-one supervisors should already have been caught"
+          other -> UnknownError(other)
+        }
+    }
+  })
+}
 
 pub fn terminate_child_with_id(
   supervisor: Supervisor,
