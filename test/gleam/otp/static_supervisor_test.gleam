@@ -88,6 +88,7 @@ pub fn one_for_one_test() {
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
   let assert True = process.is_alive(p4)
+
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
   process.send_exit(supervisor_pid)
@@ -98,6 +99,7 @@ pub fn rest_for_one_test() {
 
   let assert Ok(supervisor) =
     sup.new(sup.RestForOne)
+    |> sup.restart_tolerance(4, 5)
     |> sup.add(init_notifier_child(subject, "1"))
     |> sup.add(init_notifier_child(subject, "2"))
     |> sup.add(init_notifier_child(subject, "3"))
@@ -133,6 +135,34 @@ pub fn rest_for_one_test() {
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
 
+  // Start new child
+  let assert Ok(_p4) =
+    sup.start_child_with_builder(supervisor, init_notifier_child(subject, "4"))
+
+  // Assert new child has started
+  let assert Ok(#("4", p4)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+
+  // Shutdown new child and assert only it restarts
+  process.kill(p4)
+
+  let assert Ok(#("4", p4)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+  let assert True = process.is_alive(p1)
+  let assert True = process.is_alive(p2)
+  let assert True = process.is_alive(p3)
+  let assert True = process.is_alive(p4)
+
+  // Shutdown third child and following restart
+  process.kill(p3)
+  let assert Ok(#("3", p3)) = process.receive(subject, 10)
+  let assert Ok(#("4", p4)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+  let assert True = process.is_alive(p1)
+  let assert True = process.is_alive(p2)
+  let assert True = process.is_alive(p3)
+  let assert True = process.is_alive(p4)
+
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
   process.send_exit(supervisor_pid)
@@ -143,6 +173,7 @@ pub fn one_for_all_test() {
 
   let assert Ok(supervisor) =
     sup.new(sup.OneForAll)
+    |> sup.restart_tolerance(4, 5)
     |> sup.add(init_notifier_child(subject, "1"))
     |> sup.add(init_notifier_child(subject, "2"))
     |> sup.add(init_notifier_child(subject, "3"))
@@ -178,6 +209,39 @@ pub fn one_for_all_test() {
   let assert True = process.is_alive(p1)
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
+
+  // Start new child
+  let assert Ok(_p4) =
+    sup.start_child_with_builder(supervisor, init_notifier_child(subject, "4"))
+
+  // Assert new child has started
+  let assert Ok(#("4", p4)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+
+  // Shutdown new child and all restart
+  process.kill(p4)
+
+  let assert Ok(#("1", p1)) = process.receive(subject, 10)
+  let assert Ok(#("2", p2)) = process.receive(subject, 10)
+  let assert Ok(#("3", p3)) = process.receive(subject, 10)
+  let assert Ok(#("4", p4)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+  let assert True = process.is_alive(p1)
+  let assert True = process.is_alive(p2)
+  let assert True = process.is_alive(p3)
+  let assert True = process.is_alive(p4)
+
+  // Shutdown third child and all restart
+  process.kill(p3)
+  let assert Ok(#("1", p1)) = process.receive(subject, 10)
+  let assert Ok(#("2", p2)) = process.receive(subject, 10)
+  let assert Ok(#("3", p3)) = process.receive(subject, 10)
+  let assert Ok(#("4", p4)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+  let assert True = process.is_alive(p1)
+  let assert True = process.is_alive(p2)
+  let assert True = process.is_alive(p3)
+  let assert True = process.is_alive(p4)
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
