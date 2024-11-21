@@ -266,6 +266,37 @@ fn erlang_terminate_child(supervisor: Pid, id_or_pid: Dynamic) -> Dynamic
 @external(erlang, "supervisor", "restart_child")
 fn erlang_restart_child(supervisor: Pid, id: Dynamic) -> Result(Pid, Dynamic)
 
+@external(erlang, "supervisor", "delete_child")
+fn erlang_delete_child(supervisor: Pid, id: Dynamic) -> Result(Pid, Dynamic)
+
+pub fn delete_child(
+  supervisor: Supervisor,
+  id: String,
+) -> Result(Pid, SupervisorError) {
+  use pid <- result.try(case supervisor {
+    SimpleOneForOneSupervisor(_) -> Error(SimpleOneForOneForbidden)
+    _ -> Ok(supervisor.pid)
+  })
+  erlang_delete_child(pid, id |> dynamic.from)
+  |> result.map_error(fn(e) {
+    case atom.from_dynamic(e) {
+      Error(_) ->
+        UnknownError(
+          "failed to parse erlang's supervisor:delete_child/2 return to an atomic",
+        )
+      Ok(err_msg) ->
+        case atom.to_string(err_msg) {
+          "running" -> ChildRunning
+          "restarting" -> ChildRestarting
+          "not_found" -> ChildNotFound
+          "simple_one_for_one" ->
+            panic as "simple-one-for-one supervisors should already have been caught"
+          other -> UnknownError(other)
+        }
+    }
+  })
+}
+
 pub fn restart_child(
   supervisor: Supervisor,
   id: String,
