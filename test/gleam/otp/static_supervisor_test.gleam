@@ -180,6 +180,10 @@ pub fn simple_one_for_one_test() {
     |> sup.add(init_notifier_child(subject, "0"))
     |> sup.start_link
 
+  // Assert starting children using a child builder does not work
+  let assert Error(sup.SimpleOneForOneForbidden) =
+    sup.start_child_with_builder(supervisor, init_notifier_child(subject, "2"))
+
   // Assert no child has yet started
   let assert Error(_) = process.receive(subject, 10)
 

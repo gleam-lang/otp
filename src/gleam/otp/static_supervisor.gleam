@@ -213,19 +213,34 @@ pub fn start_child_with_args(
     supervisor.strategy != SimpleOneForOne,
     Error(SupervisorNotSimpleOneForOne),
   )
-  erlang_start_child(supervisor.pid, args)
+  erlang_start_child(supervisor.pid, args |> dynamic.from)
+}
+
+pub fn start_child_with_builder(
+  supervisor: Supervisor,
+  child_builder: ChildBuilder,
+) -> Result(Pid, StartChildErr) {
+  use <- bool.guard(
+    supervisor.strategy == SimpleOneForOne,
+    Error(SimpleOneForOneForbidden),
+  )
+  erlang_start_child(
+    supervisor.pid,
+    child_builder |> child_builder_to_erlang |> dynamic.from,
+  )
 }
 
 pub type StartChildErr {
   AlreadyPresent
   AlreadyStart(Dynamic)
   SupervisorNotSimpleOneForOne
+  SimpleOneForOneForbidden
 }
 
 @external(erlang, "supervisor", "start_child")
 fn erlang_start_child(
   supervisor: Pid,
-  child_spec_or_extra_args: List(Dynamic),
+  child_spec_or_extra_args: Dynamic,
 ) -> Result(Pid, StartChildErr)
 
 @external(erlang, "gleam_otp_external", "static_supervisor_start_link")
