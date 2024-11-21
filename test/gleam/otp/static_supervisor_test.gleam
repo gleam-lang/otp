@@ -95,10 +95,22 @@ pub fn one_for_one_test() {
   let assert Error(sup.SupervisorNotSimpleOneForOne) =
     sup.terminate_child_with_pid(supervisor, p4)
 
-  // Terminate fourth child and assert it is not restarting
-  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "4")
+  // Assert that we cannot restart a child before it is terminated
+  let assert Error(sup.ChildRunning) = sup.restart_child(supervisor, "3")
   let assert Error(Nil) = process.receive(subject, 100)
-  let assert False = process.is_alive(p4)
+  let assert True = process.is_alive(p3)
+
+  // Terminate third child and assert it is not restarting
+  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "3")
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert False = process.is_alive(p3)
+
+  // Restart the previously terminated child and assert
+  // only it is restarting
+  let assert Ok(_) = sup.restart_child(supervisor, "3")
+  let assert Ok(#("3", p3)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert True = process.is_alive(p3)
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
@@ -179,10 +191,23 @@ pub fn rest_for_one_test() {
   let assert Error(sup.SupervisorNotSimpleOneForOne) =
     sup.terminate_child_with_pid(supervisor, p4)
 
-  // Terminate fourth child and assert it is not restarting
-  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "4")
+  // Assert that we cannot restart a child before it is terminated
+  let assert Error(sup.ChildRunning) = sup.restart_child(supervisor, "3")
   let assert Error(Nil) = process.receive(subject, 100)
-  let assert False = process.is_alive(p4)
+  let assert True = process.is_alive(p3)
+
+  // Terminate third child and assert it is not restarting
+  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "3")
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert False = process.is_alive(p3)
+
+  // Restart the previously terminated child and assert
+  // only it restarts (manual restart overrides strategy)
+  let assert Ok(_) = sup.restart_child(supervisor, "3")
+  let assert Ok(#("3", p3)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert True = process.is_alive(p3)
+  let assert True = process.is_alive(p4)
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
@@ -269,10 +294,23 @@ pub fn one_for_all_test() {
   let assert Error(sup.SupervisorNotSimpleOneForOne) =
     sup.terminate_child_with_pid(supervisor, p4)
 
-  // Terminate fourth child and assert it is not restarting
-  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "4")
+  // Assert that we cannot restart a child before it is terminated
+  let assert Error(sup.ChildRunning) = sup.restart_child(supervisor, "3")
   let assert Error(Nil) = process.receive(subject, 100)
-  let assert False = process.is_alive(p4)
+  let assert True = process.is_alive(p3)
+
+  // Terminate third child and assert it is not restarting
+  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "3")
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert False = process.is_alive(p3)
+
+  // Restart the previously terminated child and assert
+  // only it restarts (manual restart overrides strategy)
+  let assert Ok(_) = sup.restart_child(supervisor, "3")
+  let assert Ok(#("3", p3)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert True = process.is_alive(p3)
+  let assert True = process.is_alive(p4)
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
@@ -349,6 +387,11 @@ pub fn simple_one_for_one_test() {
   // (Not available for simple-one-for-one strategy)
   let assert Error(sup.SimpleOneForOneForbidden) =
     sup.terminate_child_with_id(supervisor, "0")
+
+  // Assert that we cannot restart a child
+  // (Not available for simple-one-for-one strategy)
+  let assert Error(sup.SimpleOneForOneForbidden) =
+    sup.restart_child(supervisor, "0")
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
