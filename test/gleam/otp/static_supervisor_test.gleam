@@ -112,6 +112,22 @@ pub fn one_for_one_test() {
   let assert Error(Nil) = process.receive(subject, 100)
   let assert True = process.is_alive(p3)
 
+  // Asserting that we cannot delete a child that is running
+  // This test sucks, it should test for sup.ChildRunning
+  // but the erlang delete_child function return is annoying
+  let assert Error(sup.UnknownError("deletion failed")) =
+    sup.delete_child(supervisor, "3")
+
+  // Terminating and deleting a child
+  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "3")
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert False = process.is_alive(p3)
+  let assert Ok(_) = sup.delete_child(supervisor, "3")
+
+  let assert True =
+    sup.count_children(supervisor)
+    == [sup.Specs(3), sup.Active(3), sup.Supervisors(0), sup.Workers(3)]
+
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
   process.send_exit(supervisor_pid)
@@ -208,6 +224,22 @@ pub fn rest_for_one_test() {
   let assert Error(Nil) = process.receive(subject, 100)
   let assert True = process.is_alive(p3)
   let assert True = process.is_alive(p4)
+
+  // Asserting that we cannot delete a child that is running
+  // This test sucks, it should test for sup.ChildRunning
+  // but the erlang delete_child function return is annoying
+  let assert Error(sup.UnknownError("deletion failed")) =
+    sup.delete_child(supervisor, "3")
+
+  // Terminating and deleting a child
+  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "3")
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert False = process.is_alive(p3)
+  let assert Ok(_) = sup.delete_child(supervisor, "3")
+
+  let assert True =
+    sup.count_children(supervisor)
+    == [sup.Specs(3), sup.Active(3), sup.Supervisors(0), sup.Workers(3)]
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
@@ -312,6 +344,22 @@ pub fn one_for_all_test() {
   let assert True = process.is_alive(p3)
   let assert True = process.is_alive(p4)
 
+  // Asserting that we cannot delete a child that is running
+  // This test sucks, it should test for sup.ChildRunning
+  // but the erlang delete_child function return is annoying
+  let assert Error(sup.UnknownError("deletion failed")) =
+    sup.delete_child(supervisor, "3")
+
+  // Terminating and deleting a child
+  let assert Ok(_) = sup.terminate_child_with_id(supervisor, "3")
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert False = process.is_alive(p3)
+  let assert Ok(_) = sup.delete_child(supervisor, "3")
+
+  let assert True =
+    sup.count_children(supervisor)
+    == [sup.Specs(3), sup.Active(3), sup.Supervisors(0), sup.Workers(3)]
+
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
   process.send_exit(supervisor_pid)
@@ -392,6 +440,11 @@ pub fn simple_one_for_one_test() {
   // (Not available for simple-one-for-one strategy)
   let assert Error(sup.SimpleOneForOneForbidden) =
     sup.restart_child(supervisor, "0")
+
+  // Assert that we cannot delete a child
+  // (Not available for simple-one-for-one strategy)
+  let assert Error(sup.SimpleOneForOneForbidden) =
+    sup.delete_child(supervisor, "0")
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
