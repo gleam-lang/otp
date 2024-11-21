@@ -25,6 +25,10 @@ import gleam/erlang/process.{type Pid}
 import gleam/list
 import gleam/result
 
+pub opaque type Supervisor {
+  Supervisor(pid: Pid, strategy: Strategy)
+}
+
 pub type Strategy {
   /// If one child process terminates and is to be restarted, only that child
   /// process is affected. This is the default restart strategy.
@@ -39,6 +43,12 @@ pub type Strategy {
   /// process in the start order) are terminated. Then the terminated child
   /// process and all child processes after it are restarted.
   RestForOne
+
+  /// Same as `OneForOne`, except it does not start children at startup and
+  /// can not add new child specs after starting.
+  /// Children can only be "added" by spawning a new child from the existing
+  /// ChildSpecs.
+  SimpleOneForOne
 }
 
 /// A supervisor can be configured to automatically shut itself down with exit
@@ -120,7 +130,7 @@ pub type Restart {
 }
 
 pub type ChildType {
-  Worker(
+  WorkerChild(
     /// The number of milliseconds the child is given to shut down. The
     /// supervisor tells the child process to terminate by calling
     /// `exit(Child,shutdown)` and then wait for an exit signal with reason
@@ -129,7 +139,7 @@ pub type ChildType {
     /// unconditionally terminated using `exit(Child,kill)`.
     shutdown_ms: Int,
   )
-  Supervisor
+  SupervisorChild
 }
 
 pub opaque type ChildBuilder {
@@ -162,7 +172,7 @@ pub opaque type ChildBuilder {
   )
 }
 
-pub fn start_link(builder: Builder) -> Result(Pid, Dynamic) {
+pub fn start_link(builder: Builder) -> Result(Supervisor, Dynamic) {
   let flags =
     dict.new()
     |> property("strategy", builder.strategy)
@@ -170,10 +180,34 @@ pub fn start_link(builder: Builder) -> Result(Pid, Dynamic) {
     |> property("period", builder.period)
     |> property("auto_shutdown", builder.auto_shutdown)
 
-  let children = builder.children |> list.reverse |> list.map(convert_child)
+  let children =
+    builder.children |> list.reverse |> list.map(child_builder_to_erlang)
 
-  erlang_start_link(#(flags, children))
+  use supervisor_pid <- result.map(erlang_start_link(#(flags, children)))
+  Supervisor(supervisor_pid, builder.strategy)
 }
+
+pub fn get_pid(supervisor: Supervisor) -> Pid {
+  supervisor.pid
+}
+
+pub fn start_child_with_args(
+  supervisor: Supervisor,
+  args: List(Dynamic),
+) -> Result(Pid, StartChildErr) {
+  erlang_start_child(supervisor.pid, args)
+}
+
+pub type StartChildErr {
+  AlreadyPresent
+  AlreadyStart(Dynamic)
+}
+
+@external(erlang, "supervisor", "start_child")
+fn erlang_start_child(
+  supervisor: Pid,
+  child_spec_or_extra_args: List(Dynamic),
+) -> Result(Pid, StartChildErr)
 
 @external(erlang, "gleam_otp_external", "static_supervisor_start_link")
 fn erlang_start_link(
@@ -184,6 +218,20 @@ fn erlang_start_link(
 pub fn add(builder: Builder, child: ChildBuilder) -> Builder {
   Builder(..builder, children: [child, ..builder.children])
 }
+
+pub type Property {
+  Specs(count: Int)
+  Active(count: Int)
+  Supervisors(count: Int)
+  Workers(count: Int)
+}
+
+pub fn count_children(supervisor: Supervisor) -> List(Property) {
+  erlang_count_children(supervisor.pid)
+}
+
+@external(erlang, "supervisor", "count_children")
+fn erlang_count_children(sup_ref: Pid) -> List(Property)
 
 /// A regular child that is not also a supervisor.
 ///
@@ -203,7 +251,7 @@ pub fn worker_child(
     starter: fn() { starter() |> result.map_error(dynamic.from) },
     restart: Permanent,
     significant: False,
-    child_type: Worker(5000),
+    child_type: WorkerChild(5000),
   )
 }
 
@@ -225,7 +273,7 @@ pub fn supervisor_child(
     starter: fn() { starter() |> result.map_error(dynamic.from) },
     restart: Permanent,
     significant: False,
-    child_type: Supervisor,
+    child_type: SupervisorChild,
   )
 }
 
@@ -251,7 +299,7 @@ pub fn significant(child: ChildBuilder, significant: Bool) -> ChildBuilder {
 ///
 pub fn timeout(child: ChildBuilder, ms ms: Int) -> ChildBuilder {
   case child.child_type {
-    Worker(_) -> ChildBuilder(..child, child_type: Worker(ms))
+    WorkerChild(_) -> ChildBuilder(..child, child_type: WorkerChild(ms))
     _ -> child
   }
 }
@@ -264,7 +312,7 @@ pub fn restart(child: ChildBuilder, restart: Restart) -> ChildBuilder {
   ChildBuilder(..child, restart: restart)
 }
 
-fn convert_child(child: ChildBuilder) -> Dict(Atom, Dynamic) {
+fn child_builder_to_erlang(child: ChildBuilder) -> Dict(Atom, Dynamic) {
   let mfa = #(
     atom.create_from_string("erlang"),
     atom.create_from_string("apply"),
@@ -272,11 +320,11 @@ fn convert_child(child: ChildBuilder) -> Dict(Atom, Dynamic) {
   )
 
   let #(type_, shutdown) = case child.child_type {
-    Supervisor -> #(
+    SupervisorChild -> #(
       atom.create_from_string("supervisor"),
       dynamic.from(atom.create_from_string("infinity")),
     )
-    Worker(timeout) -> #(
+    WorkerChild(timeout) -> #(
       atom.create_from_string("worker"),
       dynamic.from(timeout),
     )

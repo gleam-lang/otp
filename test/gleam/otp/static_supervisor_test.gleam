@@ -58,8 +58,11 @@ pub fn one_for_one_test() {
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
 
-  let assert True = process.is_alive(supervisor)
-  process.send_exit(supervisor)
+  let supervisor_pid = sup.get_pid(supervisor)
+
+  let assert True = process.is_alive(supervisor_pid)
+
+  process.send_exit(supervisor_pid)
 }
 
 pub fn rest_for_one_test() {
@@ -97,8 +100,11 @@ pub fn rest_for_one_test() {
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
 
-  let assert True = process.is_alive(supervisor)
-  process.send_exit(supervisor)
+  let supervisor_pid = sup.get_pid(supervisor)
+
+  let assert True = process.is_alive(supervisor_pid)
+
+  process.send_exit(supervisor_pid)
 }
 
 pub fn one_for_all_test() {
@@ -137,6 +143,64 @@ pub fn one_for_all_test() {
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
 
-  let assert True = process.is_alive(supervisor)
-  process.send_exit(supervisor)
+  let supervisor_pid = sup.get_pid(supervisor)
+
+  let assert True = process.is_alive(supervisor_pid)
+
+  process.send_exit(supervisor_pid)
+}
+
+pub fn simple_one_for_one_test() {
+  let subject = process.new_subject()
+
+  let assert Ok(supervisor) =
+    sup.new(sup.SimpleOneForOne)
+    |> sup.add(init_notifier_child(subject, "0"))
+    |> sup.start_link
+
+  // Assert no child has yet started
+  let assert Error(_) = process.receive(subject, 10)
+
+  // Count children
+  let assert True =
+    sup.count_children(supervisor)
+    == [sup.Specs(1), sup.Active(0), sup.Supervisors(0), sup.Workers(0)]
+
+  // Start one child
+  let assert Ok(_p1) = sup.start_child_with_args(supervisor, [])
+
+  // Assert child was started
+
+  let assert Ok(#("0", p1)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+
+  // Start other children
+  let assert Ok(_p2) = sup.start_child_with_args(supervisor, [])
+  let assert Ok(_p3) = sup.start_child_with_args(supervisor, [])
+
+  // Assert other children were started
+
+  let assert Ok(#("0", p2)) = process.receive(subject, 10)
+  let assert Ok(#("0", p3)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+
+  // Shutdown first child and assert only it restarts
+  process.kill(p1)
+  let assert Ok(#("0", p1)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+  let assert True = process.is_alive(p1)
+  let assert True = process.is_alive(p2)
+  let assert True = process.is_alive(p3)
+
+  // Shutdown second child and assert only it restarts
+  process.kill(p2)
+  let assert Ok(#("0", p2)) = process.receive(subject, 10)
+  let assert Error(Nil) = process.receive(subject, 10)
+  let assert True = process.is_alive(p1)
+  let assert True = process.is_alive(p2)
+  let assert True = process.is_alive(p3)
+
+  let supervisor_pid = sup.get_pid(supervisor)
+  let assert True = process.is_alive(supervisor_pid)
+  process.send_exit(supervisor_pid)
 }
