@@ -1,5 +1,6 @@
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process.{type Pid, type Subject}
+import gleam/io
 import gleam/otp/actor
 import gleam/otp/static_supervisor as sup
 
@@ -308,6 +309,11 @@ pub fn simple_one_for_one_test() {
   let assert True = process.is_alive(p1)
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
+
+  // Terminate third child and assert it is not restarting
+  let assert Ok(_) = sup.terminate_child_with_pid(supervisor, p3)
+  let assert Error(Nil) = process.receive(subject, 100)
+  let assert False = process.is_alive(p3)
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)

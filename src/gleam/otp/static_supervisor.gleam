@@ -18,6 +18,8 @@
 //// }
 //// ```
 
+import gleam/io
+
 import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
@@ -208,7 +210,7 @@ pub fn get_pid(supervisor: Supervisor) -> Pid {
 pub fn start_child_with_args(
   supervisor: Supervisor,
   args: List(Dynamic),
-) -> Result(Pid, StartChildErr) {
+) -> Result(Pid, SupervisorError) {
   use <- bool.guard(
     supervisor.strategy != SimpleOneForOne,
     Error(SupervisorNotSimpleOneForOne),
@@ -219,7 +221,7 @@ pub fn start_child_with_args(
 pub fn start_child_with_builder(
   supervisor: Supervisor,
   child_builder: ChildBuilder,
-) -> Result(Pid, StartChildErr) {
+) -> Result(Pid, SupervisorError) {
   use <- bool.guard(
     supervisor.strategy == SimpleOneForOne,
     Error(SimpleOneForOneForbidden),
@@ -230,23 +232,49 @@ pub fn start_child_with_builder(
   )
 }
 
-pub type StartChildErr {
+pub type SupervisorError {
   AlreadyPresent
   AlreadyStart(Dynamic)
   SupervisorNotSimpleOneForOne
   SimpleOneForOneForbidden
+  ChildNotFound
 }
 
 @external(erlang, "supervisor", "start_child")
 fn erlang_start_child(
   supervisor: Pid,
   child_spec_or_extra_args: Dynamic,
-) -> Result(Pid, StartChildErr)
+) -> Result(Pid, SupervisorError)
 
 @external(erlang, "gleam_otp_external", "static_supervisor_start_link")
 fn erlang_start_link(
   args: #(Dict(Atom, Dynamic), List(Dict(Atom, Dynamic))),
 ) -> Result(Pid, Dynamic)
+
+@external(erlang, "supervisor", "terminate_child")
+fn erlang_terminate_child(supervisor: Pid, id_or_pid: Dynamic) -> Dynamic
+
+pub fn terminate_child_with_pid(
+  supervisor: Supervisor,
+  child: Pid,
+) -> Result(Nil, SupervisorError) {
+  use <- bool.guard(
+    supervisor.strategy != SimpleOneForOne,
+    Error(SupervisorNotSimpleOneForOne),
+  )
+
+  let termination_result =
+    erlang_terminate_child(supervisor.pid, child |> dynamic.from)
+
+  case
+    termination_result
+    |> atom.from_dynamic
+  {
+    Error(_) -> Error(ChildNotFound)
+    Ok(_) -> Ok(Nil)
+  }
+  // 
+}
 
 /// Add a child to the supervisor.
 pub fn add(builder: Builder, child: ChildBuilder) -> Builder {
