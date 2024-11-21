@@ -254,6 +254,27 @@ fn erlang_start_link(
 @external(erlang, "supervisor", "terminate_child")
 fn erlang_terminate_child(supervisor: Pid, id_or_pid: Dynamic) -> Dynamic
 
+pub fn terminate_child_with_id(
+  supervisor: Supervisor,
+  id: String,
+) -> Result(Nil, SupervisorError) {
+  use <- bool.guard(
+    supervisor.strategy == SimpleOneForOne,
+    Error(SimpleOneForOneForbidden),
+  )
+
+  let termination_result =
+    erlang_terminate_child(supervisor.pid, id |> dynamic.from)
+
+  case
+    termination_result
+    |> atom.from_dynamic
+  {
+    Error(_) -> Error(ChildNotFound)
+    Ok(_) -> Ok(Nil)
+  }
+}
+
 pub fn terminate_child_with_pid(
   supervisor: Supervisor,
   child: Pid,
@@ -273,7 +294,6 @@ pub fn terminate_child_with_pid(
     Error(_) -> Error(ChildNotFound)
     Ok(_) -> Ok(Nil)
   }
-  // 
 }
 
 /// Add a child to the supervisor.
