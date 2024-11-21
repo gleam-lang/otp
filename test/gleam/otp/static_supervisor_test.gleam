@@ -90,6 +90,11 @@ pub fn one_for_one_test() {
   let assert True = process.is_alive(p3)
   let assert True = process.is_alive(p4)
 
+  // Assert that we cannot terminate a child with its PID
+  // (Reserved for simple-one-for-one strategy)
+  let assert Error(sup.SupervisorNotSimpleOneForOne) =
+    sup.terminate_child_with_pid(supervisor, p4)
+
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
   process.send_exit(supervisor_pid)
@@ -163,6 +168,11 @@ pub fn rest_for_one_test() {
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
   let assert True = process.is_alive(p4)
+
+  // Assert that we cannot terminate a child with its PID
+  // (Reserved for simple-one-for-one strategy)
+  let assert Error(sup.SupervisorNotSimpleOneForOne) =
+    sup.terminate_child_with_pid(supervisor, p4)
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
@@ -243,6 +253,11 @@ pub fn one_for_all_test() {
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
   let assert True = process.is_alive(p4)
+
+  // Assert that we cannot terminate a child with its PID
+  // (Reserved for simple-one-for-one strategy)
+  let assert Error(sup.SupervisorNotSimpleOneForOne) =
+    sup.terminate_child_with_pid(supervisor, p4)
 
   let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
