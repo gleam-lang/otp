@@ -516,7 +516,7 @@ fn erlang_start_child(
   child_spec_or_extra_args: Dynamic,
 ) -> Result(Pid, SupervisorError)
 
-@external(erlang, "gleam_otp_external", "static_supervisor_start_link")
+@external(erlang, "gleam_otp_external", "erlang_supervisor_start_link")
 fn erlang_start_link(
   args: #(Dict(Atom, Dynamic), List(Dict(Atom, Dynamic))),
 ) -> Result(Pid, Dynamic)
