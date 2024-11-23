@@ -45,6 +45,12 @@ process_status({status_info, Module, Parent, Mode, DebugState, State}) ->
 application_stopped() ->
     ok.
 
+erlang_supervisor_start_link(Arg) ->
+    case supervisor:start_link(gleam@otp@erlang_supervisor, Arg) of
+        {ok, P} -> {ok, P};
+        {error, E} -> {ok, {init_crashed, E}}
+    end.
+
 static_supervisor_start_link(Arg) ->
     case supervisor:start_link(gleam@otp@static_supervisor, Arg) of
         {ok, P} -> {ok, P};
