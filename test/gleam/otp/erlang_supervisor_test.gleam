@@ -1,6 +1,5 @@
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process.{type Pid, type Subject}
-import gleam/io
 import gleam/otp/actor
 import gleam/otp/erlang_supervisor as sup
 

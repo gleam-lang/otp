@@ -18,14 +18,11 @@
 //// }
 //// ```
 
-import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid}
-import gleam/io
 import gleam/list
-import gleam/otp/supervisor
 import gleam/result
 
 pub opaque type Supervisor {
