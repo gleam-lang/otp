@@ -2,7 +2,7 @@
 
 -export([
     application_stopped/0, convert_system_message/2,
-    static_supervisor_start_link/1
+    static_supervisor_start_link/1, erlang_supervisor_start_link/1
 ]).
 
 % TODO: support other system messages
