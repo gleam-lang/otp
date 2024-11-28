@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Fixed a bug where using `actor.Stop(process.Abnormal(...))` would stop
+  the process with `Normal`.
+
 ## v0.16.1 - 2025-01-20
 
 - Fixed a bug where the static supervisor would return the incorrect value if
