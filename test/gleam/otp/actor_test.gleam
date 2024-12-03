@@ -213,7 +213,7 @@ pub fn abnormal_exit_can_be_trapped_test() {
 
   // Make an actor exit with an abnormal reason
   let assert Ok(subject) =
-    actor.start(Nil, fn(_, _) { actor.Stop(process.Abnormal("reason")) })
+    actor.start(Nil, fn(_, _) { actor.StopAbnormal("reason") })
   process.send(subject, Nil)
 
   let trapped_reason = process.select(exits, 10)
@@ -225,7 +225,7 @@ pub fn abnormal_exit_can_be_trapped_test() {
   |> should.equal(
     Ok(process.ExitMessage(
       process.subject_owner(subject),
-      process.Abnormal("reason"),
+      process.Abnormal(dynamic.from("reason")),
     )),
   )
 }
@@ -237,9 +237,8 @@ pub fn killed_exit_can_be_trapped_test() {
     |> process.selecting_trapped_exits(function.identity)
 
   // Make an actor exit with a killed reason
-  let assert Ok(subject) =
-    actor.start(Nil, fn(_, _) { actor.Stop(process.Killed) })
-  process.send(subject, Nil)
+  let assert Ok(subject) = actor.start(Nil, fn(_, _) { actor.continue(Nil) })
+  process.kill(process.subject_owner(subject))
 
   let trapped_reason = process.select(exits, 10)
 
