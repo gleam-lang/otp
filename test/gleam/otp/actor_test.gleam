@@ -42,6 +42,32 @@ pub fn failed_init_test() {
   |> should.be_true
 }
 
+pub fn timed_out_init_test() {
+  process.trap_exits(True)
+  let exit_selector =
+    process.new_selector()
+    |> process.selecting_trapped_exits(function.identity)
+
+  let result =
+    actor.Spec(
+      init: fn() {
+        process.sleep(1000)
+        panic as "should not be reached"
+      },
+      loop: fn(_msg, _state) { panic as "should not be reached" },
+      init_timeout: 1,
+    )
+    |> actor.start_spec
+
+  // Check that the exit isn't unhandled: it should be handled by start_spec.
+  // Stop trapping exits before asserting, to avoid interfering with other tests.
+  let exit = process.select(exit_selector, 10)
+  process.trap_exits(False)
+
+  result |> should.equal(Error(actor.InitTimeout))
+  exit |> should.equal(Error(Nil))
+}
+
 pub fn suspend_resume_test() {
   let assert Ok(subject) =
     actor.start(0, fn(_msg, iter) { actor.continue(iter + 1) })
