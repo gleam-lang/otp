@@ -489,6 +489,9 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
 
     // Child did not finish initialising in time
     Error(Nil) -> {
+      // Unlink the child before killing it, so that we only return the error,
+      // but don't also send an exit message to the linked parent process.
+      process.unlink(child)
       process.kill(child)
       Error(InitTimeout)
     }
