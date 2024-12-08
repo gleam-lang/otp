@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.15.0 - 2024-12-08
+
+- The deprecated `try_await_forever` function in the `gleam/otp/task` module has
+  been removed.
+
 ## v0.14.1 - 2024-11-15
 
 - Fixed a bug where the `significant` parameter would not be passed to the

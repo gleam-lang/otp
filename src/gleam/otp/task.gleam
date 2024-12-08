@@ -115,18 +115,6 @@ pub fn pid(task: Task(value)) -> Pid {
   task.pid
 }
 
-@deprecated("Use await_forever")
-pub fn try_await_forever(task: Task(value)) -> Result(value, AwaitError) {
-  assert_owner(task)
-  let selector =
-    process.new_selector()
-    |> process.selecting(task.subject, function.identity)
-  case process.select_forever(selector) {
-    // The task process has sent back a value
-    x -> Ok(x)
-  }
-}
-
 /// Wait endlessly for the value computed by a task.
 ///
 /// Be Careful! Like `try_await_forever`, this function does not return until
