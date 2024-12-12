@@ -1,5 +1,7 @@
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/process.{type Pid, type Subject}
+import gleam/io
+import gleam/list
 import gleam/otp/actor
 import gleam/otp/erlang_supervisor as sup
 
@@ -30,6 +32,14 @@ fn init_notifier_child(
       actor.Ready(name, process.new_selector())
     },
     loop: fn(_msg, state) { actor.continue(state) },
+  )
+}
+
+fn failing_child(name: String) -> sup.ChildBuilder {
+  actor_child(
+    name: name,
+    init: fn() { actor.Failed(name) },
+    loop: fn(_msg, _state) { panic as "failed child should not loop" },
   )
 }
 
@@ -392,4 +402,62 @@ pub fn simple_one_for_one_test() {
   let supervisor_pid = sup.simple_get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
   process.send_exit(supervisor_pid)
+}
+
+pub fn start_supervisor_child_test() {
+  let health_subject = process.new_subject()
+  let supervisor_started_subject = process.new_subject()
+  let supervisor_failed_subject = process.new_subject()
+
+  // Create the ChildBuilders for the supervisor children
+  let sub_supervisor_builder_0 =
+    sup.new(sup.OneForOne)
+    |> sup.add(init_notifier_child(health_subject, "00"))
+    |> sup.add(init_notifier_child(health_subject, "01"))
+    |> sup.add(init_notifier_child(health_subject, "02"))
+    |> sup.supervisor_child("0", fn(new_supervisor) {
+      process.send(health_subject, #("0", sup.get_pid(new_supervisor)))
+      process.send(supervisor_started_subject, #("sup0", new_supervisor))
+    })
+
+  let sub_supervisor_builder_1 =
+    sup.new(sup.OneForOne)
+    |> sup.add(init_notifier_child(health_subject, "10"))
+    |> sup.add(init_notifier_child(health_subject, "11"))
+    |> sup.add(init_notifier_child(health_subject, "12"))
+    |> sup.supervisor_child("1", fn(new_supervisor) {
+      process.send(health_subject, #("1", sup.get_pid(new_supervisor)))
+      process.send(supervisor_started_subject, #("sup1", new_supervisor))
+    })
+
+  // Start top level supervisor
+  // Verify if supervisor child added before start_link
+  // works correctly
+  let assert Ok(supervisor) =
+    sup.new(sup.OneForAll)
+    |> sup.add(sub_supervisor_builder_0)
+    |> sup.start_link
+
+  let assert Ok(#("00", _p00)) = process.receive(health_subject, 100)
+  let assert Ok(#("01", _p01)) = process.receive(health_subject, 100)
+  let assert Ok(#("02", _p02)) = process.receive(health_subject, 100)
+  let assert Ok(#("0", _p0)) = process.receive(health_subject, 100)
+  let assert Error(_) = process.receive(health_subject, 100)
+  let assert Ok(#("sup0", _sub_supervisor_0)) =
+    process.receive(supervisor_started_subject, 100)
+  let assert Error(_) = process.receive(supervisor_started_subject, 100)
+
+  // Check if supervisor children added through
+  // `start_supervisor_child` work correctly
+  let assert Ok(_sub_supervisor_1_pid) =
+    sup.start_child(supervisor, sub_supervisor_builder_1)
+
+  let assert Ok(#("10", _p10)) = process.receive(health_subject, 100)
+  let assert Ok(#("11", _p11)) = process.receive(health_subject, 100)
+  let assert Ok(#("12", _p12)) = process.receive(health_subject, 100)
+  let assert Ok(#("1", _p1)) = process.receive(health_subject, 100)
+  let assert Error(_) = process.receive(health_subject, 100)
+  let assert Ok(#("sup1", _sub_supervisor_1)) =
+    process.receive(supervisor_started_subject, 100)
+  let assert Error(_) = process.receive(supervisor_started_subject, 100)
 }

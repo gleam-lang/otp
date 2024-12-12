@@ -420,9 +420,15 @@ pub fn worker_child(
 /// example in error messages.
 ///
 pub fn supervisor_child(
+  builder builder: Builder,
   id id: String,
-  run starter: fn() -> Result(Pid, whatever),
+  on_started starter: fn(Supervisor) -> Nil,
 ) -> ChildBuilder {
+  let starter: fn() -> Result(Pid, LinkStartError) = fn() {
+    use sup <- result.map(start_link(builder))
+    starter(sup)
+    sup.pid
+  }
   ChildBuilder(
     id: id,
     starter: fn() { starter() |> result.map_error(dynamic.from) },
