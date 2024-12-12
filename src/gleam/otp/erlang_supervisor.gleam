@@ -25,12 +25,8 @@ import gleam/erlang/process.{type Pid}
 import gleam/list
 import gleam/result
 
-pub opaque type Supervisor {
+pub opaque type Supervisor(kind) {
   Supervisor(pid: Pid)
-}
-
-pub opaque type SimpleSupervisor {
-  SimpleSupervisor(pid: Pid)
 }
 
 pub type Strategy {
@@ -47,9 +43,7 @@ pub type Strategy {
   /// process in the start order) are terminated. Then the terminated child
   /// process and all child processes after it are restarted.
   RestForOne
-}
 
-type SimpleStrategy {
   SimpleOneForOne
 }
 
@@ -73,7 +67,7 @@ pub type AutoShutdown {
   AllSignificant
 }
 
-pub opaque type Builder {
+pub opaque type Builder(kind) {
   Builder(
     intensity: Int,
     period: Int,
@@ -83,20 +77,15 @@ pub opaque type Builder {
   )
 }
 
-pub opaque type SimpleBuilder {
-  SimpleBuilder(
-    intensity: Int,
-    period: Int,
-    auto_shutdown: AutoShutdown,
-    child: ChildBuilder,
-  )
-}
+pub type Simple
+
+pub type Classic
 
 const default_restart_intensity = 2
 
 const default_restart_period = 5
 
-pub fn new(strategy strategy: Strategy) -> Builder {
+pub fn new(strategy strategy: Strategy) -> Builder(Classic) {
   Builder(
     strategy: strategy,
     intensity: default_restart_intensity,
@@ -106,12 +95,13 @@ pub fn new(strategy strategy: Strategy) -> Builder {
   )
 }
 
-pub fn simple_new(child: ChildBuilder) -> SimpleBuilder {
-  SimpleBuilder(
+pub fn simple_new(child: ChildBuilder) -> Builder(Simple) {
+  Builder(
+    strategy: SimpleOneForOne,
     intensity: default_restart_intensity,
     period: default_restart_period,
     auto_shutdown: Never,
-    child: child,
+    children: [child],
   )
 }
 
@@ -126,44 +116,20 @@ pub fn simple_new(child: ChildBuilder) -> SimpleBuilder {
 ///
 /// Intensity defaults to 2 and period defaults to 5.
 pub fn restart_tolerance(
-  builder: Builder,
+  builder: Builder(either),
   intensity intensity: Int,
   period period: Int,
-) -> Builder {
+) -> Builder(either) {
   Builder(..builder, intensity: intensity, period: period)
 }
 
-/// To prevent a supervisor from getting into an infinite loop of child
-/// process terminations and restarts, a maximum restart intensity is
-/// defined using two integer values specified with keys intensity and
-/// period in the above map. Assuming the values MaxR for intensity and MaxT
-/// for period, then, if more than MaxR restarts occur within MaxT seconds,
-/// the supervisor terminates all child processes and then itself. The
-/// termination reason for the supervisor itself in that case will be
-/// shutdown. 
-///
-/// Intensity defaults to 2 and period defaults to 5.
-pub fn simple_restart_tolerance(
-  builder: SimpleBuilder,
-  intensity intensity: Int,
-  period period: Int,
-) -> SimpleBuilder {
-  SimpleBuilder(..builder, intensity: intensity, period: period)
-}
-
 /// A supervisor can be configured to automatically shut itself down with
 /// exit reason shutdown when significant children terminate.
-pub fn auto_shutdown(builder: Builder, value: AutoShutdown) -> Builder {
-  Builder(..builder, auto_shutdown: value)
-}
-
-/// A supervisor can be configured to automatically shut itself down with
-/// exit reason shutdown when significant children terminate.
-pub fn simple_auto_shutdown(
-  builder: SimpleBuilder,
+pub fn auto_shutdown(
+  builder: Builder(either),
   value: AutoShutdown,
-) -> SimpleBuilder {
-  SimpleBuilder(..builder, auto_shutdown: value)
+) -> Builder(either) {
+  Builder(..builder, auto_shutdown: value)
 }
 
 /// Restart defines when a terminated child process must be restarted. 
@@ -228,7 +194,9 @@ pub type LinkStartError {
   SimpleOneForOneMultipleChildrenError
 }
 
-pub fn start_link(builder: Builder) -> Result(Supervisor, LinkStartError) {
+pub fn start_link(
+  builder: Builder(either),
+) -> Result(Supervisor(either), LinkStartError) {
   let flags =
     dict.new()
     |> property("strategy", builder.strategy)
@@ -246,35 +214,12 @@ pub fn start_link(builder: Builder) -> Result(Supervisor, LinkStartError) {
   Supervisor(supervisor_pid)
 }
 
-pub fn simple_start_link(
-  builder: SimpleBuilder,
-) -> Result(SimpleSupervisor, LinkStartError) {
-  let flags =
-    dict.new()
-    |> property("strategy", SimpleOneForOne)
-    |> property("intensity", builder.intensity)
-    |> property("period", builder.period)
-    |> property("auto_shutdown", builder.auto_shutdown)
-
-  let children = [child_builder_to_erlang(builder.child)]
-
-  use supervisor_pid <- result.map(
-    erlang_start_link(#(flags, children))
-    |> result.map_error(fn(erlang_error) { ErlangError(erlang_error) }),
-  )
-  SimpleSupervisor(supervisor_pid)
-}
-
-pub fn get_pid(supervisor: Supervisor) -> Pid {
-  supervisor.pid
-}
-
-pub fn simple_get_pid(supervisor: SimpleSupervisor) -> Pid {
+pub fn get_pid(supervisor: Supervisor(either)) -> Pid {
   supervisor.pid
 }
 
 pub fn start_child(
-  supervisor: Supervisor,
+  supervisor: Supervisor(Classic),
   child_builder: ChildBuilder,
 ) -> Result(Pid, SupervisorError) {
   erlang_start_child(
@@ -284,7 +229,7 @@ pub fn start_child(
 }
 
 pub fn simple_start_child(
-  supervisor: SimpleSupervisor,
+  supervisor: Supervisor(Simple),
   args: List(Dynamic),
 ) -> Result(Pid, SupervisorError) {
   erlang_start_child(supervisor.pid, args |> dynamic.from)
@@ -302,7 +247,7 @@ pub type SupervisorError {
 }
 
 pub fn delete_child(
-  supervisor: Supervisor,
+  supervisor: Supervisor(Classic),
   id: String,
 ) -> Result(Nil, SupervisorError) {
   let deletion_result = erlang_delete_child(supervisor.pid, id |> dynamic.from)
@@ -313,7 +258,7 @@ pub fn delete_child(
 }
 
 pub fn restart_child(
-  supervisor: Supervisor,
+  supervisor: Supervisor(Classic),
   id: String,
 ) -> Result(Pid, SupervisorError) {
   erlang_restart_child(supervisor.pid, id |> dynamic.from)
@@ -337,7 +282,7 @@ pub fn restart_child(
 }
 
 pub fn terminate_child(
-  supervisor: Supervisor,
+  supervisor: Supervisor(Classic),
   id: String,
 ) -> Result(Nil, SupervisorError) {
   let termination_result =
@@ -353,7 +298,7 @@ pub fn terminate_child(
 }
 
 pub fn simple_terminate_child(
-  supervisor: SimpleSupervisor,
+  supervisor: Supervisor(Simple),
   child: Pid,
 ) -> Result(Nil, SupervisorError) {
   let termination_result =
@@ -369,7 +314,7 @@ pub fn simple_terminate_child(
 }
 
 /// Add a child to the supervisor.
-pub fn add(builder: Builder, child: ChildBuilder) -> Builder {
+pub fn add(builder: Builder(Classic), child: ChildBuilder) -> Builder(Classic) {
   Builder(..builder, children: [child, ..builder.children])
 }
 
@@ -380,11 +325,7 @@ pub type Property {
   Workers(count: Int)
 }
 
-pub fn count_children(supervisor: Supervisor) -> List(Property) {
-  erlang_count_children(supervisor.pid)
-}
-
-pub fn simple_count_children(supervisor: SimpleSupervisor) -> List(Property) {
+pub fn count_children(supervisor: Supervisor(either)) -> List(Property) {
   erlang_count_children(supervisor.pid)
 }
 
@@ -420,9 +361,9 @@ pub fn worker_child(
 /// example in error messages.
 ///
 pub fn supervisor_child(
-  builder builder: Builder,
+  builder builder: Builder(either),
   id id: String,
-  on_started starter: fn(Supervisor) -> Nil,
+  on_started starter: fn(Supervisor(either)) -> Nil,
 ) -> ChildBuilder {
   let starter: fn() -> Result(Pid, LinkStartError) = fn() {
     use sup <- result.map(start_link(builder))

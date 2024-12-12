@@ -350,14 +350,14 @@ pub fn simple_one_for_one_test() {
   let assert Ok(supervisor) =
     init_notifier_child(subject, "0")
     |> sup.simple_new
-    |> sup.simple_start_link
+    |> sup.start_link
 
   // Assert no child has yet started
   let assert Error(_) = process.receive(subject, 100)
 
   // Count children
   let assert True =
-    sup.simple_count_children(supervisor)
+    sup.count_children(supervisor)
     == [sup.Specs(1), sup.Active(0), sup.Supervisors(0), sup.Workers(0)]
 
   // Start one child
@@ -399,7 +399,7 @@ pub fn simple_one_for_one_test() {
   let assert Error(Nil) = process.receive(subject, 100)
   let assert False = process.is_alive(p3)
 
-  let supervisor_pid = sup.simple_get_pid(supervisor)
+  let supervisor_pid = sup.get_pid(supervisor)
   let assert True = process.is_alive(supervisor_pid)
   process.send_exit(supervisor_pid)
 }
