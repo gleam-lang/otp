@@ -48,5 +48,5 @@ application_stopped() ->
 static_supervisor_start_link(Arg) ->
     case supervisor:start_link(gleam@otp@static_supervisor, Arg) of
         {ok, P} -> {ok, P};
-        {error, E} -> {ok, {init_crashed, E}}
+        {error, E} -> {error, {init_crashed, E}}
     end.
