@@ -193,21 +193,6 @@ pub fn with_selector(
   }
 }
 
-/// The type used to indicate whether an actor has started successfully or not.
-///
-pub type InitResult(state, message) {
-  /// The actor has successfully initialised. The actor can start handling
-  /// messages and actor's channel sender can be returned to the parent
-  /// process.
-  ///
-  Ready(state: state, selector: Selector(message))
-
-  /// The actor has failed to initialise. The actor shuts down and an error is
-  /// returned to the parent process.
-  ///
-  Failed(String)
-}
-
 type Self(state, msg) {
   Self(
     /// The mode the actor is currently in, either active or suspended.
@@ -244,7 +229,7 @@ pub type Spec(state, msg) {
     /// correct. If this function returns an error it means that the actor has
     /// failed to start and an error is returned to the parent.
     ///
-    init: fn() -> InitResult(state, msg),
+    init: fn() -> Result(#(state, Selector(msg)), String),
     /// How many milliseconds the `init` function has to return before it is
     /// considered to have taken too long and failed.
     ///
@@ -301,10 +286,7 @@ fn selecting_system_messages(
   selector: Selector(Message(msg)),
 ) -> Selector(Message(msg)) {
   selector
-  |> process.selecting_record3(
-    atom.create_from_string("system"),
-    convert_system_message,
-  )
+  |> process.selecting_record3(atom.create("system"), convert_system_message)
 }
 
 @external(erlang, "gleam_otp_external", "convert_system_message")
@@ -312,7 +294,7 @@ fn convert_system_message(a: Dynamic, b: Dynamic) -> Message(msg)
 
 fn process_status_info(self: Self(state, msg)) -> StatusInfo {
   StatusInfo(
-    module: atom.create_from_string("gleam@otp@actor"),
+    module: atom.create("gleam@otp@actor"),
     parent: self.parent,
     mode: self.mode,
     debug_state: self.debug_state,
@@ -378,6 +360,7 @@ fn log_warning(a: Charlist, b: List(Charlist)) -> Nil
 // Run automatically when the actor is first started.
 fn initialise_actor(
   spec: Spec(state, msg),
+  parent: Pid,
   ack: Subject(Result(Subject(msg), ExitReason)),
 ) -> ExitReason {
   // This is the main subject for the actor, the one that the actor.start
@@ -391,7 +374,7 @@ fn initialise_actor(
 
   case result {
     // Init was OK, send the subject to the parent and start handling messages.
-    Ready(state, selector) -> {
+    Ok(#(state, selector)) -> {
       let selector = init_selector(subject, selector)
       // Signal to parent that the process has initialised successfully
       process.send(ack, Ok(subject))
@@ -399,7 +382,7 @@ fn initialise_actor(
       let self =
         Self(
           state: state,
-          parent: process.subject_owner(ack),
+          parent:,
           subject: subject,
           selector: selector,
           message_handler: spec.loop,
@@ -410,7 +393,7 @@ fn initialise_actor(
     }
 
     // The init failed. Send the reason back to the parent, but exit normally.
-    Failed(reason) -> {
+    Error(reason) -> {
       process.send(ack, Error(Abnormal(reason)))
       exit_process(process.Normal)
     }
@@ -443,16 +426,6 @@ pub type StartResult(msg) =
 pub type ErlangStartResult =
   Result(Pid, Dynamic)
 
-/// Convert a Gleam actor start result into an Erlang supervisor-compatible
-/// process start result.
-///
-pub fn to_erlang_start_result(res: StartResult(msg)) -> ErlangStartResult {
-  case res {
-    Ok(x) -> Ok(process.subject_owner(x))
-    Error(x) -> Error(dynamic.from(x))
-  }
-}
-
 type StartInitMessage(msg) {
   Ack(Result(Subject(msg), ExitReason))
   Mon(process.ProcessDown)
@@ -470,13 +443,11 @@ type StartInitMessage(msg) {
 ///
 pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
   let ack_subject = process.new_subject()
+  let self = process.self()
 
-  let child =
-    process.start(linked: True, running: fn() {
-      initialise_actor(spec, ack_subject)
-    })
+  let child = process.spawn(fn() { initialise_actor(spec, self, ack_subject) })
 
-  let monitor = process.monitor_process(child)
+  let monitor = process.monitor(child)
   let selector =
     process.new_selector()
     |> process.selecting(ack_subject, Ack)
@@ -524,7 +495,7 @@ pub fn start(
   loop: fn(msg, state) -> Next(msg, state),
 ) -> Result(Subject(msg), StartError) {
   start_spec(Spec(
-    init: fn() { Ready(state, process.new_selector()) },
+    init: fn() { Ok(#(state, process.new_selector())) },
     loop: loop,
     init_timeout: 5000,
   ))

@@ -265,21 +265,17 @@ pub fn restart(child: ChildBuilder, restart: Restart) -> ChildBuilder {
 }
 
 fn convert_child(child: ChildBuilder) -> Dict(Atom, Dynamic) {
-  let mfa = #(
-    atom.create_from_string("erlang"),
-    atom.create_from_string("apply"),
-    [dynamic.from(child.starter), dynamic.from([])],
-  )
+  let mfa = #(atom.create("erlang"), atom.create("apply"), [
+    dynamic.from(child.starter),
+    dynamic.from([]),
+  ])
 
   let #(type_, shutdown) = case child.child_type {
     Supervisor -> #(
-      atom.create_from_string("supervisor"),
-      dynamic.from(atom.create_from_string("infinity")),
+      atom.create("supervisor"),
+      dynamic.from(atom.create("infinity")),
     )
-    Worker(timeout) -> #(
-      atom.create_from_string("worker"),
-      dynamic.from(timeout),
-    )
+    Worker(timeout) -> #(atom.create("worker"), dynamic.from(timeout))
   }
 
   dict.new()
@@ -296,7 +292,7 @@ fn property(
   key: String,
   value: anything,
 ) -> Dict(Atom, Dynamic) {
-  dict.insert(dict, atom.create_from_string(key), dynamic.from(value))
+  dict.insert(dict, atom.create(key), dynamic.from(value))
 }
 
 // Callback used by the Erlang supervisor module.
