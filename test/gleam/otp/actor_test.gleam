@@ -12,8 +12,8 @@ pub fn get_state_test() {
   let assert Ok(subject) =
     actor.start("Test state", fn(_msg, state) { actor.continue(state) })
 
-  subject
-  |> process.subject_owner
+  let assert Ok(pid) = subject |> process.subject_owner
+  pid
   |> system.get_state
   |> should.equal(dynamic.from("Test state"))
 }
@@ -25,15 +25,15 @@ pub fn get_status_test() {
   let assert Ok(subject) =
     actor.start(Nil, fn(_msg, state) { actor.continue(state) })
 
-  subject
-  |> process.subject_owner
+  let assert Ok(pid) = subject |> process.subject_owner
+  pid
   |> get_status
   // TODO: assert something about the response
 }
 
 pub fn failed_init_test() {
   actor.Spec(
-    init: fn() { actor.Failed("not enough wiggles") },
+    init: fn() { Error("not enough wiggles") },
     loop: fn(_msg, state) { actor.continue(state) },
     init_timeout: 10,
   )
@@ -71,10 +71,10 @@ pub fn timed_out_init_test() {
 pub fn suspend_resume_test() {
   let assert Ok(subject) =
     actor.start(0, fn(_msg, iter) { actor.continue(iter + 1) })
+  let assert Ok(pid) = subject |> process.subject_owner
 
   // Suspend process
-  subject
-  |> process.subject_owner
+  pid
   |> system.suspend
   |> should.equal(Nil)
 
@@ -82,20 +82,17 @@ pub fn suspend_resume_test() {
   actor.send(subject, "hi")
 
   // System messages are still handled
-  subject
-  |> process.subject_owner
+  pid
   |> system.get_state
   |> should.equal(dynamic.from(0))
 
   // Resume process
-  subject
-  |> process.subject_owner
+  pid
   |> system.resume
   |> should.equal(Nil)
 
   // The queued regular message has been handled so the state has incremented
-  subject
-  |> process.subject_owner
+  pid
   |> system.get_state
   |> should.equal(dynamic.from(1))
 }
@@ -104,40 +101,35 @@ pub fn subject_test() {
   let assert Ok(subject) =
     actor.start("state 1", fn(msg, _state) { actor.continue(msg) })
 
-  subject
-  |> process.subject_owner
+  let assert Ok(pid) = subject |> process.subject_owner
+  pid
   |> system.get_state()
   |> should.equal(dynamic.from("state 1"))
 
   actor.send(subject, "state 2")
 
-  subject
-  |> process.subject_owner
+  pid
   |> system.get_state()
   |> should.equal(dynamic.from("state 2"))
 }
 
 pub fn unexpected_message_test() {
   // Quieten the logger
-  logger_set_primary_config(
-    atom.create_from_string("level"),
-    atom.create_from_string("error"),
-  )
+  logger_set_primary_config(atom.create("level"), atom.create("error"))
 
   let assert Ok(subject) =
     actor.start("state 1", fn(msg, _state) { actor.continue(msg) })
 
-  subject
-  |> process.subject_owner
+  let assert Ok(pid) = subject |> process.subject_owner
+  pid
   |> system.get_state()
   |> should.equal(dynamic.from("state 1"))
 
-  raw_send(process.subject_owner(subject), "Unexpected message 1")
+  raw_send(pid, "Unexpected message 1")
   actor.send(subject, "state 2")
-  raw_send(process.subject_owner(subject), "Unexpected message 2")
+  raw_send(pid, "Unexpected message 2")
 
-  subject
-  |> process.subject_owner
+  pid
   |> system.get_state()
   |> should.equal(dynamic.from("state 2"))
 }
@@ -149,16 +141,16 @@ pub fn unexpected_message_handled_test() {
         let selector =
           process.new_selector()
           |> process.selecting_anything(function.identity)
-        actor.Ready(dynamic.from("init"), selector)
+        Ok(#(dynamic.from("init"), selector))
       },
       loop: fn(msg, _state) { actor.continue(msg) },
       init_timeout: 10,
     ))
+  let assert Ok(pid) = subject |> process.subject_owner
 
-  raw_send(process.subject_owner(subject), "Unexpected message 1")
+  raw_send(pid, "Unexpected message 1")
 
-  subject
-  |> process.subject_owner
+  pid
   |> system.get_state()
   |> should.equal(dynamic.from("Unexpected message 1"))
 }
@@ -228,7 +220,7 @@ pub fn replace_selector_test() {
   process.send(str_subj, "test 4")
   // Check state
   get_actor_state(subject)
-  |> should.equal(dynamic.from("unknown message: String"))
+  |> should.equal(dynamic.from("unknown message: Tuple of 2 elements"))
 }
 
 pub fn abnormal_exit_can_be_trapped_test() {
@@ -241,6 +233,7 @@ pub fn abnormal_exit_can_be_trapped_test() {
   let assert Ok(subject) =
     actor.start(Nil, fn(_, _) { actor.Stop(process.Abnormal("reason")) })
   process.send(subject, Nil)
+  let assert Ok(pid) = subject |> process.subject_owner
 
   let trapped_reason = process.select(exits, 10)
 
@@ -250,10 +243,7 @@ pub fn abnormal_exit_can_be_trapped_test() {
   // The weird reason below is because of https://github.com/gleam-lang/erlang/issues/66
   trapped_reason
   |> should.equal(
-    Ok(process.ExitMessage(
-      process.subject_owner(subject),
-      process.Abnormal("Abnormal(\"reason\")"),
-    )),
+    Ok(process.ExitMessage(pid, process.Abnormal("Abnormal(\"reason\")"))),
   )
 }
 
@@ -267,6 +257,7 @@ pub fn killed_exit_can_be_trapped_test() {
   let assert Ok(subject) =
     actor.start(Nil, fn(_, _) { actor.Stop(process.Killed) })
   process.send(subject, Nil)
+  let assert Ok(pid) = subject |> process.subject_owner
 
   let trapped_reason = process.select(exits, 10)
 
@@ -274,9 +265,7 @@ pub fn killed_exit_can_be_trapped_test() {
   process.trap_exits(False)
 
   trapped_reason
-  |> should.equal(
-    Ok(process.ExitMessage(process.subject_owner(subject), process.Killed)),
-  )
+  |> should.equal(Ok(process.ExitMessage(pid, process.Killed)))
 }
 
 fn mapped_selector(mapper: fn(a) -> ActorMessage) {
@@ -286,19 +275,14 @@ fn mapped_selector(mapper: fn(a) -> ActorMessage) {
     process.new_selector()
     |> process.selecting(subject, mapper)
     // Always create a selector that catches unknown messages
-    |> process.selecting_anything(fn(data) {
-      data
-      |> dynamic.element(1, dynamic.dynamic)
-      |> result.unwrap(dynamic.from("unknown"))
-      |> Unknown
-    })
+    |> process.selecting_anything(Unknown)
 
   #(subject, selector)
 }
 
 fn get_actor_state(subject: Subject(a)) {
-  subject
-  |> process.subject_owner
+  let assert Ok(pid) = subject |> process.subject_owner
+  pid
   |> system.get_state
 }
 

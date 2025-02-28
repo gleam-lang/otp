@@ -55,8 +55,7 @@ pub opaque type Task(value) {
 pub fn async(work: fn() -> value) -> Task(value) {
   let owner = process.self()
   let subject = process.new_subject()
-  let pid =
-    process.start(linked: True, running: fn() { process.send(subject, work()) })
+  let pid = process.spawn(fn() { process.send(subject, work()) })
   Task(owner: owner, pid: pid, subject: subject)
 }
 

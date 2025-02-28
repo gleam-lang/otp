@@ -6,7 +6,8 @@ fn actor_child(name name, init init, loop loop) -> sup.ChildBuilder {
   sup.worker_child(name, fn() {
     let spec = actor.Spec(init: init, init_timeout: 10, loop: loop)
     let assert Ok(subject) = actor.start_spec(spec)
-    Ok(process.subject_owner(subject))
+    let assert Ok(pid) = process.subject_owner(subject)
+    Ok(pid)
   })
 }
 
@@ -20,7 +21,7 @@ fn init_notifier_child(
     name: name,
     init: fn() {
       process.send(subject, #(name, process.self()))
-      actor.Ready(name, process.new_selector())
+      Ok(#(name, process.new_selector()))
     },
     loop: fn(_msg, state) { actor.continue(state) },
   )

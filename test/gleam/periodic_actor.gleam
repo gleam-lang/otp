@@ -3,7 +3,7 @@
 
 import gleam/erlang/process.{type Subject}
 import gleam/io
-import gleam/otp/actor.{type StartError, Ready, Spec}
+import gleam/otp/actor.{type StartError, Spec}
 
 pub fn periodic_actor(
   every period_milliseconds: Int,
@@ -19,7 +19,7 @@ pub fn periodic_actor(
     // Send the first message to trigger the looping
     process.send(subject, Nil)
     // We're ready to start receiving messages
-    Ready(subject, selector)
+    Ok(#(subject, selector))
   }
 
   let loop = fn(
