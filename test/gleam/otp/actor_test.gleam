@@ -9,11 +9,12 @@ import gleam/result
 import gleeunit/should
 
 pub fn get_state_test() {
-  let assert Ok(subject) =
-    actor.start("Test state", fn(_msg, state) { actor.continue(state) })
+  let assert Ok(actor) =
+    actor.new("Test state")
+    |> actor.on_message(fn(_msg, state) { actor.continue(state) })
+    |> actor.start
 
-  let assert Ok(pid) = subject |> process.subject_owner
-  pid
+  actor.pid
   |> system.get_state
   |> should.equal(dynamic.from("Test state"))
 }
@@ -22,22 +23,20 @@ pub fn get_state_test() {
 fn get_status(a: Pid) -> Dynamic
 
 pub fn get_status_test() {
-  let assert Ok(subject) =
-    actor.start(Nil, fn(_msg, state) { actor.continue(state) })
+  let assert Ok(actor) =
+    actor.new(Nil)
+    |> actor.on_message(fn(_msg, state) { actor.continue(state) })
+    |> actor.start
 
-  let assert Ok(pid) = subject |> process.subject_owner
-  pid
+  actor.pid
   |> get_status
   // TODO: assert something about the response
 }
 
 pub fn failed_init_test() {
-  actor.Spec(
-    init: fn() { Error("not enough wiggles") },
-    loop: fn(_msg, state) { actor.continue(state) },
-    init_timeout: 10,
-  )
-  |> actor.start_spec
+  actor.new_with_initialiser(100, fn() { Error("not enough wiggles") })
+  |> actor.on_message(fn(state, _msg) { actor.continue(state) })
+  |> actor.start
   |> result.is_error
   |> should.be_true
 }
@@ -49,17 +48,14 @@ pub fn timed_out_init_test() {
     |> process.selecting_trapped_exits(function.identity)
 
   let result =
-    actor.Spec(
-      init: fn() {
-        process.sleep(1000)
-        panic as "should not be reached"
-      },
-      loop: fn(_msg, _state) { panic as "should not be reached" },
-      init_timeout: 1,
-    )
-    |> actor.start_spec
+    actor.new_with_initialiser(1, fn() {
+      process.sleep(100)
+      panic as "should not be reached"
+    })
+    |> actor.on_message(fn(_state, _msg) { panic as "should not be reached" })
+    |> actor.start
 
-  // Check that the exit isn't unhandled: it should be handled by start_spec.
+  // Check that the exit isn't unhandled: it should be handled by start.
   // Stop trapping exits before asserting, to avoid interfering with other tests.
   let exit = process.select(exit_selector, 10)
   process.trap_exits(False)
@@ -69,46 +65,48 @@ pub fn timed_out_init_test() {
 }
 
 pub fn suspend_resume_test() {
-  let assert Ok(subject) =
-    actor.start(0, fn(_msg, iter) { actor.continue(iter + 1) })
-  let assert Ok(pid) = subject |> process.subject_owner
+  let assert Ok(actor) =
+    actor.new(0)
+    |> actor.on_message(fn(iter, _msg) { actor.continue(iter + 1) })
+    |> actor.start
 
   // Suspend process
-  pid
+  actor.pid
   |> system.suspend
   |> should.equal(Nil)
 
   // This normal message will not be handled yet so the state remains 0
-  actor.send(subject, "hi")
+  actor.send(actor.returned, "hi")
 
   // System messages are still handled
-  pid
+  actor.pid
   |> system.get_state
   |> should.equal(dynamic.from(0))
 
   // Resume process
-  pid
+  actor.pid
   |> system.resume
   |> should.equal(Nil)
 
   // The queued regular message has been handled so the state has incremented
-  pid
+  actor.pid
   |> system.get_state
   |> should.equal(dynamic.from(1))
 }
 
 pub fn subject_test() {
-  let assert Ok(subject) =
-    actor.start("state 1", fn(msg, _state) { actor.continue(msg) })
+  let assert Ok(actor) =
+    actor.new("state 1")
+    |> actor.on_message(fn(_state, msg) { actor.continue(msg) })
+    |> actor.start
 
-  let assert Ok(pid) = subject |> process.subject_owner
-  pid
+  actor.pid
   |> system.get_state()
   |> should.equal(dynamic.from("state 1"))
 
-  actor.send(subject, "state 2")
+  actor.send(actor.returned, "state 2")
 
-  pid
+  actor.pid
   |> system.get_state()
   |> should.equal(dynamic.from("state 2"))
 }
@@ -117,40 +115,39 @@ pub fn unexpected_message_test() {
   // Quieten the logger
   logger_set_primary_config(atom.create("level"), atom.create("error"))
 
-  let assert Ok(subject) =
-    actor.start("state 1", fn(msg, _state) { actor.continue(msg) })
+  let assert Ok(actor) =
+    actor.new("state 1")
+    |> actor.on_message(fn(_state, msg) { actor.continue(msg) })
+    |> actor.start
 
-  let assert Ok(pid) = subject |> process.subject_owner
-  pid
+  actor.pid
   |> system.get_state()
   |> should.equal(dynamic.from("state 1"))
 
-  raw_send(pid, "Unexpected message 1")
-  actor.send(subject, "state 2")
-  raw_send(pid, "Unexpected message 2")
+  raw_send(actor.pid, "Unexpected message 1")
+  actor.send(actor.returned, "state 2")
+  raw_send(actor.pid, "Unexpected message 2")
 
-  pid
+  actor.pid
   |> system.get_state()
   |> should.equal(dynamic.from("state 2"))
 }
 
 pub fn unexpected_message_handled_test() {
-  let assert Ok(subject) =
-    actor.start_spec(actor.Spec(
-      init: fn() {
-        let selector =
-          process.new_selector()
-          |> process.selecting_anything(function.identity)
-        Ok(#(dynamic.from("init"), selector))
-      },
-      loop: fn(msg, _state) { actor.continue(msg) },
-      init_timeout: 10,
-    ))
-  let assert Ok(pid) = subject |> process.subject_owner
+  let assert Ok(actor) =
+    actor.new_with_initialiser(10, fn() {
+      let selector =
+        process.new_selector() |> process.selecting_anything(function.identity)
+      actor.initialised(dynamic.from("initial"))
+      |> actor.selecting(selector)
+      |> Ok
+    })
+    |> actor.on_message(fn(_state, msg) { actor.continue(msg) })
+    |> actor.start
 
-  raw_send(pid, "Unexpected message 1")
+  raw_send(actor.pid, "Unexpected message 1")
 
-  pid
+  actor.pid
   |> system.get_state()
   |> should.equal(dynamic.from("Unexpected message 1"))
 }
@@ -163,64 +160,86 @@ type ActorMessage {
     mapper: fn(String) -> ActorMessage,
   )
   SetIntSelector(reply: Subject(Subject(Int)), mapper: fn(Int) -> ActorMessage)
+  GetText(reply: Subject(String))
 }
 
 pub fn replace_selector_test() {
-  let assert Ok(subject) =
-    actor.start("init", fn(msg: ActorMessage, state) {
+  let assert Ok(actor) =
+    actor.new_with_initialiser(50, fn() {
+      let subject = process.new_subject()
+      let selector =
+        process.new_selector() |> process.selecting(subject, function.identity)
+      actor.initialised(#(selector, "initial"))
+      |> actor.returning(subject)
+      |> actor.selecting(selector)
+      |> Ok
+    })
+    |> actor.on_message(fn(state, msg) {
       case msg {
-        UserMessage(string) -> actor.continue("user message: " <> string)
-        Unknown(val) ->
-          actor.continue("unknown message: " <> dynamic.classify(val))
-        SetStringSelector(reply, mapper) -> {
-          let #(subject, selector) = mapped_selector(mapper)
-          process.send(reply, subject)
+        UserMessage(string) ->
+          actor.continue(#(state.0, "user message: " <> string))
 
+        Unknown(val) ->
+          actor.continue(#(
+            state.0,
+            "unknown message: " <> dynamic.classify(val),
+          ))
+
+        SetStringSelector(reply, mapper) -> {
+          let #(subject, selector) = mapped_selector(state.0, mapper)
+          process.send(reply, subject)
           actor.continue(state)
           |> actor.with_selector(selector)
         }
-        SetIntSelector(reply, mapper) -> {
-          let #(subject, selector) = mapped_selector(mapper)
-          process.send(reply, subject)
 
+        SetIntSelector(reply, mapper) -> {
+          let #(subject, selector) = mapped_selector(state.0, mapper)
+          process.send(reply, subject)
           actor.continue(state)
           |> actor.with_selector(selector)
+        }
+
+        GetText(reply) -> {
+          process.send(reply, state.1)
+          actor.continue(state)
         }
       }
     })
+    |> actor.start
 
   // Send initial user message to original subject
-  process.send(subject, UserMessage("test 1"))
+  process.send(actor.returned, UserMessage("test 1"))
   // Check state
-  get_actor_state(subject)
-  |> should.equal(dynamic.from("user message: test 1"))
+  process.call(actor.returned, GetText, 50)
+  |> should.equal("user message: test 1")
 
   // Get a new subject with string selector
-  let str_subj = process.call(subject, SetStringSelector(_, UserMessage), 1000)
+  let str_subj =
+    process.call(actor.returned, SetStringSelector(_, UserMessage), 1000)
   // Send to new string subject
   process.send(str_subj, "test 2")
   // Check state
-  get_actor_state(subject)
-  |> should.equal(dynamic.from("user message: test 2"))
+  process.call(actor.returned, GetText, 50)
+  |> should.equal("user message: test 2")
 
   // Get a new subject with int selector
   let int_subj =
     process.call(
-      subject,
+      actor.returned,
       SetIntSelector(_, fn(n: Int) { UserMessage("test " <> int.to_string(n)) }),
       1000,
     )
   // Send to new int subject
   process.send(int_subj, 3)
   // Check state
-  get_actor_state(subject)
-  |> should.equal(dynamic.from("user message: test 3"))
+  process.call(actor.returned, GetText, 50)
+  |> should.equal("user message: test 3")
 
   // Try to send to old string subject
   process.send(str_subj, "test 4")
   // Check state
-  get_actor_state(subject)
-  |> should.equal(dynamic.from("unknown message: Tuple of 2 elements"))
+  process.call(actor.returned, GetText, 50)
+  |> should.equal("unknown message: Tuple of 2 elements")
 }
 
 pub fn abnormal_exit_can_be_trapped_test() {
@@ -230,10 +249,11 @@ pub fn abnormal_exit_can_be_trapped_test() {
     |> process.selecting_trapped_exits(function.identity)
 
   // Make an actor exit with an abnormal reason
-  let assert Ok(subject) =
-    actor.start(Nil, fn(_, _) { actor.Stop(process.Abnormal("reason")) })
-  process.send(subject, Nil)
-  let assert Ok(pid) = subject |> process.subject_owner
+  let assert Ok(actor) =
+    actor.new(Nil)
+    |> actor.on_message(fn(_, _) { actor.Stop(process.Abnormal("reason")) })
+    |> actor.start
+  process.send(actor.returned, Nil)
 
   let trapped_reason = process.select(exits, 10)
 
@@ -243,7 +263,7 @@ pub fn abnormal_exit_can_be_trapped_test() {
   // The weird reason below is because of https://github.com/gleam-lang/erlang/issues/66
   trapped_reason
   |> should.equal(
-    Ok(process.ExitMessage(pid, process.Abnormal("Abnormal(\"reason\")"))),
+    Ok(process.ExitMessage(actor.pid, process.Abnormal("Abnormal(\"reason\")"))),
   )
 }
 
@@ -254,10 +274,11 @@ pub fn killed_exit_can_be_trapped_test() {
     |> process.selecting_trapped_exits(function.identity)
 
   // Make an actor exit with a killed reason
-  let assert Ok(subject) =
-    actor.start(Nil, fn(_, _) { actor.Stop(process.Killed) })
-  process.send(subject, Nil)
-  let assert Ok(pid) = subject |> process.subject_owner
+  let assert Ok(actor) =
+    actor.new(Nil)
+    |> actor.on_message(fn(_, _) { actor.Stop(process.Killed) })
+    |> actor.start
+  process.send(actor.returned, Nil)
 
   let trapped_reason = process.select(exits, 10)
 
@@ -265,25 +286,22 @@ pub fn killed_exit_can_be_trapped_test() {
   process.trap_exits(False)
 
   trapped_reason
-  |> should.equal(Ok(process.ExitMessage(pid, process.Killed)))
+  |> should.equal(Ok(process.ExitMessage(actor.pid, process.Killed)))
 }
 
-fn mapped_selector(mapper: fn(a) -> ActorMessage) {
+fn mapped_selector(
+  selector: process.Selector(ActorMessage),
+  mapper: fn(a) -> ActorMessage,
+) {
   let subject = process.new_subject()
 
   let selector =
-    process.new_selector()
+    selector
     |> process.selecting(subject, mapper)
     // Always create a selector that catches unknown messages
     |> process.selecting_anything(Unknown)
 
   #(subject, selector)
-}
-
-fn get_actor_state(subject: Subject(a)) {
-  let assert Ok(pid) = subject |> process.subject_owner
-  pid
-  |> system.get_state
 }
 
 @external(erlang, "erlang", "send")

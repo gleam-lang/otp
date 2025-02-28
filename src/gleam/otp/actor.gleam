@@ -133,14 +133,13 @@
 //// }
 //// ```
 
-//
-
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process.{
   type ExitReason, type Pid, type Selector, type Subject, Abnormal, Killed,
 }
+import gleam/function
 import gleam/option.{type Option, None, Some}
 import gleam/otp/system.{
   type DebugState, type Mode, type StatusInfo, type SystemMessage, GetState,
@@ -159,9 +158,11 @@ type Message(message) {
   Unexpected(Dynamic)
 }
 
+// TODO: make opaque
+// TODO: changelog argument order change
 /// The type used to indicate what to do after handling a message.
 ///
-pub type Next(message, state) {
+pub type Next(state, message) {
   /// Continue handling messages.
   ///
   /// An optional selector can be provided to changes the messages that the
@@ -175,8 +176,8 @@ pub type Next(message, state) {
   Stop(ExitReason)
 }
 
-pub fn continue(state: state) -> Next(message, state) {
-  Continue(state, None)
+pub fn continue(state: state) -> Next(state, message) {
+  Continue(state:, selector: None)
 }
 
 /// Provide a selector to change the messages that the actor is handling
@@ -184,9 +185,9 @@ pub fn continue(state: state) -> Next(message, state) {
 /// in the actor's `init` callback, or in any previous `Next` value.
 ///
 pub fn with_selector(
-  value: Next(message, state),
+  value: Next(state, message),
   selector: Selector(message),
-) -> Next(message, state) {
+) -> Next(state, message) {
   case value {
     Continue(state, _) -> Continue(state, Some(selector))
     Stop(_) -> value
@@ -201,26 +202,58 @@ type Self(state, msg) {
     parent: Pid,
     /// The state of this actor, provided by the programmer.
     state: state,
-    /// The subject that was created by this actor during initialisation.
-    subject: Subject(msg),
     /// The selector that actor is currently using to reveive messages. This
     /// can be changed by the `Next` value returned by the actor's `loop` callback.
     selector: Selector(Message(msg)),
     /// An opaque value used by the OTP system debug APIs.
     debug_state: DebugState,
     /// The message handling code provided by the programmer.
-    message_handler: fn(msg, state) -> Next(msg, state),
+    message_handler: fn(state, msg) -> Next(state, msg),
   )
 }
 
-/// This data structure holds all the values required by the `start_spec`
-/// function in order to create an actor.
-///
-/// If you do not need to configure the initialisation behaviour of your actor
-/// consider using the `start` function.
-///
-pub type Spec(state, msg) {
-  Spec(
+// TODO: document
+// TODO: test
+pub type Started(data) {
+  Started(pid: Pid, returned: data)
+}
+
+// TODO: document
+// TODO: test
+pub opaque type Initialised(state, message, return) {
+  Initialised(state: state, selector: Selector(message), return: return)
+}
+
+// TODO: document
+// TODO: test
+pub fn initialised(state: state) -> Initialised(state, message, Nil) {
+  Initialised(state, process.new_selector(), Nil)
+}
+
+// TODO: document
+// TODO: test
+pub fn selecting(
+  initialised: Initialised(state, old_message, return),
+  selector: Selector(message),
+) -> Initialised(state, message, return) {
+  Initialised(..initialised, selector:)
+}
+
+// TODO: document
+// TODO: test
+pub fn returning(
+  initialised: Initialised(state, message, old_return),
+  return: return,
+) -> Initialised(state, message, return) {
+  Initialised(..initialised, return:)
+}
+
+// TODO: redesign
+// TODO: opaque
+// TODO: builder API
+// TODO: document
+pub opaque type Builder(state, message, return) {
+  Builder(
     /// The initialisation functionality for the actor. This function is called
     /// just after the actor starts but before the channel sender is returned
     /// to the parent.
@@ -229,15 +262,50 @@ pub type Spec(state, msg) {
     /// correct. If this function returns an error it means that the actor has
     /// failed to start and an error is returned to the parent.
     ///
-    init: fn() -> Result(#(state, Selector(msg)), String),
+    initialise: fn() -> Result(Initialised(state, message, return), String),
     /// How many milliseconds the `init` function has to return before it is
     /// considered to have taken too long and failed.
     ///
-    init_timeout: Int,
+    initialisation_timeout: Int,
+    // TODO: changelog argument order change
     /// This function is called to handle each message that the actor receives.
     ///
-    loop: fn(msg, state) -> Next(msg, state),
+    on_message: fn(state, message) -> Next(state, message),
   )
+}
+
+// TODO: document
+// TODO: test
+pub fn new(state: state) -> Builder(state, message, Subject(message)) {
+  Builder(
+    initialise: fn() {
+      let subject = process.new_subject()
+      let selector =
+        process.new_selector() |> process.selecting(subject, function.identity)
+      initialised(state)
+      |> selecting(selector)
+      |> returning(subject)
+      |> Ok
+    },
+    initialisation_timeout: 1000,
+    on_message: fn(_, _) { Stop(process.Normal) },
+  )
+}
+
+pub fn new_with_initialiser(
+  timeout: Int,
+  initialise: fn() -> Result(Initialised(state, message, return), String),
+) -> Builder(state, message, return) {
+  Builder(initialise:, initialisation_timeout: timeout, on_message: fn(_, _) {
+    Stop(process.Normal)
+  })
+}
+
+pub fn on_message(
+  builder: Builder(state, message, return),
+  handler: fn(state, message) -> Next(state, message),
+) -> Builder(state, message, return) {
+  Builder(..builder, on_message: handler)
 }
 
 // TODO: Check needed functionality here to be OTP compatible
@@ -339,14 +407,14 @@ fn loop(self: Self(state, msg)) -> ExitReason {
     // A regular message that the programmer is expecting, either over the
     // subject or some other messsage that the programmer's selector expects.
     Message(msg) ->
-      case self.message_handler(msg, self.state) {
+      case self.message_handler(self.state, msg) {
         Stop(reason) -> exit_process(reason)
 
         Continue(state: state, selector: new_selector) -> {
-          let selector =
-            new_selector
-            |> option.map(init_selector(self.subject, _))
-            |> option.unwrap(self.selector)
+          let selector = case new_selector {
+            None -> self.selector
+            Some(s) -> process.map_selector(s, Message)
+          }
           loop(Self(..self, state: state, selector: selector))
         }
       }
@@ -359,33 +427,28 @@ fn log_warning(a: Charlist, b: List(Charlist)) -> Nil
 
 // Run automatically when the actor is first started.
 fn initialise_actor(
-  spec: Spec(state, msg),
+  builder: Builder(state, msg, return),
   parent: Pid,
-  ack: Subject(Result(Subject(msg), ExitReason)),
+  ack: Subject(Result(Started(return), ExitReason)),
 ) -> ExitReason {
-  // This is the main subject for the actor, the one that the actor.start
-  // functions return.
-  // Once the actor has been initialised this will be sent to the parent for
-  // the function to return.
-  let subject = process.new_subject()
+  let pid = process.self()
 
   // Run the programmer supplied initialisation code.
-  let result = spec.init()
+  let result = builder.initialise()
 
   case result {
     // Init was OK, send the subject to the parent and start handling messages.
-    Ok(#(state, selector)) -> {
-      let selector = init_selector(subject, selector)
+    Ok(Initialised(state:, selector:, return:)) -> {
+      let selector = process.map_selector(selector, Message)
       // Signal to parent that the process has initialised successfully
-      process.send(ack, Ok(subject))
+      process.send(ack, Ok(Started(pid:, returned: return)))
       // Start message receive loop
       let self =
         Self(
           state: state,
           parent:,
-          subject: subject,
           selector: selector,
-          message_handler: spec.loop,
+          message_handler: builder.on_message,
           debug_state: system.debug_state([]),
           mode: Running,
         )
@@ -398,12 +461,6 @@ fn initialise_actor(
       exit_process(process.Normal)
     }
   }
-}
-
-fn init_selector(subject, selector) {
-  process.new_selector()
-  |> process.selecting(subject, Message)
-  |> process.merge_selector(process.map_selector(selector, Message))
 }
 
 pub type StartError {
@@ -426,8 +483,8 @@ pub type StartResult(msg) =
 pub type ErlangStartResult =
   Result(Pid, Dynamic)
 
-type StartInitMessage(msg) {
-  Ack(Result(Subject(msg), ExitReason))
+type StartInitMessage(data) {
+  Ack(Result(Started(data), ExitReason))
   Mon(process.ProcessDown)
 }
 
@@ -441,11 +498,14 @@ type StartInitMessage(msg) {
 /// If you do not need to specify the initialisation behaviour of your actor
 /// consider using the `start` function.
 ///
-pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
+pub fn start(
+  builder: Builder(state, msg, return),
+) -> Result(Started(return), StartError) {
   let ack_subject = process.new_subject()
   let self = process.self()
 
-  let child = process.spawn(fn() { initialise_actor(spec, self, ack_subject) })
+  let child =
+    process.spawn(fn() { initialise_actor(builder, self, ack_subject) })
 
   let monitor = process.monitor(child)
   let selector =
@@ -453,9 +513,9 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
     |> process.selecting(ack_subject, Ack)
     |> process.selecting_process_down(monitor, Mon)
 
-  let result = case process.select(selector, spec.init_timeout) {
+  let result = case process.select(selector, builder.initialisation_timeout) {
     // Child started OK
-    Ok(Ack(Ok(channel))) -> Ok(channel)
+    Ok(Ack(Ok(subject))) -> Ok(subject)
 
     // Child initialiser returned an error
     Ok(Ack(Error(reason))) -> Error(InitFailed(reason))
@@ -478,27 +538,6 @@ pub fn start_spec(spec: Spec(state, msg)) -> Result(Subject(msg), StartError) {
   process.demonitor_process(monitor)
 
   result
-}
-
-/// Start an actor with a given initial state and message handling loop
-/// function.
-///
-/// This function returns a `Result` but it will always be `Ok` so it is safe
-/// to use with `assert` if you are not starting this actor as part of a
-/// supervision tree.
-///
-/// If you wish to configure the initialisation behaviour of a new actor see
-/// the `Spec` record and the `start_spec` function.
-///
-pub fn start(
-  state: state,
-  loop: fn(msg, state) -> Next(msg, state),
-) -> Result(Subject(msg), StartError) {
-  start_spec(Spec(
-    init: fn() { Ok(#(state, process.new_selector())) },
-    loop: loop,
-    init_timeout: 5000,
-  ))
 }
 
 /// Send a message over a given channel.
