@@ -1,13 +1,14 @@
 import gleam/erlang/process.{type Pid, type Subject}
 import gleam/otp/actor
 import gleam/otp/static_supervisor as sup
+import gleam/result
 
 fn actor_child(name name, init init, loop loop) -> sup.ChildBuilder {
   sup.worker_child(name, fn() {
-    let spec = actor.Spec(init: init, init_timeout: 10, loop: loop)
-    let assert Ok(subject) = actor.start_spec(spec)
-    let assert Ok(pid) = process.subject_owner(subject)
-    Ok(pid)
+    actor.new_with_initialiser(50, init)
+    |> actor.on_message(loop)
+    |> actor.start
+    |> result.map(fn(s) { s.pid })
   })
 }
 
@@ -21,7 +22,7 @@ fn init_notifier_child(
     name: name,
     init: fn() {
       process.send(subject, #(name, process.self()))
-      Ok(#(name, process.new_selector()))
+      Ok(actor.initialised(name))
     },
     loop: fn(_msg, state) { actor.continue(state) },
   )
