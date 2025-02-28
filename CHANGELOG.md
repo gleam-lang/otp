@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.0-rc1 - Unreleased
+
+- The `supervisor` module has been removed.
+- In the `gleam/otp/actor` module:
+  - The `to_erlang_start_result` function has been removed.
+  - The `InitResult` type has been removed.
+  - The `Spec` type has been replaced with the `Builder` type.
+  - The `start` function has been removed.
+  - The `start_spec` function has been renamed to `start`.
+  - The `Initialised` type has been added, along with the `initialised`,
+    `selecting`, and `returning` functions to create and work with it.
+
 ## Unreleased
 
 - Fixed a bug where using `actor.Stop()` with other reasons than `Normal`
