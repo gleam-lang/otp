@@ -1,6 +1,5 @@
 //// This module provides the _Actor_ abstraction, one of the most common
-//// building blocks of Gleam OTP programs.
-//// 
+//// building blocks of Gleam OTP programs. // 
 //// An Actor is a process like any other BEAM process and can be used to hold
 //// state, execute code, and communicate with other processes by sending and
 //// receiving messages. The advantage of using the actor abstraction over a bare
@@ -22,57 +21,59 @@
 ////
 //// ```gleam
 //// pub fn main() {
-////   // Start the actor with initial state of an empty list, and the
-////   // `handle_message` callback function (defined below).
-////   // We assert that it starts successfully.
-////   // 
-////   // In real-world Gleam OTP programs we would likely write wrapper functions
-////   // called `start`, `push` `pop`, `shutdown` to start and interact with the
-////   // Actor. We are not doing that here for the sake of showing how the Actor 
-////   // API works.
-////   let assert Ok(my_actor) = actor.start([], handle_message)
-//// 
-////   // We can send a message to the actor to push elements onto the stack.
-////   process.send(my_actor, Push("Joe"))
-////   process.send(my_actor, Push("Mike"))
-////   process.send(my_actor, Push("Robert"))
-//// 
-////   // The `Push` message expects no response, these messages are sent purely for
-////   // the side effect of mutating the state held by the actor.
-////   //
-////   // We can also send the `Pop` message to take a value off of the actor's
-////   // stack. This message expects a response, so we use `process.call` to send a
-////   // message and wait until a reply is received.
-////   //
-////   // In this instance we are giving the actor 10 milliseconds to reply, if the
-////   // `call` function doesn't get a reply within this time it will panic and
-////   // crash the client process.
-////   let assert Ok("Robert") = process.call(my_actor, Pop, 10)
-////   let assert Ok("Mike") = process.call(my_actor, Pop, 10)
-////   let assert Ok("Joe") = process.call(my_actor, Pop, 10)
-//// 
-////   // The stack is now empty, so if we pop again the actor replies with an error.
-////   let assert Error(Nil) = process.call(my_actor, Pop, 10)
-//// 
-////   // Lastly, we can send a message to the actor asking it to shut down.
-////   process.send(my_actor, Shutdown)
+////  // Start the actor with initial state of an empty list, and the
+////  // `handle_message` callback function (defined below).
+////  // We assert that it starts successfully.
+////  // 
+////  // In real-world Gleam OTP programs we would likely write a wrapper functions
+////  // called `start`, `push` `pop`, `shutdown` to start and interact with the
+////  // Actor. We are not doing that here for the sake of showing how the Actor 
+////  // API works.
+////  let assert Ok(actor) =
+////    actor.new([]) |> actor.on_message(handle_message) |> actor.start
+////  let subject = actor.data
+////
+////  // We can send a message to the actor to push elements onto the stack.
+////  process.send(subject, Push("Joe"))
+////  process.send(subject, Push("Mike"))
+////  process.send(subject, Push("Robert"))
+////
+////  // The `Push` message expects no response, these messages are sent purely for
+////  // the side effect of mutating the state held by the actor.
+////  //
+////  // We can also send the `Pop` message to take a value off of the actor's
+////  // stack. This message expects a response, so we use `process.call` to send a
+////  // message and wait until a reply is received.
+////  //
+////  // In this instance we are giving the actor 10 milliseconds to reply, if the
+////  // `call` function doesn't get a reply within this time it will panic and
+////  // crash the client process.
+////  let assert Ok("Robert") = process.call(subject, Pop, 10)
+////  let assert Ok("Mike") = process.call(subject, Pop, 10)
+////  let assert Ok("Joe") = process.call(subject, Pop, 10)
+////
+////  // The stack is now empty, so if we pop again the actor replies with an error.
+////  let assert Error(Nil) = process.call(subject, Pop, 10)
+////
+////  // Lastly, we can send a message to the actor asking it to shut down.
+////  process.send(subject, Shutdown)
 //// }
 //// ```
 ////
 //// Here is the code that is used to implement this actor:
 ////
 //// ```gleam
-//// import gleam/erlang/process.{type Subject}
-//// import gleam/otp/actor
-////
 //// // First step of implementing the stack Actor is to define the message type that
 //// // it can receive.
 //// //
-//// // The type of the elements in the stack is not fixed so a type parameter is used
+//// // The type of the elements in the stack is no fixed so a type parameter is used
 //// // for it instead of a concrete type such as `String` or `Int`.
 //// pub type Message(element) {
-////   // The `Shutdown` message is used to tell the actor to stop.
+//// /  // The `Shutdown` message is used to tell the actor to stop.
 ////   // It is the simplest message type, it contains no data.
+////   //
+////   // Most the time we don't define an API to shut down an actor, but in this
+////   // example we do to show how it can be done.
 ////   Shutdown
 //// 
 ////   // The `Push` message is used to add a new element to the stack.
@@ -88,20 +89,22 @@
 //// 
 //// // The last part is to implement the `handle_message` callback function.
 //// //
-//// // This function is called by the Actor for each message it receives.
-//// // Actor is single threaded and only does one thing at a time, so it handles
+//// // This function is called by the Actor each for each message it receives.
+//// // Actor is single threaded only does one thing at a time, so it handles
 //// // messages sequentially and one at a time, in the order they are received.
 //// //
 //// // The function takes the message and the current state, and returns a data
 //// // structure that indicates what to do next, along with the new state.
 //// fn handle_message(
-////  message: Message(e),
-////  stack: List(e),
-//// ) -> actor.Next(Message(e), List(e)) {
+////   stack: List(e),
+////   message: Message(e),
+//// ) -> actor.Next(List(e), Message(e)) {
 ////   case message {
-////     // For the `Shutdown` message we return the `actor.Stop` value, which causes
+////     // For the `Shutdown` message we return the `actor.stop` value, which causes
 ////     // the actor to discard any remaining messages and stop.
-////     Shutdown -> actor.Stop(process.Normal)
+////     // We may chose to do some clean-up work here, but this actor doesn't need
+////     // to do this.
+////     Shutdown -> actor.stop()
 //// 
 ////     // For the `Push` message we add the new element to the stack and return
 ////     // `actor.continue` with this new stack, causing the actor to process any
@@ -162,7 +165,7 @@ type Message(message) {
 // TODO: changelog argument order change
 /// The type used to indicate what to do after handling a message.
 ///
-pub type Next(state, message) {
+pub opaque type Next(state, message) {
   /// Continue handling messages.
   ///
   /// An optional selector can be provided to changes the messages that the
@@ -176,8 +179,16 @@ pub type Next(state, message) {
   Stop(ExitReason)
 }
 
+/// Indicate the actor should continue, processing any waiting or future messages.
+///
 pub fn continue(state: state) -> Next(state, message) {
   Continue(state:, selector: None)
+}
+
+/// Indicate the actor should stop and shut-down, handling no futher messages.
+///
+pub fn stop() -> Next(state, message) {
+  Stop(process.Normal)
 }
 
 /// Provide a selector to change the messages that the actor is handling
@@ -215,7 +226,7 @@ type Self(state, msg) {
 // TODO: document
 // TODO: test
 pub type Started(data) {
-  Started(pid: Pid, returned: data)
+  Started(pid: Pid, data: data)
 }
 
 // TODO: document
@@ -354,11 +365,11 @@ fn selecting_system_messages(
   selector: Selector(Message(msg)),
 ) -> Selector(Message(msg)) {
   selector
-  |> process.selecting_record3(atom.create("system"), convert_system_message)
+  |> process.selecting_record(atom.create("system"), 2, convert_system_message)
 }
 
 @external(erlang, "gleam_otp_external", "convert_system_message")
-fn convert_system_message(a: Dynamic, b: Dynamic) -> Message(msg)
+fn convert_system_message(b: Dynamic) -> Message(msg)
 
 fn process_status_info(self: Self(state, msg)) -> StatusInfo {
   StatusInfo(
@@ -429,7 +440,7 @@ fn log_warning(a: Charlist, b: List(Charlist)) -> Nil
 fn initialise_actor(
   builder: Builder(state, msg, return),
   parent: Pid,
-  ack: Subject(Result(Started(return), ExitReason)),
+  ack: Subject(Result(Started(return), String)),
 ) -> ExitReason {
   let pid = process.self()
 
@@ -441,7 +452,7 @@ fn initialise_actor(
     Ok(Initialised(state:, selector:, return:)) -> {
       let selector = process.map_selector(selector, Message)
       // Signal to parent that the process has initialised successfully
-      process.send(ack, Ok(Started(pid:, returned: return)))
+      process.send(ack, Ok(Started(pid:, data: return)))
       // Start message receive loop
       let self =
         Self(
@@ -457,16 +468,18 @@ fn initialise_actor(
 
     // The init failed. Send the reason back to the parent, but exit normally.
     Error(reason) -> {
-      process.send(ack, Error(Abnormal(reason)))
+      process.send(ack, Error(reason))
       exit_process(process.Normal)
     }
   }
 }
 
+// TODO: research what gen_server does for each start failure mode and see if
+// we can draw something from there.
 pub type StartError {
   InitTimeout
-  InitFailed(ExitReason)
-  InitCrashed(Dynamic)
+  InitFailed(String)
+  InitExited(ExitReason)
 }
 
 /// The result of starting a Gleam actor.
@@ -484,8 +497,8 @@ pub type ErlangStartResult =
   Result(Pid, Dynamic)
 
 type StartInitMessage(data) {
-  Ack(Result(Started(data), ExitReason))
-  Mon(process.ProcessDown)
+  Ack(Result(Started(data), String))
+  Mon(process.Down)
 }
 
 // TODO: test init_timeout. Currently if we test it eunit prints an error from
@@ -511,7 +524,7 @@ pub fn start(
   let selector =
     process.new_selector()
     |> process.selecting(ack_subject, Ack)
-    |> process.selecting_process_down(monitor, Mon)
+    |> process.selecting_specific_monitor(monitor, Mon)
 
   let result = case process.select(selector, builder.initialisation_timeout) {
     // Child started OK
@@ -521,7 +534,7 @@ pub fn start(
     Ok(Ack(Error(reason))) -> Error(InitFailed(reason))
 
     // Child went down while initialising
-    Ok(Mon(down)) -> Error(InitCrashed(down.reason))
+    Ok(Mon(down)) -> Error(InitExited(down.reason))
 
     // Child did not finish initialising in time
     Error(Nil) -> {
