@@ -1,7 +1,7 @@
 -module(gleam_otp_external).
 
 -export([
-    application_stopped/0, convert_system_message/2,
+    application_stopped/0, convert_system_message/1,
     static_supervisor_start_link/1
 ]).
 
@@ -18,7 +18,7 @@
 %   {debug, {install, {FuncId, Func, FuncState}}}
 %   {debug, {remove, FuncOrId}}
 %   GetStatus(Subject(StatusInfo))
-convert_system_message({From, Ref}, Request) when is_pid(From) ->
+convert_system_message({system, {From, Ref}, Request}) when is_pid(From) ->
     Reply = fun(Msg) ->
         erlang:send(From, {Ref, Msg}),
         nil

@@ -1,3 +1,8 @@
+////
+//// NOTE: Don't forget to update the moduledoc of gleam/otp/actor if you
+//// change this file.
+////
+
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid, type Subject}
@@ -76,7 +81,7 @@ pub fn suspend_resume_test() {
   |> should.equal(Nil)
 
   // This normal message will not be handled yet so the state remains 0
-  actor.send(actor.returned, "hi")
+  actor.send(actor.data, "hi")
 
   // System messages are still handled
   actor.pid
@@ -104,7 +109,7 @@ pub fn subject_test() {
   |> system.get_state()
   |> should.equal(dynamic.from("state 1"))
 
-  actor.send(actor.returned, "state 2")
+  actor.send(actor.data, "state 2")
 
   actor.pid
   |> system.get_state()
@@ -125,7 +130,7 @@ pub fn unexpected_message_test() {
   |> should.equal(dynamic.from("state 1"))
 
   raw_send(actor.pid, "Unexpected message 1")
-  actor.send(actor.returned, "state 2")
+  actor.send(actor.data, "state 2")
   raw_send(actor.pid, "Unexpected message 2")
 
   actor.pid
@@ -208,37 +213,37 @@ pub fn replace_selector_test() {
     |> actor.start
 
   // Send initial user message to original subject
-  process.send(actor.returned, UserMessage("test 1"))
+  process.send(actor.data, UserMessage("test 1"))
   // Check state
-  process.call(actor.returned, GetText, 50)
+  process.call(actor.data, GetText, 50)
   |> should.equal("user message: test 1")
 
   // Get a new subject with string selector
   let str_subj =
-    process.call(actor.returned, SetStringSelector(_, UserMessage), 1000)
+    process.call(actor.data, SetStringSelector(_, UserMessage), 1000)
   // Send to new string subject
   process.send(str_subj, "test 2")
   // Check state
-  process.call(actor.returned, GetText, 50)
+  process.call(actor.data, GetText, 50)
   |> should.equal("user message: test 2")
 
   // Get a new subject with int selector
   let int_subj =
     process.call(
-      actor.returned,
+      actor.data,
       SetIntSelector(_, fn(n: Int) { UserMessage("test " <> int.to_string(n)) }),
       1000,
     )
   // Send to new int subject
   process.send(int_subj, 3)
   // Check state
-  process.call(actor.returned, GetText, 50)
+  process.call(actor.data, GetText, 50)
   |> should.equal("user message: test 3")
 
   // Try to send to old string subject
   process.send(str_subj, "test 4")
   // Check state
-  process.call(actor.returned, GetText, 50)
+  process.call(actor.data, GetText, 50)
   |> should.equal("unknown message: Tuple of 2 elements")
 }
 
@@ -251,9 +256,9 @@ pub fn abnormal_exit_can_be_trapped_test() {
   // Make an actor exit with an abnormal reason
   let assert Ok(actor) =
     actor.new(Nil)
-    |> actor.on_message(fn(_, _) { actor.Stop(process.Abnormal("reason")) })
+    |> actor.on_message(fn(_, _) { actor.continue(Nil) })
     |> actor.start
-  process.send(actor.returned, Nil)
+  process.send_abnormal_exit(actor.pid, "boo!")
 
   let trapped_reason = process.select(exits, 10)
 
@@ -263,7 +268,7 @@ pub fn abnormal_exit_can_be_trapped_test() {
   // The weird reason below is because of https://github.com/gleam-lang/erlang/issues/66
   trapped_reason
   |> should.equal(
-    Ok(process.ExitMessage(actor.pid, process.Abnormal("Abnormal(\"reason\")"))),
+    Ok(process.ExitMessage(actor.pid, process.Abnormal(dynamic.from("boo!")))),
   )
 }
 
@@ -276,9 +281,9 @@ pub fn killed_exit_can_be_trapped_test() {
   // Make an actor exit with a killed reason
   let assert Ok(actor) =
     actor.new(Nil)
-    |> actor.on_message(fn(_, _) { actor.Stop(process.Killed) })
+    |> actor.on_message(fn(_, _) { actor.continue(Nil) })
     |> actor.start
-  process.send(actor.returned, Nil)
+  process.kill(actor.pid)
 
   let trapped_reason = process.select(exits, 10)
 

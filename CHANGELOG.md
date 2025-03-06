@@ -11,6 +11,10 @@
   - The `start_spec` function has been renamed to `start`.
   - The `Initialised` type has been added, along with the `initialised`,
     `selecting`, and `returning` functions to create and work with it.
+  - The `InitCrashed` variant of `StartError` has been replaced with the
+    `InitExited` variant.
+  - The `InitFailed` variant of `StartError` now contains a string rather than
+    an `StartError`.
 
 ## Unreleased
 
