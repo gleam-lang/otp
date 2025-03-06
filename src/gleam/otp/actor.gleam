@@ -1,5 +1,6 @@
 //// This module provides the _Actor_ abstraction, one of the most common
-//// building blocks of Gleam OTP programs. // 
+//// building blocks of Gleam OTP programs.
+////
 //// An Actor is a process like any other BEAM process and can be used to hold
 //// state, execute code, and communicate with other processes by sending and
 //// receiving messages. The advantage of using the actor abstraction over a bare
@@ -21,42 +22,42 @@
 ////
 //// ```gleam
 //// pub fn main() {
-////  // Start the actor with initial state of an empty list, and the
-////  // `handle_message` callback function (defined below).
-////  // We assert that it starts successfully.
-////  // 
-////  // In real-world Gleam OTP programs we would likely write a wrapper functions
-////  // called `start`, `push` `pop`, `shutdown` to start and interact with the
-////  // Actor. We are not doing that here for the sake of showing how the Actor 
-////  // API works.
-////  let assert Ok(actor) =
-////    actor.new([]) |> actor.on_message(handle_message) |> actor.start
-////  let subject = actor.data
+////   // Start the actor with initial state of an empty list, and the
+////   // `handle_message` callback function (defined below).
+////   // We assert that it starts successfully.
+////   // 
+////   // In real-world Gleam OTP programs we would likely write a wrapper functions
+////   // called `start`, `push` `pop`, `shutdown` to start and interact with the
+////   // Actor. We are not doing that here for the sake of showing how the Actor 
+////   // API works.
+////   let assert Ok(actor) =
+////     actor.new([]) |> actor.on_message(handle_message) |> actor.start
+////   let subject = actor.data
 ////
-////  // We can send a message to the actor to push elements onto the stack.
-////  process.send(subject, Push("Joe"))
-////  process.send(subject, Push("Mike"))
-////  process.send(subject, Push("Robert"))
+////   // We can send a message to the actor to push elements onto the stack.
+////   process.send(subject, Push("Joe"))
+////   process.send(subject, Push("Mike"))
+////   process.send(subject, Push("Robert"))
 ////
-////  // The `Push` message expects no response, these messages are sent purely for
-////  // the side effect of mutating the state held by the actor.
-////  //
-////  // We can also send the `Pop` message to take a value off of the actor's
-////  // stack. This message expects a response, so we use `process.call` to send a
-////  // message and wait until a reply is received.
-////  //
-////  // In this instance we are giving the actor 10 milliseconds to reply, if the
-////  // `call` function doesn't get a reply within this time it will panic and
-////  // crash the client process.
-////  let assert Ok("Robert") = process.call(subject, Pop, 10)
-////  let assert Ok("Mike") = process.call(subject, Pop, 10)
-////  let assert Ok("Joe") = process.call(subject, Pop, 10)
+////   // The `Push` message expects no response, these messages are sent purely for
+////   // the side effect of mutating the state held by the actor.
+////   //
+////   // We can also send the `Pop` message to take a value off of the actor's
+////   // stack. This message expects a response, so we use `process.call` to send a
+////   // message and wait until a reply is received.
+////   //
+////   // In this instance we are giving the actor 10 milliseconds to reply, if the
+////   // `call` function doesn't get a reply within this time it will panic and
+////   // crash the client process.
+////   let assert Ok("Robert") = process.call(subject, Pop, 10)
+////   let assert Ok("Mike") = process.call(subject, Pop, 10)
+////   let assert Ok("Joe") = process.call(subject, Pop, 10)
 ////
-////  // The stack is now empty, so if we pop again the actor replies with an error.
-////  let assert Error(Nil) = process.call(subject, Pop, 10)
+////   // The stack is now empty, so if we pop again the actor replies with an error.
+////   let assert Error(Nil) = process.call(subject, Pop, 10)
 ////
-////  // Lastly, we can send a message to the actor asking it to shut down.
-////  process.send(subject, Shutdown)
+////   // Lastly, we can send a message to the actor asking it to shut down.
+////   process.send(subject, Shutdown)
 //// }
 //// ```
 ////
@@ -66,10 +67,10 @@
 //// // First step of implementing the stack Actor is to define the message type that
 //// // it can receive.
 //// //
-//// // The type of the elements in the stack is no fixed so a type parameter is used
+//// // The type of the elements in the stack is not fixed so a type parameter is used
 //// // for it instead of a concrete type such as `String` or `Int`.
 //// pub type Message(element) {
-//// /  // The `Shutdown` message is used to tell the actor to stop.
+////   // The `Shutdown` message is used to tell the actor to stop.
 ////   // It is the simplest message type, it contains no data.
 ////   //
 ////   // Most the time we don't define an API to shut down an actor, but in this
@@ -90,7 +91,7 @@
 //// // The last part is to implement the `handle_message` callback function.
 //// //
 //// // This function is called by the Actor each for each message it receives.
-//// // Actor is single threaded only does one thing at a time, so it handles
+//// // Actors are single threaded only does one thing at a time, so they handle
 //// // messages sequentially and one at a time, in the order they are received.
 //// //
 //// // The function takes the message and the current state, and returns a data
@@ -116,7 +117,7 @@
 //// 
 ////     // For the `Pop` message we attempt to remove an element from the stack,
 ////     // sending it or an error back to the caller, before continuing.
-////     Pop(client) ->
+////     Pop(client) -> {
 ////       case stack {
 ////         [] -> {
 ////           // When the stack is empty we can't pop an element, so we send an
@@ -132,6 +133,7 @@
 ////           actor.continue(rest)
 ////         }
 ////       }
+////     }
 ////   }
 //// }
 //// ```
@@ -161,8 +163,6 @@ type Message(message) {
   Unexpected(Dynamic)
 }
 
-// TODO: make opaque
-// TODO: changelog argument order change
 /// The type used to indicate what to do after handling a message.
 ///
 pub opaque type Next(state, message) {
@@ -223,26 +223,40 @@ type Self(state, msg) {
   )
 }
 
-// TODO: document
-// TODO: test
+/// A value returned to the parent when their child actor successfully starts.
 pub type Started(data) {
-  Started(pid: Pid, data: data)
+  Started(
+    /// The process identifier of the started actor. This can be used to
+    /// monitor the actor, make it exit, or anything else you can do with a
+    /// pid.
+    pid: Pid,
+    /// Data returned by the actor after it initialised. Commonly this will be
+    /// a subject that it will receive messages from.
+    data: data,
+  )
 }
 
-// TODO: document
-// TODO: test
-pub opaque type Initialised(state, message, return) {
-  Initialised(state: state, selector: Selector(message), return: return)
+/// A type returned from an actor's initialiser, containing the actor state, a
+/// selector to receive messages using, and data to return to the parent.
+///
+/// Use the `initialised`, `selecting`, and `returning` functions to construct
+/// this type.
+pub opaque type Initialised(state, message, data) {
+  Initialised(state: state, selector: Selector(message), return: data)
 }
 
-// TODO: document
-// TODO: test
+/// Takes the post-initialisation state of the actor. This state will be passed
+/// to the `on_message` callback each time a message is received.
+///
 pub fn initialised(state: state) -> Initialised(state, message, Nil) {
   Initialised(state, process.new_selector(), Nil)
 }
 
-// TODO: document
-// TODO: test
+/// Add a selector for the actor to receive messages with.
+///
+/// If a message is received by the actor but not selected for with the
+/// selector then the actor will discard it and log a warning.
+///
 pub fn selecting(
   initialised: Initialised(state, old_message, return),
   selector: Selector(message),
@@ -250,8 +264,9 @@ pub fn selecting(
   Initialised(..initialised, selector:)
 }
 
-// TODO: document
-// TODO: test
+/// Add the data to return to the parent process. This might be a subject that
+/// the actor will receive messages over.
+///
 pub fn returning(
   initialised: Initialised(state, message, old_return),
   return: return,
@@ -259,10 +274,6 @@ pub fn returning(
   Initialised(..initialised, return:)
 }
 
-// TODO: redesign
-// TODO: opaque
-// TODO: builder API
-// TODO: document
 pub opaque type Builder(state, message, return) {
   Builder(
     /// The initialisation functionality for the actor. This function is called
@@ -278,15 +289,19 @@ pub opaque type Builder(state, message, return) {
     /// considered to have taken too long and failed.
     ///
     initialisation_timeout: Int,
-    // TODO: changelog argument order change
     /// This function is called to handle each message that the actor receives.
     ///
     on_message: fn(state, message) -> Next(state, message),
   )
 }
 
-// TODO: document
-// TODO: test
+/// Create a builder for an actor without a custom initialiser. The actor
+/// returns a subject to the parent that can be used to send messages to the
+/// actor.
+///
+/// If you wish to create an actor with some other initialisation logic that
+/// runs before it starts handling messages, see `new_with_initialiser`.
+///
 pub fn new(state: state) -> Builder(state, message, Subject(message)) {
   Builder(
     initialise: fn() {
@@ -299,19 +314,42 @@ pub fn new(state: state) -> Builder(state, message, Subject(message)) {
       |> Ok
     },
     initialisation_timeout: 1000,
-    on_message: fn(_, _) { Stop(process.Normal) },
+    on_message: fn(state, _) { continue(state) },
   )
 }
 
+/// Create a builder for an actor with a custom initialiser that runs before
+/// the start function returns to the parent, and before the actor starts
+/// handling messages.
+///
+/// The first argument is a number of milliseconds that the initialiser
+/// function is expected to return within. If it takes longer the initialiser
+/// is considered to have failed and the actor will be killed, and an error
+/// will be returned to the parent.
+///
+/// No subject and selector are automatically created if you use this function,
+/// so be sure to create your own and them to the `initialiser` value if you
+/// need them for your actor.
+///
 pub fn new_with_initialiser(
   timeout: Int,
   initialise: fn() -> Result(Initialised(state, message, return), String),
 ) -> Builder(state, message, return) {
-  Builder(initialise:, initialisation_timeout: timeout, on_message: fn(_, _) {
-    Stop(process.Normal)
-  })
+  Builder(
+    initialise:,
+    initialisation_timeout: timeout,
+    on_message: fn(state, _) { continue(state) },
+  )
 }
 
+/// Set the message handler for the actor. This callback function will be
+/// called each time the actor receives a message.
+///
+/// Actors handle messages sequentially, later messages being handled after the
+/// previous one has been handled. It is not like an event handler in languages
+/// such as JavaScript where the function can be called multiple times
+/// concurrently.
+///
 pub fn on_message(
   builder: Builder(state, message, return),
   handler: fn(state, message) -> Next(state, message),
@@ -319,7 +357,6 @@ pub fn on_message(
   Builder(..builder, on_message: handler)
 }
 
-// TODO: Check needed functionality here to be OTP compatible
 fn exit_process(reason: ExitReason) -> ExitReason {
   case reason {
     Abnormal(reason) -> process.send_abnormal_exit(process.self(), reason)
@@ -501,8 +538,8 @@ type StartInitMessage(data) {
   Mon(process.Down)
 }
 
-// TODO: test init_timeout. Currently if we test it eunit prints an error from
-// the process death. How do we avoid this?
+// TODO: test initialisation_timeout. Currently if we test it eunit prints an
+// error from the process death. How do we avoid this?
 //
 /// Start an actor from a given specification. If the actor's `init` function
 /// returns an error or does not return within `init_timeout` then an error is

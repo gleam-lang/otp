@@ -7,6 +7,8 @@
   - The `to_erlang_start_result` function has been removed.
   - The `InitResult` type has been removed.
   - The `Spec` type has been replaced with the `Builder` type.
+  - The `new` function has been added.
+  - The `new_with_initialiser` function has been added.
   - The `start` function has been removed.
   - The `start_spec` function has been renamed to `start`.
   - The `Initialised` type has been added, along with the `initialised`,
@@ -15,6 +17,11 @@
     `InitExited` variant.
   - The `InitFailed` variant of `StartError` now contains a string rather than
     an `StartError`.
+  - The `Next` type now is now opaque.
+  - The `Next` type now has the state type as the first type parameter and the
+    message type as the second.
+  - The argument order of the actor message handler callback function has been
+    changed so the state is the first argument, and the message is the second.
 
 ## Unreleased
 
