@@ -46,7 +46,7 @@ pub fn example_test() {
 // First step of implementing the stack Actor is to define the message type that
 // it can receive.
 //
-// The type of the elements in the stack is no fixed so a type parameter is used
+// The type of the elements in the stack is not fixed so a type parameter is used
 // for it instead of a concrete type such as `String` or `Int`.
 pub type Message(element) {
   // The `Shutdown` message is used to tell the actor to stop.
@@ -69,8 +69,8 @@ pub type Message(element) {
 
 // The last part is to implement the `handle_message` callback function.
 //
-// This function is called by the Actor each for each message it receives.
-// Actor is single threaded only does one thing at a time, so it handles
+// This function is called by the Actor for each message it receives.
+// Actors are single threaded only does one thing at a time, so they handle
 // messages sequentially and one at a time, in the order they are received.
 //
 // The function takes the message and the current state, and returns a data
