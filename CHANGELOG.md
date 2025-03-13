@@ -22,6 +22,7 @@
     message type as the second.
   - The argument order of the actor message handler callback function has been
     changed so the state is the first argument, and the message is the second.
+  - The argument order of `call` has changed.
 
 ## Unreleased
 

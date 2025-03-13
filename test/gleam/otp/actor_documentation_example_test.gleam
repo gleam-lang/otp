@@ -32,12 +32,12 @@ pub fn example_test() {
   // In this instance we are giving the actor 10 milliseconds to reply, if the
   // `call` function doesn't get a reply within this time it will panic and
   // crash the client process.
-  let assert Ok("Robert") = process.call(subject, Pop, 10)
-  let assert Ok("Mike") = process.call(subject, Pop, 10)
-  let assert Ok("Joe") = process.call(subject, Pop, 10)
+  let assert Ok("Robert") = process.call(subject, 10, Pop)
+  let assert Ok("Mike") = process.call(subject, 10, Pop)
+  let assert Ok("Joe") = process.call(subject, 10, Pop)
 
   // The stack is now empty, so if we pop again the actor replies with an error.
-  let assert Error(Nil) = process.call(subject, Pop, 10)
+  let assert Error(Nil) = process.call(subject, 10, Pop)
 
   // Lastly, we can send a message to the actor asking it to shut down.
   process.send(subject, Shutdown)
