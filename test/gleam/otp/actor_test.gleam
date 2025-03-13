@@ -215,35 +215,35 @@ pub fn replace_selector_test() {
   // Send initial user message to original subject
   process.send(actor.data, UserMessage("test 1"))
   // Check state
-  process.call(actor.data, GetText, 50)
+  process.call(actor.data, 50, GetText)
   |> should.equal("user message: test 1")
 
   // Get a new subject with string selector
   let str_subj =
-    process.call(actor.data, SetStringSelector(_, UserMessage), 1000)
+    process.call(actor.data, 1000, SetStringSelector(_, UserMessage))
   // Send to new string subject
   process.send(str_subj, "test 2")
   // Check state
-  process.call(actor.data, GetText, 50)
+  process.call(actor.data, 50, GetText)
   |> should.equal("user message: test 2")
 
   // Get a new subject with int selector
   let int_subj =
     process.call(
       actor.data,
-      SetIntSelector(_, fn(n: Int) { UserMessage("test " <> int.to_string(n)) }),
       1000,
+      SetIntSelector(_, fn(n: Int) { UserMessage("test " <> int.to_string(n)) }),
     )
   // Send to new int subject
   process.send(int_subj, 3)
   // Check state
-  process.call(actor.data, GetText, 50)
+  process.call(actor.data, 50, GetText)
   |> should.equal("user message: test 3")
 
   // Try to send to old string subject
   process.send(str_subj, "test 4")
   // Check state
-  process.call(actor.data, GetText, 50)
+  process.call(actor.data, 50, GetText)
   |> should.equal("unknown message: Tuple of 2 elements")
 }
 
