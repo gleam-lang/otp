@@ -3,6 +3,15 @@
 ## v1.0.0-rc1 - Unreleased
 
 - The `supervisor` module has been removed.
+- The `intensity_tracker` module has been removed.
+- The supervision module has been introduced. This module contains types and
+  functions usable by different supervisor implementations.
+- In the `gleam/otp/static_supervisor` module:
+  - The `start_link` module has been removed.
+  - The `start` module has been added.
+  - Types and functions for defining child specifications have been moved to the
+    `supervision` module.
+  - The `SupervisorHandle` type has been added.
 - In the `gleam/otp/actor` module:
   - The `to_erlang_start_result` function has been removed.
   - The `InitResult` type has been removed.
@@ -23,6 +32,8 @@
   - The argument order of the actor message handler callback function has been
     changed so the state is the first argument, and the message is the second.
   - The argument order of `call` has changed.
+  - The `StartResult` alias has been removed.
+  - The `ErlangStartResult` alias has been removed.
 
 ## Unreleased
 

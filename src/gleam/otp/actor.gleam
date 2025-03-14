@@ -519,20 +519,6 @@ pub type StartError {
   InitExited(ExitReason)
 }
 
-/// The result of starting a Gleam actor.
-///
-/// This type is compatible with Gleam supervisors. If you wish to convert it
-/// to a type compatible with Erlang supervisors see the `ErlangStartResult`
-/// type and `erlang_start_result` function.
-///
-pub type StartResult(msg) =
-  Result(Subject(msg), StartError)
-
-/// An Erlang supervisor compatible process start result.
-///
-pub type ErlangStartResult =
-  Result(Pid, Dynamic)
-
 type StartInitMessage(data) {
   Ack(Result(Started(data), String))
   Mon(process.Down)

@@ -7,23 +7,26 @@
 ////
 //// ```gleam
 //// import gleam/erlang/process.{type Pid}
-//// import gleam/otp/static_supervisor as sup
+//// import gleam/otp/static_supervisor as supervisor
+//// import app/database_pool
+//// import app/http_server
 //// 
 //// pub fn start_supervisor() {
-////   sup.new(sup.OneForOne)
-////   |> sup.add(sup.worker_child("db", start_database_connection))
-////   |> sup.add(sup.worker_child("workers", start_workers))
-////   |> sup.add(sup.worker_child("web", start_http_server))
-////   |> sup.start_link
+////   supervisor.new(supervisor.OneForOne)
+////   |> supervisor.add(database_pool.child_specification())
+////   |> supervisor.add(http_server.child_specification())
+////   |> supervisor.start
 //// }
 //// ```
 
-import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid}
 import gleam/list
-import gleam/result
+import gleam/otp/actor
+import gleam/otp/supervision.{type ChildSpecification}
+
+pub type SupervisorHandle
 
 pub type Strategy {
   /// If one child process terminates and is to be restarted, only that child
@@ -67,7 +70,7 @@ pub opaque type Builder {
     intensity: Int,
     period: Int,
     auto_shutdown: AutoShutdown,
-    children: List(ChildBuilder),
+    children: List(ChildSpecification(Nil)),
   )
 }
 
@@ -105,198 +108,115 @@ pub fn auto_shutdown(builder: Builder, value: AutoShutdown) -> Builder {
   Builder(..builder, auto_shutdown: value)
 }
 
-/// Restart defines when a terminated child process must be restarted. 
-pub type Restart {
-  /// A permanent child process is always restarted.
-  Permanent
-  /// A transient child process is restarted only if it terminates abnormally,
-  /// that is, with another exit reason than `normal`, `shutdown`, or
-  /// `{shutdown,Term}`.
-  Transient
-  /// A temporary child process is never restarted (even when the supervisor's
-  /// restart strategy is `RestForOne` or `OneForAll` and a sibling's death
-  /// causes the temporary process to be terminated).
-  Temporary
-}
-
-pub type ChildType {
-  Worker(
-    /// The number of milliseconds the child is given to shut down. The
-    /// supervisor tells the child process to terminate by calling
-    /// `exit(Child,shutdown)` and then wait for an exit signal with reason
-    /// shutdown back from the child process. If no exit signal is received
-    /// within the specified number of milliseconds, the child process is
-    /// unconditionally terminated using `exit(Child,kill)`.
-    shutdown_ms: Int,
-  )
-  Supervisor
-}
-
-pub opaque type ChildBuilder {
-  ChildBuilder(
-    /// id is used to identify the child specification internally by the
-    /// supervisor.
-    ///
-    /// Notice that this identifier on occations has been called "name". As far
-    /// as possible, the terms "identifier" or "id" are now used but to keep
-    /// backward compatibility, some occurences of "name" can still be found, for
-    /// example in error messages.
-    id: String,
-    /// A function to call to start the child process.
-    starter: fn() -> Result(Pid, Dynamic),
-    /// When the child is to be restarted. See the `Restart` documentation for
-    /// more.
-    ///
-    /// You most likely want the `Permanent` variant.
-    restart: Restart,
-    /// This defines if a child is considered significant for automatic
-    /// self-shutdown of the supervisor.
-    ///
-    /// You most likely do not want to consider any children significant.
-    ///
-    /// This will be ignored if the supervisor auto shutdown is set to `Never`,
-    /// which is the default.
-    significant: Bool,
-    /// Whether the child is a supervisor or not.
-    child_type: ChildType,
-  )
-}
-
-pub fn start_link(builder: Builder) -> Result(Pid, Dynamic) {
+// TODO: what happens if two children have the same id?
+pub fn start(
+  builder: Builder,
+) -> Result(actor.Started(SupervisorHandle), actor.StartError) {
   let flags =
-    dict.new()
-    |> property("strategy", builder.strategy)
-    |> property("intensity", builder.intensity)
-    |> property("period", builder.period)
-    |> property("auto_shutdown", builder.auto_shutdown)
+    make_erlang_start_flags([
+      Strategy(builder.strategy),
+      Intensity(builder.intensity),
+      Period(builder.period),
+      AutoShutdown(builder.auto_shutdown),
+    ])
 
+  let module = atom.create("gleam@otp@static_supervisor")
   let children = builder.children |> list.reverse |> list.map(convert_child)
-
-  erlang_start_link(#(flags, children))
+  case erlang_start_link(module, #(flags, children)) {
+    Ok(pid) -> Ok(actor.Started(pid:, data: cast_handle(pid)))
+    Error(error) -> Error(convert_erlang_start_error(error))
+  }
 }
 
-@external(erlang, "gleam_otp_external", "static_supervisor_start_link")
+@external(erlang, "gleam_otp_external", "identity")
+fn cast_handle(pid: Pid) -> SupervisorHandle
+
+@external(erlang, "gleam_otp_external", "convert_erlang_start_error")
+fn convert_erlang_start_error(dynamic: Dynamic) -> actor.StartError
+
+@external(erlang, "supervisor", "start_link")
 fn erlang_start_link(
-  args: #(Dict(Atom, Dynamic), List(Dict(Atom, Dynamic))),
+  module: Atom,
+  args: #(ErlangStartFlags, List(ErlangChildSpec)),
 ) -> Result(Pid, Dynamic)
 
 /// Add a child to the supervisor.
-pub fn add(builder: Builder, child: ChildBuilder) -> Builder {
-  Builder(..builder, children: [child, ..builder.children])
-}
-
-/// A regular child that is not also a supervisor.
-///
-/// id is used to identify the child specification internally by the
-/// supervisor.
-/// Notice that this identifier on occations has been called "name". As far
-/// as possible, the terms "identifier" or "id" are now used but to keep
-/// backward compatibility, some occurences of "name" can still be found, for
-/// example in error messages.
-///
-pub fn worker_child(
-  id id: String,
-  run starter: fn() -> Result(Pid, whatever),
-) -> ChildBuilder {
-  ChildBuilder(
-    id: id,
-    starter: fn() { starter() |> result.map_error(dynamic.from) },
-    restart: Permanent,
-    significant: False,
-    child_type: Worker(5000),
-  )
-}
-
-/// A special child that is a supervisor itself.
-///
-/// id is used to identify the child specification internally by the
-/// supervisor.
-/// Notice that this identifier on occations has been called "name". As far
-/// as possible, the terms "identifier" or "id" are now used but to keep
-/// backward compatibility, some occurences of "name" can still be found, for
-/// example in error messages.
-///
-pub fn supervisor_child(
-  id id: String,
-  run starter: fn() -> Result(Pid, whatever),
-) -> ChildBuilder {
-  ChildBuilder(
-    id: id,
-    starter: fn() { starter() |> result.map_error(dynamic.from) },
-    restart: Permanent,
-    significant: False,
-    child_type: Supervisor,
-  )
-}
-
-/// This defines if a child is considered significant for automatic
-/// self-shutdown of the supervisor.
-///
-/// You most likely do not want to consider any children significant.
-///
-/// This will be ignored if the supervisor auto shutdown is set to `Never`,
-/// which is the default.
-///
-/// The default value for significance is `False`.
-pub fn significant(child: ChildBuilder, significant: Bool) -> ChildBuilder {
-  ChildBuilder(..child, significant: significant)
-}
-
-/// This defines the amount of milliseconds a child has to shut down before
-/// being brutal killed by the supervisor.
-///
-/// If not set the default for a child is 5000ms.
-///
-/// This will be ignored if the child is a supervisor itself.
-///
-pub fn timeout(child: ChildBuilder, ms ms: Int) -> ChildBuilder {
-  case child.child_type {
-    Worker(_) -> ChildBuilder(..child, child_type: Worker(ms))
-    _ -> child
-  }
-}
-
-/// When the child is to be restarted. See the `Restart` documentation for
-/// more.
-///
-/// The default value for restart is `Permanent`.
-pub fn restart(child: ChildBuilder, restart: Restart) -> ChildBuilder {
-  ChildBuilder(..child, restart: restart)
-}
-
-fn convert_child(child: ChildBuilder) -> Dict(Atom, Dynamic) {
-  let mfa = #(atom.create("erlang"), atom.create("apply"), [
-    dynamic.from(child.starter),
-    dynamic.from([]),
+pub fn add(builder: Builder, child: ChildSpecification(data)) -> Builder {
+  Builder(..builder, children: [
+    supervision.map_data(child, fn(_) { Nil }),
+    ..builder.children
   ])
+}
+
+fn convert_child(child: ChildSpecification(data)) -> ErlangChildSpec {
+  let mfa = #(
+    atom.create("gleam@otp@static_supervisor"),
+    atom.create("start_child"),
+    [dynamic.from(child.start)],
+  )
 
   let #(type_, shutdown) = case child.child_type {
-    Supervisor -> #(
+    supervision.Supervisor -> #(
       atom.create("supervisor"),
       dynamic.from(atom.create("infinity")),
     )
-    Worker(timeout) -> #(atom.create("worker"), dynamic.from(timeout))
+    supervision.Worker(timeout) -> #(
+      atom.create("worker"),
+      dynamic.from(timeout),
+    )
   }
 
-  dict.new()
-  |> property("id", child.id)
-  |> property("start", mfa)
-  |> property("restart", child.restart)
-  |> property("significant", child.significant)
-  |> property("type", type_)
-  |> property("shutdown", shutdown)
+  make_erlang_child_spec([
+    Id(child.id),
+    Start(mfa),
+    Restart(child.restart),
+    Significant(child.significant),
+    Type(type_),
+    Shutdown(shutdown),
+  ])
 }
 
-fn property(
-  dict: Dict(Atom, Dynamic),
-  key: String,
-  value: anything,
-) -> Dict(Atom, Dynamic) {
-  dict.insert(dict, atom.create(key), dynamic.from(value))
+type ErlangStartFlags
+
+@external(erlang, "maps", "from_list")
+fn make_erlang_start_flags(flags: List(ErlangStartFlag)) -> ErlangStartFlags
+
+type ErlangStartFlag {
+  Strategy(Strategy)
+  Intensity(Int)
+  Period(Int)
+  AutoShutdown(AutoShutdown)
+}
+
+type ErlangChildSpec
+
+@external(erlang, "maps", "from_list")
+fn make_erlang_child_spec(
+  properties: List(ErlangChildSpecProperty),
+) -> ErlangChildSpec
+
+type ErlangChildSpecProperty {
+  Id(String)
+  Start(#(Atom, Atom, List(Dynamic)))
+  Restart(supervision.Restart)
+  Significant(Bool)
+  Type(Atom)
+  Shutdown(Dynamic)
 }
 
 // Callback used by the Erlang supervisor module.
 @internal
 pub fn init(start_data: Dynamic) -> Result(Dynamic, never) {
   Ok(start_data)
+}
+
+// Callback used by the Erlang supervisor module.
+@internal
+pub fn start_child(
+  start: fn() -> Result(actor.Started(anything), actor.StartError),
+) -> Result(Pid, actor.StartError) {
+  case start() {
+    Ok(started) -> Ok(started.pid)
+    Error(error) -> Error(error)
+  }
 }
