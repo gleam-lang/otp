@@ -2,8 +2,10 @@
 
 -export([
     application_stopped/0, convert_system_message/1,
-    static_supervisor_start_link/1
+    convert_erlang_start_error/1, identity/1
 ]).
+
+identity(X) -> X.
 
 % TODO: support other system messages
 %   {replace_state, StateFn}
@@ -45,8 +47,9 @@ process_status({status_info, Module, Parent, Mode, DebugState, State}) ->
 application_stopped() ->
     ok.
 
-static_supervisor_start_link(Arg) ->
-    case supervisor:start_link(gleam@otp@static_supervisor, Arg) of
-        {ok, P} -> {ok, P};
-        {error, E} -> {error, {init_crashed, E}}
-    end.
+convert_erlang_start_error({already_started, _}) ->
+    {init_failed, "already started"};
+convert_erlang_start_error({shutdown, _}) ->
+    {init_failed, "shutdown"};
+convert_erlang_start_error(Term) ->
+    {init_exited, {abnormal, Term}}.

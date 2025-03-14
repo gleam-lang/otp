@@ -144,7 +144,7 @@ pub fn restart(
 
 /// Transform the data of the started child process.
 ///
-pub fn map(
+pub fn map_data(
   child: ChildSpecification(a),
   transform: fn(a) -> b,
 ) -> ChildSpecification(b) {

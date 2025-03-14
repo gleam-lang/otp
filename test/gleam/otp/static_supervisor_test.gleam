@@ -1,14 +1,17 @@
 import gleam/erlang/process.{type Pid, type Subject}
 import gleam/otp/actor
-import gleam/otp/static_supervisor as sup
-import gleam/result
+import gleam/otp/static_supervisor
+import gleam/otp/supervision
 
-fn actor_child(name name, init init, loop loop) -> sup.ChildBuilder {
-  sup.worker_child(name, fn() {
+fn actor_child(
+  name name,
+  init init,
+  loop loop,
+) -> supervision.ChildSpecification(Nil) {
+  supervision.worker(name, fn() {
     actor.new_with_initialiser(50, init)
     |> actor.on_message(loop)
     |> actor.start
-    |> result.map(fn(s) { s.pid })
   })
 }
 
@@ -17,7 +20,7 @@ fn actor_child(name name, init init, loop loop) -> sup.ChildBuilder {
 fn init_notifier_child(
   subject: Subject(#(String, Pid)),
   name: String,
-) -> sup.ChildBuilder {
+) -> supervision.ChildSpecification(Nil) {
   actor_child(
     name: name,
     init: fn() {
@@ -32,11 +35,11 @@ pub fn one_for_one_test() {
   let subject = process.new_subject()
 
   let assert Ok(supervisor) =
-    sup.new(sup.OneForOne)
-    |> sup.add(init_notifier_child(subject, "1"))
-    |> sup.add(init_notifier_child(subject, "2"))
-    |> sup.add(init_notifier_child(subject, "3"))
-    |> sup.start_link
+    static_supervisor.new(static_supervisor.OneForOne)
+    |> static_supervisor.add(init_notifier_child(subject, "1"))
+    |> static_supervisor.add(init_notifier_child(subject, "2"))
+    |> static_supervisor.add(init_notifier_child(subject, "3"))
+    |> static_supervisor.start
 
   // Assert children have started
   let assert Ok(#("1", p1)) = process.receive(subject, 10)
@@ -60,19 +63,19 @@ pub fn one_for_one_test() {
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
 
-  let assert True = process.is_alive(supervisor)
-  process.send_exit(supervisor)
+  let assert True = process.is_alive(supervisor.pid)
+  process.send_exit(supervisor.pid)
 }
 
 pub fn rest_for_one_test() {
   let subject = process.new_subject()
 
   let assert Ok(supervisor) =
-    sup.new(sup.RestForOne)
-    |> sup.add(init_notifier_child(subject, "1"))
-    |> sup.add(init_notifier_child(subject, "2"))
-    |> sup.add(init_notifier_child(subject, "3"))
-    |> sup.start_link
+    static_supervisor.new(static_supervisor.RestForOne)
+    |> static_supervisor.add(init_notifier_child(subject, "1"))
+    |> static_supervisor.add(init_notifier_child(subject, "2"))
+    |> static_supervisor.add(init_notifier_child(subject, "3"))
+    |> static_supervisor.start
 
   // Assert children have started
   let assert Ok(#("1", p1)) = process.receive(subject, 10)
@@ -99,19 +102,19 @@ pub fn rest_for_one_test() {
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
 
-  let assert True = process.is_alive(supervisor)
-  process.send_exit(supervisor)
+  let assert True = process.is_alive(supervisor.pid)
+  process.send_exit(supervisor.pid)
 }
 
 pub fn one_for_all_test() {
   let subject = process.new_subject()
 
   let assert Ok(supervisor) =
-    sup.new(sup.OneForAll)
-    |> sup.add(init_notifier_child(subject, "1"))
-    |> sup.add(init_notifier_child(subject, "2"))
-    |> sup.add(init_notifier_child(subject, "3"))
-    |> sup.start_link
+    static_supervisor.new(static_supervisor.OneForAll)
+    |> static_supervisor.add(init_notifier_child(subject, "1"))
+    |> static_supervisor.add(init_notifier_child(subject, "2"))
+    |> static_supervisor.add(init_notifier_child(subject, "3"))
+    |> static_supervisor.start
 
   // Assert children have started
   let assert Ok(#("1", p1)) = process.receive(subject, 10)
@@ -139,6 +142,6 @@ pub fn one_for_all_test() {
   let assert True = process.is_alive(p2)
   let assert True = process.is_alive(p3)
 
-  let assert True = process.is_alive(supervisor)
-  process.send_exit(supervisor)
+  let assert True = process.is_alive(supervisor.pid)
+  process.send_exit(supervisor.pid)
 }
