@@ -23,7 +23,7 @@ fn init_notifier_child(
 ) -> supervision.ChildSpecification(Nil) {
   actor_child(
     name: name,
-    init: fn() {
+    init: fn(_) {
       process.send(subject, #(name, process.self()))
       Ok(actor.initialised(name))
     },

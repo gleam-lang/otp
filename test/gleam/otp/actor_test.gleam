@@ -39,7 +39,7 @@ pub fn get_status_test() {
 }
 
 pub fn failed_init_test() {
-  actor.new_with_initialiser(100, fn() { Error("not enough wiggles") })
+  actor.new_with_initialiser(100, fn(_) { Error("not enough wiggles") })
   |> actor.on_message(fn(state, _msg) { actor.continue(state) })
   |> actor.start
   |> result.is_error
@@ -53,7 +53,7 @@ pub fn timed_out_init_test() {
     |> process.selecting_trapped_exits(function.identity)
 
   let result =
-    actor.new_with_initialiser(1, fn() {
+    actor.new_with_initialiser(1, fn(_) {
       process.sleep(100)
       panic as "should not be reached"
     })
@@ -140,7 +140,7 @@ pub fn unexpected_message_test() {
 
 pub fn unexpected_message_handled_test() {
   let assert Ok(actor) =
-    actor.new_with_initialiser(10, fn() {
+    actor.new_with_initialiser(10, fn(_) {
       let selector =
         process.new_selector() |> process.selecting_anything(function.identity)
       actor.initialised(dynamic.from("initial"))
@@ -170,7 +170,7 @@ type ActorMessage {
 
 pub fn replace_selector_test() {
   let assert Ok(actor) =
-    actor.new_with_initialiser(50, fn() {
+    actor.new_with_initialiser(50, fn(_) {
       let subject = process.new_subject()
       let selector =
         process.new_selector() |> process.selecting(subject, function.identity)
@@ -314,3 +314,22 @@ fn raw_send(a: Pid, b: anything) -> anything
 
 @external(erlang, "logger", "set_primary_config")
 fn logger_set_primary_config(a: Atom, b: Atom) -> Nil
+
+pub fn named_new_test() {
+  let name = process.new_name("my_actor")
+  let assert Ok(actor) = actor.new(Nil) |> actor.named(name) |> actor.start
+  process.named(name)
+  |> should.be_ok
+  |> should.equal(actor.pid)
+}
+
+pub fn named_new_with_initialiser_test() {
+  let name = process.new_name("my_actor")
+  let assert Ok(actor) =
+    actor.new_with_initialiser(50, fn(_) { actor.initialised(Nil) |> Ok })
+    |> actor.named(name)
+    |> actor.start
+  process.named(name)
+  |> should.be_ok
+  |> should.equal(actor.pid)
+}
