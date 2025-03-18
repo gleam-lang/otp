@@ -150,6 +150,7 @@ import gleam/otp/system.{
   type DebugState, type Mode, type StatusInfo, type SystemMessage, GetState,
   GetStatus, Resume, Running, StatusInfo, Suspend, Suspended,
 }
+import gleam/result
 import gleam/string
 
 type Message(message) {
@@ -284,7 +285,8 @@ pub opaque type Builder(state, message, return) {
     /// correct. If this function returns an error it means that the actor has
     /// failed to start and an error is returned to the parent.
     ///
-    initialise: fn() -> Result(Initialised(state, message, return), String),
+    initialise: fn(Subject(message)) ->
+      Result(Initialised(state, message, return), String),
     /// How many milliseconds the `init` function has to return before it is
     /// considered to have taken too long and failed.
     ///
@@ -292,6 +294,9 @@ pub opaque type Builder(state, message, return) {
     /// This function is called to handle each message that the actor receives.
     ///
     on_message: fn(state, message) -> Next(state, message),
+    /// The actor can be named for you at start.
+    ///
+    name: Option(process.Name(message)),
   )
 }
 
@@ -303,18 +308,20 @@ pub opaque type Builder(state, message, return) {
 /// runs before it starts handling messages, see `new_with_initialiser`.
 ///
 pub fn new(state: state) -> Builder(state, message, Subject(message)) {
+  let initialise = fn(subject) {
+    let selector =
+      process.new_selector()
+      |> process.selecting(subject, function.identity)
+    initialised(state)
+    |> selecting(selector)
+    |> returning(subject)
+    |> Ok
+  }
   Builder(
-    initialise: fn() {
-      let subject = process.new_subject()
-      let selector =
-        process.new_selector() |> process.selecting(subject, function.identity)
-      initialised(state)
-      |> selecting(selector)
-      |> returning(subject)
-      |> Ok
-    },
+    initialise:,
     initialisation_timeout: 1000,
     on_message: fn(state, _) { continue(state) },
+    name: option.None,
   )
 }
 
@@ -333,12 +340,14 @@ pub fn new(state: state) -> Builder(state, message, Subject(message)) {
 ///
 pub fn new_with_initialiser(
   timeout: Int,
-  initialise: fn() -> Result(Initialised(state, message, return), String),
+  initialise: fn(Subject(message)) ->
+    Result(Initialised(state, message, return), String),
 ) -> Builder(state, message, return) {
   Builder(
     initialise:,
     initialisation_timeout: timeout,
     on_message: fn(state, _) { continue(state) },
+    name: option.None,
   )
 }
 
@@ -355,6 +364,14 @@ pub fn on_message(
   handler: fn(state, message) -> Next(state, message),
 ) -> Builder(state, message, return) {
   Builder(..builder, on_message: handler)
+}
+
+// TODO: document
+pub fn named(
+  builder: Builder(state, message, return),
+  name: process.Name(message),
+) -> Builder(state, message, return) {
+  Builder(..builder, name: option.Some(name))
 }
 
 fn exit_process(reason: ExitReason) -> ExitReason {
@@ -477,19 +494,25 @@ fn log_warning(a: Charlist, b: List(Charlist)) -> Nil
 fn initialise_actor(
   builder: Builder(state, msg, return),
   parent: Pid,
-  ack: Subject(Result(Started(return), String)),
+  ack: Subject(Result(return, String)),
 ) -> ExitReason {
-  let pid = process.self()
-
-  // Run the programmer supplied initialisation code.
-  let result = builder.initialise()
+  // Run the actor initialiser.
+  let result = case builder.name {
+    None -> {
+      builder.initialise(process.new_subject())
+    }
+    Some(name) -> {
+      use _ <- result.try(try_register_self(name))
+      builder.initialise(process.named_subject(name))
+    }
+  }
 
   case result {
     // Init was OK, send the subject to the parent and start handling messages.
     Ok(Initialised(state:, selector:, return:)) -> {
       let selector = process.map_selector(selector, Message)
       // Signal to parent that the process has initialised successfully
-      process.send(ack, Ok(Started(pid:, data: return)))
+      process.send(ack, Ok(return))
       // Start message receive loop
       let self =
         Self(
@@ -511,6 +534,13 @@ fn initialise_actor(
   }
 }
 
+fn try_register_self(name: process.Name(msg)) -> Result(Nil, String) {
+  case process.register(process.self(), name) {
+    Ok(Nil) -> Ok(Nil)
+    Error(_) -> Error("name already registered")
+  }
+}
+
 // TODO: research what gen_server does for each start failure mode and see if
 // we can draw something from there.
 pub type StartError {
@@ -520,7 +550,7 @@ pub type StartError {
 }
 
 type StartInitMessage(data) {
-  Ack(Result(Started(data), String))
+  Ack(Result(data, String))
   Mon(process.Down)
 }
 
@@ -573,7 +603,10 @@ pub fn start(
   // message arriving at the parent if the child dies later.
   process.demonitor_process(monitor)
 
-  result
+  case result {
+    Ok(data) -> Ok(Started(pid: child, data:))
+    Error(error) -> Error(error)
+  }
 }
 
 /// Send a message over a given channel.

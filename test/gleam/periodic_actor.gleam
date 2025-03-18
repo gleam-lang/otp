@@ -9,9 +9,7 @@ pub fn periodic_actor(
   every period_milliseconds: Int,
   run callback: fn() -> Nil,
 ) -> Result(actor.Started(Nil), StartError) {
-  let init = fn() {
-    // Create a subject to periodically send a message to the actor on
-    let subject = process.new_subject()
+  let init = fn(subject) {
     let selector =
       process.new_selector()
       |> process.selecting(subject, fn(x) { x })
