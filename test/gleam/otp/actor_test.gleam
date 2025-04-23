@@ -50,7 +50,7 @@ pub fn timed_out_init_test() {
   process.trap_exits(True)
   let exit_selector =
     process.new_selector()
-    |> process.selecting_trapped_exits(function.identity)
+    |> process.select_trapped_exits(function.identity)
 
   let result =
     actor.new_with_initialiser(1, fn(_) {
@@ -62,7 +62,7 @@ pub fn timed_out_init_test() {
 
   // Check that the exit isn't unhandled: it should be handled by start.
   // Stop trapping exits before asserting, to avoid interfering with other tests.
-  let exit = process.select(exit_selector, 10)
+  let exit = process.selector_receive(exit_selector, 10)
   process.trap_exits(False)
 
   result |> should.equal(Error(actor.InitTimeout))
@@ -142,7 +142,7 @@ pub fn unexpected_message_handled_test() {
   let assert Ok(actor) =
     actor.new_with_initialiser(10, fn(_) {
       let selector =
-        process.new_selector() |> process.selecting_anything(function.identity)
+        process.new_selector() |> process.select_other(function.identity)
       actor.initialised(dynamic.from("initial"))
       |> actor.selecting(selector)
       |> Ok
@@ -172,8 +172,7 @@ pub fn replace_selector_test() {
   let assert Ok(actor) =
     actor.new_with_initialiser(50, fn(_) {
       let subject = process.new_subject()
-      let selector =
-        process.new_selector() |> process.selecting(subject, function.identity)
+      let selector = process.new_selector() |> process.select(subject)
       actor.initialised(#(selector, "initial"))
       |> actor.returning(subject)
       |> actor.selecting(selector)
@@ -251,7 +250,7 @@ pub fn abnormal_exit_can_be_trapped_test() {
   process.trap_exits(True)
   let exits =
     process.new_selector()
-    |> process.selecting_trapped_exits(function.identity)
+    |> process.select_trapped_exits(function.identity)
 
   // Make an actor exit with an abnormal reason
   let assert Ok(actor) =
@@ -260,7 +259,7 @@ pub fn abnormal_exit_can_be_trapped_test() {
     |> actor.start
   process.send_abnormal_exit(actor.pid, "boo!")
 
-  let trapped_reason = process.select(exits, 10)
+  let trapped_reason = process.selector_receive(exits, 10)
 
   // Stop trapping exits, as otherwise other tests fail
   process.trap_exits(False)
@@ -276,7 +275,7 @@ pub fn killed_exit_can_be_trapped_test() {
   process.trap_exits(True)
   let exits =
     process.new_selector()
-    |> process.selecting_trapped_exits(function.identity)
+    |> process.select_trapped_exits(function.identity)
 
   // Make an actor exit with a killed reason
   let assert Ok(actor) =
@@ -285,7 +284,7 @@ pub fn killed_exit_can_be_trapped_test() {
     |> actor.start
   process.kill(actor.pid)
 
-  let trapped_reason = process.select(exits, 10)
+  let trapped_reason = process.selector_receive(exits, 10)
 
   // Stop trapping exits, as otherwise other tests fail
   process.trap_exits(False)
@@ -302,9 +301,9 @@ fn mapped_selector(
 
   let selector =
     selector
-    |> process.selecting(subject, mapper)
+    |> process.select_map(subject, mapper)
     // Always create a selector that catches unknown messages
-    |> process.selecting_anything(Unknown)
+    |> process.select_other(Unknown)
 
   #(subject, selector)
 }

@@ -6,15 +6,15 @@
 //// # Example
 ////
 //// ```gleam
-//// import gleam/erlang/process.{type Pid}
-//// import gleam/otp/static_supervisor as supervisor
+//// import gleam/erlang/actor
+//// import gleam/otp/static_supervisor.{type Supervisor} as supervisor
 //// import app/database_pool
 //// import app/http_server
 //// 
-//// pub fn start_supervisor() {
+//// pub fn start_supervisor() ->  {
 ////   supervisor.new(supervisor.OneForOne)
-////   |> supervisor.add(database_pool.child_specification())
-////   |> supervisor.add(http_server.child_specification())
+////   |> supervisor.add(database_pool.specification())
+////   |> supervisor.add(http_server.specification())
 ////   |> supervisor.start
 //// }
 //// ```
@@ -26,7 +26,9 @@ import gleam/list
 import gleam/otp/actor
 import gleam/otp/supervision.{type ChildSpecification}
 
-pub type SupervisorHandle
+pub type Supervisor {
+  Supervisor(pid: Pid)
+}
 
 pub type Strategy {
   /// If one child process terminates and is to be restarted, only that child
@@ -111,7 +113,7 @@ pub fn auto_shutdown(builder: Builder, value: AutoShutdown) -> Builder {
 // TODO: what happens if two children have the same id?
 pub fn start(
   builder: Builder,
-) -> Result(actor.Started(SupervisorHandle), actor.StartError) {
+) -> Result(actor.Started(Supervisor), actor.StartError) {
   let flags =
     make_erlang_start_flags([
       Strategy(builder.strategy),
@@ -123,13 +125,10 @@ pub fn start(
   let module = atom.create("gleam@otp@static_supervisor")
   let children = builder.children |> list.reverse |> list.map(convert_child)
   case erlang_start_link(module, #(flags, children)) {
-    Ok(pid) -> Ok(actor.Started(pid:, data: cast_handle(pid)))
+    Ok(pid) -> Ok(actor.Started(pid:, data: Supervisor(pid)))
     Error(error) -> Error(convert_erlang_start_error(error))
   }
 }
-
-@external(erlang, "gleam_otp_external", "identity")
-fn cast_handle(pid: Pid) -> SupervisorHandle
 
 @external(erlang, "gleam_otp_external", "convert_erlang_start_error")
 fn convert_erlang_start_error(dynamic: Dynamic) -> actor.StartError
@@ -151,7 +150,7 @@ pub fn add(builder: Builder, child: ChildSpecification(data)) -> Builder {
 fn convert_child(child: ChildSpecification(data)) -> ErlangChildSpec {
   let mfa = #(
     atom.create("gleam@otp@static_supervisor"),
-    atom.create("start_child"),
+    atom.create("start_child_callback"),
     [dynamic.from(child.start)],
   )
 
@@ -212,7 +211,7 @@ pub fn init(start_data: Dynamic) -> Result(Dynamic, never) {
 
 // Callback used by the Erlang supervisor module.
 @internal
-pub fn start_child(
+pub fn start_child_callback(
   start: fn() -> Result(actor.Started(anything), actor.StartError),
 ) -> Result(Pid, actor.StartError) {
   case start() {
