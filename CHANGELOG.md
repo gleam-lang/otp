@@ -4,6 +4,7 @@
 
 - The `supervisor` module has been removed.
 - The `intensity_tracker` module has been removed.
+- The `task` module has been removed.
 - The supervision module has been introduced. This module contains types and
   functions usable by different supervisor implementations.
 - In the `gleam/otp/static_supervisor` module:

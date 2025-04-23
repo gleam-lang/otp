@@ -144,7 +144,6 @@ import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process.{
   type ExitReason, type Pid, type Selector, type Subject, Abnormal, Killed,
 }
-import gleam/function
 import gleam/option.{type Option, None, Some}
 import gleam/otp/system.{
   type DebugState, type Mode, type StatusInfo, type SystemMessage, GetState,
