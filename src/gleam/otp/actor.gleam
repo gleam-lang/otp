@@ -67,8 +67,8 @@
 //// // First step of implementing the stack Actor is to define the message type that
 //// // it can receive.
 //// //
-//// // The type of the elements in the stack is not fixed so a type parameter is used
-//// // for it instead of a concrete type such as `String` or `Int`.
+//// // The type of the elements in the stack is not fixed so a type parameter
+//// // is used for it instead of a concrete type such as `String` or `Int`.
 //// pub type Message(element) {
 ////   // The `Shutdown` message is used to tell the actor to stop.
 ////   // It is the simplest message type, it contains no data.
@@ -237,6 +237,10 @@ pub type Started(data) {
   )
 }
 
+/// A convenience for the type returned when an actor process is started.
+pub type StartResult(data) =
+  Result(Started(data), StartError)
+
 /// A type returned from an actor's initialiser, containing the actor state, a
 /// selector to receive messages using, and data to return to the parent.
 ///
@@ -309,9 +313,7 @@ pub opaque type Builder(state, message, return) {
 ///
 pub fn new(state: state) -> Builder(state, message, Subject(message)) {
   let initialise = fn(subject) {
-    let selector =
-      process.new_selector()
-      |> process.selecting(subject, function.identity)
+    let selector = process.new_selector() |> process.select(subject)
     initialised(state)
     |> selecting(selector)
     |> returning(subject)
@@ -389,7 +391,7 @@ fn receive_message(self: Self(state, msg)) -> Message(msg) {
     // When suspended we only respond to system messages
     Suspended ->
       process.new_selector()
-      |> selecting_system_messages
+      |> select_system_messages
 
     // When running we respond to all messages
     Running ->
@@ -407,19 +409,19 @@ fn receive_message(self: Self(state, msg)) -> Message(msg) {
       // We add the handler for unexpected messages first so that the user
       // supplied selector can override it if desired.
       process.new_selector()
-      |> process.selecting_anything(Unexpected)
+      |> process.select_other(Unexpected)
       |> process.merge_selector(self.selector)
-      |> selecting_system_messages
+      |> select_system_messages
   }
 
-  process.select_forever(selector)
+  process.selector_receive_forever(selector)
 }
 
-fn selecting_system_messages(
+fn select_system_messages(
   selector: Selector(Message(msg)),
 ) -> Selector(Message(msg)) {
   selector
-  |> process.selecting_record(atom.create("system"), 2, convert_system_message)
+  |> process.select_record(atom.create("system"), 2, convert_system_message)
 }
 
 @external(erlang, "gleam_otp_external", "convert_system_message")
@@ -567,6 +569,7 @@ type StartInitMessage(data) {
 pub fn start(
   builder: Builder(state, msg, return),
 ) -> Result(Started(return), StartError) {
+  let timeout = builder.initialisation_timeout
   let ack_subject = process.new_subject()
   let self = process.self()
 
@@ -576,10 +579,10 @@ pub fn start(
   let monitor = process.monitor(child)
   let selector =
     process.new_selector()
-    |> process.selecting(ack_subject, Ack)
-    |> process.selecting_specific_monitor(monitor, Mon)
+    |> process.select_map(ack_subject, Ack)
+    |> process.select_specific_monitor(monitor, Mon)
 
-  let result = case process.select(selector, builder.initialisation_timeout) {
+  let result = case process.selector_receive(selector, timeout) {
     // Child started OK
     Ok(Ack(Ok(subject))) -> Ok(subject)
 
