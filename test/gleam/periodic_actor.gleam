@@ -10,9 +10,7 @@ pub fn periodic_actor(
   run callback: fn() -> Nil,
 ) -> Result(actor.Started(Nil), StartError) {
   let init = fn(subject) {
-    let selector =
-      process.new_selector()
-      |> process.selecting(subject, fn(x) { x })
+    let selector = process.new_selector() |> process.select(subject)
     // Send the first message to trigger the looping
     process.send(subject, Nil)
     // We're ready to start receiving messages
