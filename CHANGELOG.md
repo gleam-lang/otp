@@ -12,6 +12,7 @@
   - The `start` module has been added.
   - Types and functions for defining child specifications have been moved to the
     `supervision` module.
+  - Child ids are now generated, removing possibility of a collision.
   - The `SupervisorHandle` type has been added.
 - In the `gleam/otp/actor` module:
   - The `to_erlang_start_result` function has been removed.
