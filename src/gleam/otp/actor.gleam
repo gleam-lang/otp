@@ -10,7 +10,8 @@
 ////
 //// Gleam's Actor is similar to Erlang's `gen_server` and Elixir's `GenServer`
 //// but differs in that it offers a fully typed interface. This different API is
-//// why Gleam uses the name Actor rather than some variation of generic-server.
+//// why Gleam uses the name "Actor" rather than some variation of
+//// "generic-server".
 ////
 //// [erlang-sys]: https://www.erlang.org/doc/man/sys.html
 ////
