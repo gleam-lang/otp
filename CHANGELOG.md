@@ -27,7 +27,6 @@
     `InitExited` variant.
   - The `InitFailed` variant of `StartError` now contains a string rather than
     an `StartError`.
-  - The `Next` type now is now opaque.
   - The `Next` type now has the state type as the first type parameter and the
     message type as the second.
   - The argument order of the actor message handler callback function has been

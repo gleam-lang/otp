@@ -165,7 +165,7 @@ type Message(message) {
 
 /// The type used to indicate what to do after handling a message.
 ///
-pub opaque type Next(state, message) {
+pub type Next(state, message) {
   /// Continue handling messages.
   ///
   /// An optional selector can be provided to changes the messages that the
