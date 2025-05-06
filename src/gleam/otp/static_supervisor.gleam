@@ -26,10 +26,19 @@ import gleam/list
 import gleam/otp/actor
 import gleam/otp/supervision.{type ChildSpecification}
 
-pub type Supervisor {
+/// A reference to the running supervisor. In future this could be used to send
+/// commands to the supervisor to perform certain actions, but today no such
+/// APIs have been exposed.
+///
+/// This supervisor wrap Erlang/OTP's `supervisor` module, and as such it does
+/// not use subjects for message sending. If it was implemented in Gleam a
+/// subject might be used instead of this type.
+///
+pub opaque type Supervisor {
   Supervisor(pid: Pid)
 }
 
+/// How the supervisor should react when one of its children terminates.
 pub type Strategy {
   /// If one child process terminates and is to be restarted, only that child
   /// process is affected. This is the default restart strategy.
@@ -66,6 +75,25 @@ pub type AutoShutdown {
   AllSignificant
 }
 
+/// A builder for configuring and starting a supervisor. See each of the
+/// functions that take this type for details of the configuration possible.
+///
+/// # Example
+///
+/// ```gleam
+/// import gleam/erlang/actor
+/// import gleam/otp/static_supervisor.{type Supervisor} as supervisor
+/// import app/database_pool
+/// import app/http_server
+/// 
+/// pub fn start_supervisor() ->  {
+///   supervisor.new(supervisor.OneForOne)
+///   |> supervisor.add(database_pool.specification())
+///   |> supervisor.add(http_server.specification())
+///   |> supervisor.start
+/// }
+/// ```
+///
 pub opaque type Builder {
   Builder(
     strategy: Strategy,
@@ -76,6 +104,8 @@ pub opaque type Builder {
   )
 }
 
+/// Create a new supervisor builder, ready for further configuration.
+///
 pub fn new(strategy strategy: Strategy) -> Builder {
   Builder(
     strategy: strategy,
@@ -106,10 +136,21 @@ pub fn restart_tolerance(
 
 /// A supervisor can be configured to automatically shut itself down with
 /// exit reason shutdown when significant children terminate.
+///
 pub fn auto_shutdown(builder: Builder, value: AutoShutdown) -> Builder {
   Builder(..builder, auto_shutdown: value)
 }
 
+/// Start a new supervisor process with the configuration and children
+/// specified within the builder.
+///
+/// The supervisor will be linked to the parent process that calls this
+/// function, ideally another supervisor.
+///
+/// If any child fails to start the supevisor first terminates all already
+/// started child processes with reason shutdown and then terminate itself and
+/// returns an error.
+///
 pub fn start(
   builder: Builder,
 ) -> Result(actor.Started(Supervisor), actor.StartError) {
