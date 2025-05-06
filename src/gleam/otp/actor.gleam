@@ -187,6 +187,8 @@ pub fn continue(state: state) -> Next(state, message) {
 
 /// Indicate the actor should stop and shut-down, handling no futher messages.
 ///
+/// The reason for exiting is `Normal`.
+///
 pub fn stop() -> Next(state, message) {
   Stop(process.Normal)
 }

@@ -3,12 +3,8 @@ import gleam/otp/actor
 import gleam/otp/static_supervisor
 import gleam/otp/supervision
 
-fn actor_child(
-  name name,
-  init init,
-  loop loop,
-) -> supervision.ChildSpecification(Nil) {
-  supervision.worker(name, fn() {
+fn actor_child(init init, loop loop) -> supervision.ChildSpecification(Nil) {
+  supervision.worker(fn() {
     actor.new_with_initialiser(50, init)
     |> actor.on_message(loop)
     |> actor.start
@@ -22,7 +18,6 @@ fn init_notifier_child(
   name: String,
 ) -> supervision.ChildSpecification(Nil) {
   actor_child(
-    name: name,
     init: fn(_) {
       process.send(subject, #(name, process.self()))
       Ok(actor.initialised(name))
@@ -144,4 +139,21 @@ pub fn one_for_all_test() {
 
   let assert True = process.is_alive(supervisor.pid)
   process.send_exit(supervisor.pid)
+}
+
+pub fn duplicate_child_test() {
+  let subject = process.new_subject()
+  let spec = init_notifier_child(subject, "1")
+
+  // Even though the spec is the same there are no problems starting the
+  // children. This demonstrates that the spec is not used as the supervisor
+  // child id at all, so it is not possible to have duplicate ids.
+  let assert Ok(supervisor) =
+    static_supervisor.new(static_supervisor.OneForAll)
+    |> static_supervisor.add(spec)
+    |> static_supervisor.add(spec)
+    |> static_supervisor.add(spec)
+    |> static_supervisor.start
+
+  let assert True = process.is_alive(supervisor.pid)
 }

@@ -1,8 +1,8 @@
 -module(gleam_otp_external).
 
 -export([
-    application_stopped/0, convert_system_message/1,
-    convert_erlang_start_error/1, identity/1
+    application_stopped/0, convert_system_message/1, identity/1,
+    convert_erlang_start_error/1
 ]).
 
 identity(X) -> X.
@@ -19,10 +19,16 @@ identity(X) -> X.
 %   {debug, {install, {Func, FuncState}}}
 %   {debug, {install, {FuncId, Func, FuncState}}}
 %   {debug, {remove, FuncOrId}}
-%   GetStatus(Subject(StatusInfo))
 convert_system_message({system, {From, Ref}, Request}) when is_pid(From) ->
     Reply = fun(Msg) ->
-        erlang:send(From, {Ref, Msg}),
+        case Ref of 
+            [alias|Alias] = Tag when is_reference(Alias) ->
+                erlang:send(Alias, {Tag, Msg});
+            [[alias|Alias] | _] = Tag when is_reference(Alias) ->
+                erlang:send(Alias, {Tag, Msg});
+            _ ->
+                erlang:send(From, {Ref, Msg})
+        end,
         nil
     end,
     System = fun(Callback) ->
