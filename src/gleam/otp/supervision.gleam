@@ -31,9 +31,6 @@ pub type ChildType {
 /// A description a how to start a new child process under an OTP supervisor.
 pub type ChildSpecification(data) {
   ChildSpecification(
-    /// id is used to identify the child specification internally by the
-    /// supervisor.
-    id: String,
     /// A function to call to start the child process.
     start: fn() -> Result(actor.Started(data), actor.StartError),
     /// When the child is to be restarted. See the `Restart` documentation for
@@ -56,19 +53,10 @@ pub type ChildSpecification(data) {
 
 /// A regular child that is not also a supervisor.
 ///
-/// id is used to identify the child specification internally by the
-/// supervisor.
-/// Notice that this identifier on occations has been called "name". As far
-/// as possible, the terms "identifier" or "id" are now used but to keep
-/// backward compatibility, some occurences of "name" can still be found, for
-/// example in error messages.
-///
 pub fn worker(
-  id id: String,
   run start: fn() -> Result(actor.Started(data), actor.StartError),
 ) -> ChildSpecification(data) {
   ChildSpecification(
-    id: id,
     start:,
     restart: Permanent,
     significant: False,
@@ -78,19 +66,10 @@ pub fn worker(
 
 /// A special child that is a supervisor itself.
 ///
-/// id is used to identify the child specification internally by the
-/// supervisor.
-/// Notice that this identifier on occations has been called "name". As far
-/// as possible, the terms "identifier" or "id" are now used but to keep
-/// backward compatibility, some occurences of "name" can still be found, for
-/// example in error messages.
-///
 pub fn supervisor(
-  id id: String,
   run start: fn() -> Result(actor.Started(data), actor.StartError),
 ) -> ChildSpecification(data) {
   ChildSpecification(
-    id: id,
     start:,
     restart: Permanent,
     significant: False,

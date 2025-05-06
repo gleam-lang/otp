@@ -110,7 +110,6 @@ pub fn auto_shutdown(builder: Builder, value: AutoShutdown) -> Builder {
   Builder(..builder, auto_shutdown: value)
 }
 
-// TODO: what happens if two children have the same id?
 pub fn start(
   builder: Builder,
 ) -> Result(actor.Started(Supervisor), actor.StartError) {
@@ -123,7 +122,8 @@ pub fn start(
     ])
 
   let module = atom.create("gleam@otp@static_supervisor")
-  let children = builder.children |> list.reverse |> list.map(convert_child)
+  let children =
+    builder.children |> list.reverse |> list.index_map(convert_child)
   case erlang_start_link(module, #(flags, children)) {
     Ok(pid) -> Ok(actor.Started(pid:, data: Supervisor(pid)))
     Error(error) -> Error(convert_erlang_start_error(error))
@@ -147,7 +147,7 @@ pub fn add(builder: Builder, child: ChildSpecification(data)) -> Builder {
   ])
 }
 
-fn convert_child(child: ChildSpecification(data)) -> ErlangChildSpec {
+fn convert_child(child: ChildSpecification(data), id: Int) -> ErlangChildSpec {
   let mfa = #(
     atom.create("gleam@otp@static_supervisor"),
     atom.create("start_child_callback"),
@@ -166,7 +166,7 @@ fn convert_child(child: ChildSpecification(data)) -> ErlangChildSpec {
   }
 
   make_erlang_child_spec([
-    Id(child.id),
+    Id(id),
     Start(mfa),
     Restart(child.restart),
     Significant(child.significant),
@@ -195,7 +195,7 @@ fn make_erlang_child_spec(
 ) -> ErlangChildSpec
 
 type ErlangChildSpecProperty {
-  Id(String)
+  Id(Int)
   Start(#(Atom, Atom, List(Dynamic)))
   Restart(supervision.Restart)
   Significant(Bool)
