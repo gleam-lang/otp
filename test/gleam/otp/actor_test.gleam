@@ -11,6 +11,7 @@ import gleam/int
 import gleam/otp/actor
 import gleam/otp/system
 import gleam/result
+import gleam/string
 import gleeunit/should
 
 pub fn get_state_test() {
@@ -316,19 +317,95 @@ fn logger_set_primary_config(a: Atom, b: Atom) -> Nil
 
 pub fn named_new_test() {
   let name = process.new_name("my_actor")
-  let assert Ok(actor) = actor.new(Nil) |> actor.named(name) |> actor.start
+  let assert Ok(actor) =
+    actor.new(0)
+    |> actor.named(name)
+    |> actor.on_message(fn(rename, message) {
+      actor.send(message, rename)
+      actor.continue(rename + 1)
+    })
+    |> actor.start
+
+  // It's alive! (and registered)
   process.named(name)
   |> should.be_ok
   |> should.equal(actor.pid)
+
+  // We can call the process using a new subject made with the name
+  let subject = process.named_subject(name)
+  actor.call(subject, 10, function.identity)
+  |> should.equal(0)
+
+  // We can call the process using the returned subject
+  actor.call(actor.data, 10, function.identity)
+  |> should.equal(1)
 }
 
 pub fn named_new_with_initialiser_test() {
   let name = process.new_name("my_actor")
   let assert Ok(actor) =
-    actor.new_with_initialiser(50, fn(_) { actor.initialised(Nil) |> Ok })
+    actor.new_with_initialiser(50, fn(subject) {
+      actor.initialised(0)
+      |> actor.returning(subject)
+      |> Ok
+    })
+    |> actor.on_message(fn(rename, message) {
+      actor.send(message, rename)
+      actor.continue(rename + 1)
+    })
     |> actor.named(name)
     |> actor.start
+
+  // It's alive! (and registered)
   process.named(name)
   |> should.be_ok
   |> should.equal(actor.pid)
+
+  // We can call the process using a new subject made with the name
+  let subject = process.named_subject(name)
+  actor.call(subject, 10, function.identity)
+  |> should.equal(0)
+
+  // We can call the process using the returned subject
+  actor.call(actor.data, 10, function.identity)
+  |> should.equal(1)
+}
+
+pub fn new_with_initialiser_custom_selector_test() {
+  let parent_subject = process.new_subject()
+
+  let assert Ok(actor) =
+    actor.new_with_initialiser(50, fn(subject1) {
+      let subject2 = process.new_subject()
+      let selector =
+        process.new_selector()
+        |> process.select_map(subject2, fn(message) {
+          "subject2: " <> string.inspect(message)
+        })
+        |> process.select_other(fn(message) {
+          "not selected: " <> string.inspect(message)
+        })
+      actor.initialised(Nil)
+      |> actor.returning(#(subject1, subject2))
+      |> actor.selecting(selector)
+      |> Ok
+    })
+    |> actor.on_message(fn(state, message) {
+      actor.send(parent_subject, message)
+      actor.continue(state)
+    })
+    |> actor.start
+
+  // There is a custom selector provided by the intialiser, and it didn't
+  // select for the default subject, so messages to that one do not get
+  // selected. Here that is shown by it going to the `select_other` catch-all
+  // handler.
+  actor.send(actor.data.0, "Hello!")
+  let assert Ok("not selected: " <> _) = process.receive(parent_subject, 10)
+  let assert Error(Nil) = process.receive(parent_subject, 10)
+
+  // The subject that was added to the selector does get selected for.
+  actor.send(actor.data.1, "Hi!")
+  let assert Ok("subject2: \"Hi!\"" <> _) = process.receive(parent_subject, 10)
+  let assert Error(Nil) = process.receive(parent_subject, 10)
 }
