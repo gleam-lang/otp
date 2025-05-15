@@ -1,4 +1,4 @@
-# Changelog
+opaque # Changelog
 
 ## v1.0.0-rc1 - Unreleased
 
@@ -30,6 +30,7 @@
     an `StartError`.
   - The `Next` type now has the state type as the first type parameter and the
     message type as the second.
+  - The `Next` type is now opaque.
   - The argument order of the actor message handler callback function has been
     changed so the state is the first argument, and the message is the second.
   - The argument order of `call` has changed.

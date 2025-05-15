@@ -166,7 +166,7 @@ type Message(message) {
 
 /// The type used to indicate what to do after handling a message.
 ///
-pub type Next(state, message) {
+pub opaque type Next(state, message) {
   /// Continue handling messages.
   ///
   /// An optional selector can be provided to changes the messages that the
@@ -248,15 +248,16 @@ pub type StartResult(data) =
 ///
 /// Use the `initialised`, `selecting`, and `returning` functions to construct
 /// this type.
+///
 pub opaque type Initialised(state, message, data) {
-  Initialised(state: state, selector: Selector(message), return: data)
+  Initialised(state: state, selector: Option(Selector(message)), return: data)
 }
 
 /// Takes the post-initialisation state of the actor. This state will be passed
 /// to the `on_message` callback each time a message is received.
 ///
 pub fn initialised(state: state) -> Initialised(state, message, Nil) {
-  Initialised(state, process.new_selector(), Nil)
+  Initialised(state, None, Nil)
 }
 
 /// Add a selector for the actor to receive messages with.
@@ -268,7 +269,7 @@ pub fn selecting(
   initialised: Initialised(state, old_message, return),
   selector: Selector(message),
 ) -> Initialised(state, message, return) {
-  Initialised(..initialised, selector:)
+  Initialised(..initialised, selector: Some(selector))
 }
 
 /// Add the data to return to the parent process. This might be a subject that
@@ -310,16 +311,15 @@ pub opaque type Builder(state, message, return) {
 /// returns a subject to the parent that can be used to send messages to the
 /// actor.
 ///
+/// If the actor has been given a name with the `named` function then the
+/// subject is a named subject.
+///
 /// If you wish to create an actor with some other initialisation logic that
 /// runs before it starts handling messages, see `new_with_initialiser`.
 ///
 pub fn new(state: state) -> Builder(state, message, Subject(message)) {
   let initialise = fn(subject) {
-    let selector = process.new_selector() |> process.select(subject)
-    initialised(state)
-    |> selecting(selector)
-    |> returning(subject)
-    |> Ok
+    initialised(state) |> returning(subject) |> Ok
   }
   Builder(
     initialise:,
@@ -338,9 +338,13 @@ pub fn new(state: state) -> Builder(state, message, Subject(message)) {
 /// is considered to have failed and the actor will be killed, and an error
 /// will be returned to the parent.
 ///
-/// No subject and selector are automatically created if you use this function,
-/// so be sure to create your own and them to the `initialiser` value if you
-/// need them for your actor.
+/// The actor's default subject is passed to the initialiser function. You can
+/// chose to return it to the parent with `returning`, use it in some other
+/// way, or ignore it completely.
+///
+/// If a custom selector is given using the `selecting` function then this
+/// overwrites the default selector, which selects for the default subject, so
+/// you will need to add the subject to the custom selector yourself.
 ///
 pub fn new_with_initialiser(
   timeout: Int,
@@ -359,10 +363,7 @@ pub fn new_with_initialiser(
 /// called each time the actor receives a message.
 ///
 /// Actors handle messages sequentially, later messages being handled after the
-/// previous one has been handled. It is not like an event handler in languages
-/// such as JavaScript where the function can be called multiple times
-/// concurrently.
-///
+/// previous one has been handled.
 pub fn on_message(
   builder: Builder(state, message, return),
   handler: fn(state, message) -> Next(state, message),
@@ -370,7 +371,18 @@ pub fn on_message(
   Builder(..builder, on_message: handler)
 }
 
-// TODO: document
+/// Provide a name for the actor to be registered with when started, enabling
+/// it to receive messages via a named subject. This is useful for making
+/// processes that can take over from an older one that has exited due to a
+/// failure, or to avoid passing subjects from receiver processes to sender
+/// processes.
+///
+/// If the name is already registered to another process then the actor will
+/// fail to start.
+///
+/// When this function is used the actor's default subject will be a named
+/// subject using this name.
+///
 pub fn named(
   builder: Builder(state, message, return),
   name: process.Name(message),
@@ -501,19 +513,27 @@ fn initialise_actor(
   ack: Subject(Result(return, String)),
 ) -> ExitReason {
   // Run the actor initialiser.
-  let result = case builder.name {
-    None -> {
-      builder.initialise(process.new_subject())
-    }
-    Some(name) -> {
-      use _ <- result.try(try_register_self(name))
-      builder.initialise(process.named_subject(name))
-    }
+  let result = {
+    use subject <- result.try(case builder.name {
+      None -> Ok(process.new_subject())
+      Some(name) -> {
+        use _ <- result.try(try_register_self(name))
+        Ok(process.named_subject(name))
+      }
+    })
+    use result <- result.try(builder.initialise(subject))
+    Ok(#(subject, result))
   }
 
   case result {
     // Init was OK, send the subject to the parent and start handling messages.
-    Ok(Initialised(state:, selector:, return:)) -> {
+    Ok(#(subject, Initialised(state:, selector:, return:))) -> {
+      // Add the default subject to the selector provided by the initialiser.
+      // The initialiser may have added additional handlers to the selector.
+      let selector = case selector {
+        Some(selector) -> selector
+        None -> process.new_selector() |> process.select(subject)
+      }
       let selector = process.map_selector(selector, Message)
       // Signal to parent that the process has initialised successfully
       process.send(ack, Ok(return))
@@ -545,8 +565,6 @@ fn try_register_self(name: process.Name(msg)) -> Result(Nil, String) {
   }
 }
 
-// TODO: research what gen_server does for each start failure mode and see if
-// we can draw something from there.
 pub type StartError {
   InitTimeout
   InitFailed(String)
@@ -558,9 +576,6 @@ type StartInitMessage(data) {
   Mon(process.Down)
 }
 
-// TODO: test initialisation_timeout. Currently if we test it eunit prints an
-// error from the process death. How do we avoid this?
-//
 /// Start an actor from a given specification. If the actor's `init` function
 /// returns an error or does not return within `init_timeout` then an error is
 /// returned.
