@@ -10,6 +10,7 @@
 - In the `gleam/otp/static_supervisor` module:
   - The `start_link` module has been removed.
   - The `start` module has been added.
+  - The `supervised` module has been added.
   - Types and functions for defining child specifications have been moved to the
     `supervision` module.
   - Child ids are now generated, removing possibility of a collision.
