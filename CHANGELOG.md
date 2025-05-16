@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.0-rc1 - Unreleased
+## v1.0.0-rc1 - 2025-05-16
 
 - The `supervisor` module has been removed.
 - The `intensity_tracker` module has been removed.
