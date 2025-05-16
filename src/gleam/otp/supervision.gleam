@@ -51,7 +51,9 @@ pub type ChildSpecification(data) {
   )
 }
 
-/// A regular child that is not also a supervisor.
+/// A regular child process.
+///
+/// You should use this unless your process is also a supervisor.
 ///
 pub fn worker(
   run start: fn() -> Result(actor.Started(data), actor.StartError),

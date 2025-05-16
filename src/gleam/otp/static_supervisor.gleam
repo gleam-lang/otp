@@ -144,8 +144,11 @@ pub fn auto_shutdown(builder: Builder, value: AutoShutdown) -> Builder {
 /// Start a new supervisor process with the configuration and children
 /// specified within the builder.
 ///
+/// Typically you would use the `supervised` function to add your supervisor to
+/// a supervision tree instead of using this function directly.
+///
 /// The supervisor will be linked to the parent process that calls this
-/// function, ideally another supervisor.
+/// function.
 ///
 /// If any child fails to start the supevisor first terminates all already
 /// started child processes with reason shutdown and then terminate itself and
@@ -169,6 +172,19 @@ pub fn start(
     Ok(pid) -> Ok(actor.Started(pid:, data: Supervisor(pid)))
     Error(error) -> Error(convert_erlang_start_error(error))
   }
+}
+
+/// Create a `ChildSpecification` that adds this supervisor as the child of
+/// another, making it fault tolerant and part of the application's supervision
+/// tree. You should prefer to starting unsupervised supervisors with the
+/// `start` function.
+///
+/// If any child fails to start the supevisor first terminates all already
+/// started child processes with reason shutdown and then terminate itself and
+/// returns an error.
+///
+pub fn supervised(builder: Builder) -> ChildSpecification(Supervisor) {
+  supervision.supervisor(fn() { start(builder) })
 }
 
 @external(erlang, "gleam_otp_external", "convert_erlang_start_error")
