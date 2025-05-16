@@ -13,8 +13,8 @@
 //// 
 //// pub fn start_supervisor() ->  {
 ////   supervisor.new(supervisor.OneForOne)
-////   |> supervisor.add(database_pool.specification())
-////   |> supervisor.add(http_server.specification())
+////   |> supervisor.add(database_pool.supervised())
+////   |> supervisor.add(http_server.supervised())
 ////   |> supervisor.start
 //// }
 //// ```
@@ -88,8 +88,8 @@ pub type AutoShutdown {
 /// 
 /// pub fn start_supervisor() ->  {
 ///   supervisor.new(supervisor.OneForOne)
-///   |> supervisor.add(database_pool.specification())
-///   |> supervisor.add(http_server.specification())
+///   |> supervisor.add(database_pool.supervised())
+///   |> supervisor.add(http_server.supervised())
 ///   |> supervisor.start
 /// }
 /// ```
