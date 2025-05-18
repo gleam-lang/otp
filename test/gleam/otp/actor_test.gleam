@@ -265,7 +265,6 @@ pub fn abnormal_exit_can_be_trapped_test() {
   // Stop trapping exits, as otherwise other tests fail
   process.trap_exits(False)
 
-  // The weird reason below is because of https://github.com/gleam-lang/erlang/issues/66
   trapped_reason
   |> should.equal(
     Ok(process.ExitMessage(actor.pid, process.Abnormal(dynamic.from("boo!")))),
@@ -292,6 +291,31 @@ pub fn killed_exit_can_be_trapped_test() {
 
   trapped_reason
   |> should.equal(Ok(process.ExitMessage(actor.pid, process.Killed)))
+}
+
+pub fn abnormal_stop_exits_linked_test() {
+  process.trap_exits(True)
+  let exits =
+    process.new_selector()
+    |> process.select_trapped_exits(function.identity)
+
+  // Make an actor exit with an abnormal reason
+  let assert Ok(actor) =
+    actor.new(Nil)
+    |> actor.on_message(fn(_, _) { actor.stop_abnormal(dynamic.from("wibble")) })
+    |> actor.start
+
+  process.send(actor.data, "okay")
+
+  let trapped_reason = process.selector_receive(exits, 10)
+
+  // Stop trapping exits, as otherwise other tests fail
+  process.trap_exits(False)
+
+  trapped_reason
+  |> should.equal(
+    Ok(process.ExitMessage(actor.pid, process.Abnormal(dynamic.from("wibble")))),
+  )
 }
 
 fn mapped_selector(

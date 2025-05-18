@@ -194,6 +194,15 @@ pub fn stop() -> Next(state, message) {
   Stop(process.Normal)
 }
 
+/// Indicate the actor is in a bad state and should shut down. It will not
+/// handle any new messages, and any linked processes will also exit abnormally.
+///
+/// The provided reason will be given and propagated.
+///
+pub fn stop_abnormal(reason: Dynamic) -> Next(state, message) {
+  Stop(process.Abnormal(reason))
+}
+
 /// Provide a selector to change the messages that the actor is handling
 /// going forward. This replaces any selector that was previously given
 /// in the actor's `init` callback, or in any previous `Next` value.
