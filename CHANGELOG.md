@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- The `actor` module gains a `stop_abnormal` method
+- The `actor` module gains a `stop_abnormal` function
 
 ## v1.0.0-rc1 - 2025-05-16
 
