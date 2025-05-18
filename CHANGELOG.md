@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The `actor` module gains a `stop_abnormal` method
+
 ## v1.0.0-rc1 - 2025-05-16
 
 - The `supervisor` module has been removed.
