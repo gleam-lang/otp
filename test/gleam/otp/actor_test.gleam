@@ -265,6 +265,7 @@ pub fn abnormal_exit_can_be_trapped_test() {
   // Stop trapping exits, as otherwise other tests fail
   process.trap_exits(False)
 
+  // The weird reason below is because of https://github.com/gleam-lang/erlang/issues/66
   trapped_reason
   |> should.equal(
     Ok(process.ExitMessage(actor.pid, process.Abnormal(dynamic.from("boo!")))),
@@ -312,6 +313,7 @@ pub fn abnormal_stop_exits_linked_test() {
   // Stop trapping exits, as otherwise other tests fail
   process.trap_exits(False)
 
+  // The weird reason below is because of https://github.com/gleam-lang/erlang/issues/66
   trapped_reason
   |> should.equal(
     Ok(process.ExitMessage(actor.pid, process.Abnormal(dynamic.from("wibble")))),
