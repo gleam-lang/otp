@@ -199,8 +199,8 @@ pub fn stop() -> Next(state, message) {
 ///
 /// The provided reason will be given and propagated.
 ///
-pub fn stop_abnormal(reason: Dynamic) -> Next(state, message) {
-  Stop(process.Abnormal(reason))
+pub fn stop_abnormal(reason: String) -> Next(state, message) {
+  Stop(process.Abnormal(dynamic.string(reason)))
 }
 
 /// Provide a selector to change the messages that the actor is handling
