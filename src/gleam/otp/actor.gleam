@@ -447,7 +447,7 @@ fn process_status_info(self: Self(state, msg)) -> StatusInfo {
     parent: self.parent,
     mode: self.mode,
     debug_state: self.debug_state,
-    state: dynamic.from(self.state),
+    state: erase(self.state),
   )
 }
 
@@ -458,7 +458,7 @@ fn loop(self: Self(state, msg)) -> ExitReason {
     System(system) ->
       case system {
         GetState(callback) -> {
-          callback(dynamic.from(self.state))
+          callback(erase(self.state))
           loop(self)
         }
         Resume(callback) -> {
@@ -505,6 +505,9 @@ fn loop(self: Self(state, msg)) -> ExitReason {
 // TODO: replace this when we have Gleam bindings to the logger
 @external(erlang, "logger", "warning")
 fn log_warning(a: Charlist, b: List(Charlist)) -> Nil
+
+@external(erlang, "gleam_otp_external", "identity")
+fn erase(a: anything) -> Dynamic
 
 // Run automatically when the actor is first started.
 fn initialise_actor(

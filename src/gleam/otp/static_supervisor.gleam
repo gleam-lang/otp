@@ -208,18 +208,12 @@ fn convert_child(child: ChildSpecification(data), id: Int) -> ErlangChildSpec {
   let mfa = #(
     atom.create("gleam@otp@static_supervisor"),
     atom.create("start_child_callback"),
-    [dynamic.from(child.start)],
+    [child.start],
   )
 
   let #(type_, shutdown) = case child.child_type {
-    supervision.Supervisor -> #(
-      atom.create("supervisor"),
-      dynamic.from(atom.create("infinity")),
-    )
-    supervision.Worker(timeout) -> #(
-      atom.create("worker"),
-      dynamic.from(timeout),
-    )
+    supervision.Supervisor -> #(atom.create("supervisor"), make_timeout(-1))
+    supervision.Worker(ms) -> #(atom.create("worker"), make_timeout(ms))
   }
 
   make_erlang_child_spec([
@@ -235,9 +229,11 @@ fn convert_child(child: ChildSpecification(data), id: Int) -> ErlangChildSpec {
 type ErlangStartFlags
 
 @external(erlang, "maps", "from_list")
-fn make_erlang_start_flags(flags: List(ErlangStartFlag)) -> ErlangStartFlags
+fn make_erlang_start_flags(
+  flags: List(ErlangStartFlag(data)),
+) -> ErlangStartFlags
 
-type ErlangStartFlag {
+type ErlangStartFlag(data) {
   Strategy(Strategy)
   Intensity(Int)
   Period(Int)
@@ -248,17 +244,25 @@ type ErlangChildSpec
 
 @external(erlang, "maps", "from_list")
 fn make_erlang_child_spec(
-  properties: List(ErlangChildSpecProperty),
+  properties: List(ErlangChildSpecProperty(data)),
 ) -> ErlangChildSpec
 
-type ErlangChildSpecProperty {
+type ErlangChildSpecProperty(data) {
   Id(Int)
-  Start(#(Atom, Atom, List(Dynamic)))
+  Start(
+    #(Atom, Atom, List(fn() -> Result(actor.Started(data), actor.StartError))),
+  )
   Restart(supervision.Restart)
   Significant(Bool)
   Type(Atom)
-  Shutdown(Dynamic)
+  Shutdown(Timeout)
 }
+
+type Timeout
+
+/// Negative numbers mean an infinite timeout
+@external(erlang, "gleam_otp_external", "make_timeout")
+fn make_timeout(amount: Int) -> Timeout
 
 // Callback used by the Erlang supervisor module.
 @internal

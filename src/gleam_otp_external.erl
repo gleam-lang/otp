@@ -2,10 +2,13 @@
 
 -export([
     application_stopped/0, convert_system_message/1, identity/1,
-    convert_erlang_start_error/1
+    make_timeout/1, convert_erlang_start_error/1
 ]).
 
 identity(X) -> X.
+
+make_timeout(X) when X < 0 -> infinity;
+make_timeout(X) -> X.
 
 % TODO: support other system messages
 %   {replace_state, StateFn}

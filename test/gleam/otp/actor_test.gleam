@@ -22,7 +22,7 @@ pub fn get_state_test() {
 
   actor.pid
   |> system.get_state
-  |> should.equal(dynamic.from("Test state"))
+  |> should.equal(dynamic.string("Test state"))
 }
 
 @external(erlang, "sys", "get_status")
@@ -87,7 +87,7 @@ pub fn suspend_resume_test() {
   // System messages are still handled
   actor.pid
   |> system.get_state
-  |> should.equal(dynamic.from(0))
+  |> should.equal(dynamic.int(0))
 
   // Resume process
   actor.pid
@@ -97,7 +97,7 @@ pub fn suspend_resume_test() {
   // The queued regular message has been handled so the state has incremented
   actor.pid
   |> system.get_state
-  |> should.equal(dynamic.from(1))
+  |> should.equal(dynamic.int(1))
 }
 
 pub fn subject_test() {
@@ -108,13 +108,13 @@ pub fn subject_test() {
 
   actor.pid
   |> system.get_state()
-  |> should.equal(dynamic.from("state 1"))
+  |> should.equal(dynamic.string("state 1"))
 
   actor.send(actor.data, "state 2")
 
   actor.pid
   |> system.get_state()
-  |> should.equal(dynamic.from("state 2"))
+  |> should.equal(dynamic.string("state 2"))
 }
 
 pub fn unexpected_message_test() {
@@ -128,7 +128,7 @@ pub fn unexpected_message_test() {
 
   actor.pid
   |> system.get_state()
-  |> should.equal(dynamic.from("state 1"))
+  |> should.equal(dynamic.string("state 1"))
 
   raw_send(actor.pid, "Unexpected message 1")
   actor.send(actor.data, "state 2")
@@ -136,7 +136,7 @@ pub fn unexpected_message_test() {
 
   actor.pid
   |> system.get_state()
-  |> should.equal(dynamic.from("state 2"))
+  |> should.equal(dynamic.string("state 2"))
 }
 
 pub fn unexpected_message_handled_test() {
@@ -144,7 +144,7 @@ pub fn unexpected_message_handled_test() {
     actor.new_with_initialiser(10, fn(_) {
       let selector =
         process.new_selector() |> process.select_other(function.identity)
-      actor.initialised(dynamic.from("initial"))
+      actor.initialised(dynamic.string("initial"))
       |> actor.selecting(selector)
       |> Ok
     })
@@ -155,7 +155,7 @@ pub fn unexpected_message_handled_test() {
 
   actor.pid
   |> system.get_state()
-  |> should.equal(dynamic.from("Unexpected message 1"))
+  |> should.equal(dynamic.string("Unexpected message 1"))
 }
 
 type ActorMessage {
@@ -244,7 +244,7 @@ pub fn replace_selector_test() {
   process.send(str_subj, "test 4")
   // Check state
   process.call(actor.data, 50, GetText)
-  |> should.equal("unknown message: Tuple of 2 elements")
+  |> should.equal("unknown message: Array")
 }
 
 pub fn abnormal_exit_can_be_trapped_test() {
@@ -268,7 +268,7 @@ pub fn abnormal_exit_can_be_trapped_test() {
   // The weird reason below is because of https://github.com/gleam-lang/erlang/issues/66
   trapped_reason
   |> should.equal(
-    Ok(process.ExitMessage(actor.pid, process.Abnormal(dynamic.from("boo!")))),
+    Ok(process.ExitMessage(actor.pid, process.Abnormal(dynamic.string("boo!")))),
   )
 }
 
