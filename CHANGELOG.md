@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v1.0.0-rc2 - 2025-05-24
 
 - The `actor` module gains a `stop_abnormal` function
 
