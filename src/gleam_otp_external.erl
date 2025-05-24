@@ -46,12 +46,17 @@ convert_system_message({system, {From, Ref}, Request}) when is_pid(From) ->
     end.
 
 process_status({status_info, Module, Parent, Mode, DebugState, State}) ->
-    Data = [
-        get(), Mode, Parent, DebugState,
-        [{header, "Status for Gleam process " ++ pid_to_list(self())},
-         {data, [{'Status', Mode}, {'Parent', Parent}, {'State', State}]}]
-    ],
-    {status, self(), {module, Module}, Data}.
+     Data = [
+         get(), Mode, Parent, DebugState,
+         [{header, "Status for Gleam process " ++ pid_to_list(self())},
+           {data, [
+             {"Gleam behaviour", Module},
+             {"Status", Mode},
+             {"Parent", Parent}]},
+          {data, [{"State", State}]}
+         ]
+     ],
+     {status, self(), {module, Module}, Data}.
 
 application_stopped() ->
     ok.
