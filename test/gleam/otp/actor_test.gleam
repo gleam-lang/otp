@@ -303,7 +303,7 @@ pub fn abnormal_stop_exits_linked_test() {
   // Make an actor exit with an abnormal reason
   let assert Ok(actor) =
     actor.new(Nil)
-    |> actor.on_message(fn(_, _) { actor.stop_abnormal(dynamic.from("wibble")) })
+    |> actor.on_message(fn(_, _) { actor.stop_abnormal("wibble") })
     |> actor.start
 
   process.send(actor.data, "okay")
