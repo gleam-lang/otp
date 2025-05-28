@@ -10,6 +10,6 @@ packages = [
 
 [requirements]
 gleam_erlang = { version = ">= 1.0.0-rc1 and < 2.0.0" }
-gleam_stdlib = { version = ">= 0.59.0 and < 2.0.0" }
+gleam_stdlib = { version = ">= 0.60.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 logging = { version = ">= 1.3.0 and < 2.0.0" }
