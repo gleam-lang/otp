@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.0-rc3 - 2025-05-26
+
+- Corrected `gleam_stdlib` requirement.
+
 ## v1.0.0-rc2 - 2025-05-24
 
 - The `actor` module gains a `stop_abnormal` function
