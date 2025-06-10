@@ -2,7 +2,6 @@
 //// time (or when it is sent a message by another process).
 
 import gleam/erlang/process
-import gleam/io
 import gleam/otp/actor.{type StartError}
 
 pub fn periodic_actor(
@@ -36,6 +35,9 @@ pub fn periodic_actor(
 
 pub fn main_test() {
   let five_seconds = 5000
-  let say_hello = fn() { io.println("Hello, Joe!") }
+  let say_hello = fn() {
+    let _ = "Hello, Joe!"
+    Nil
+  }
   periodic_actor(every: five_seconds, run: say_hello)
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.0-rc4 - 2025-06-10
+
+- Improved the data displayed for Gleam actors in the Erlang observer.
+
 ## v1.0.0-rc3 - 2025-05-26
 
 - Corrected `gleam_stdlib` requirement.
