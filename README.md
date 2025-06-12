@@ -44,8 +44,7 @@ pub type Message {
   Add(Int)
   Get(Subject(Int))
 }
-```gleam
-
+```
 
 Gleam’s actor system is built with a few primary goals:
 
