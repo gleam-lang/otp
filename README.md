@@ -5,6 +5,48 @@ Fault tolerant multi-core programs with OTP, the BEAM actor framework.
 [![Package Version](https://img.shields.io/hexpm/v/gleam_otp)](https://hex.pm/packages/gleam_otp)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gleam_otp/)
 
+```shell
+gleam add gleam_otp
+```
+```gleam
+import gleam/erlang/process.{type Subject}
+import gleam/otp/actor
+
+pub fn main() {
+  // Start an actor
+  let assert Ok(actor) =
+    actor.new(0)
+    |> actor.on_message(handle_message)
+    |> actor.start
+
+  // Send some messages to the actor
+  actor.send(actor.data, Add(5))
+  actor.send(actor.data, Add(3))
+
+  // Send a message and get a reply
+  assert actor.call(actor.data, 10, Get) == 8
+}
+
+pub fn handle_message(state: Int, message: Message) -> actor.Next(Int, Message) {
+  case message {
+    Add(i) -> {
+      let state = state + i
+      actor.continue(state)
+    }
+    Get(reply) -> {
+      actor.send(reply, state)
+      actor.continue(state)
+    }
+  }
+}
+
+pub type Message {
+  Add(Int)
+  Get(Subject(Int))
+}
+```gleam
+
+
 Gleam’s actor system is built with a few primary goals:
 
 - Full type safety of actors and messages.
@@ -20,14 +62,6 @@ its design.
 Not all Erlang/OTP functionality is included in this library. Some is not
 possible to represent in a type safe way, so it is not included. Other features
 are still in development, such as further process supervision strategies.
-
-## Usage
-
-Add this library to your Gleam project.
-
-```shell
-gleam add gleam_otp
-```
 
 ## Common types of actor
 

@@ -3,7 +3,7 @@ version = "1.0.0"
 licences = ["Apache-2.0"]
 description = "Fault tolerant multi-core programs with OTP, the BEAM actor framework."
 
-gleam = ">= 1.7.0"
+gleam = ">= 1.11.0"
 
 repository = { type = "github", user = "gleam-lang", repo = "otp" }
 links = [
@@ -13,7 +13,7 @@ links = [
 
 [dependencies]
 gleam_stdlib = ">= 0.60.0 and < 2.0.0"
-gleam_erlang = ">= 1.0.0-rc1 and < 2.0.0"
+gleam_erlang = ">= 1.0.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
