@@ -31,7 +31,7 @@ Add this library to your Gleam project.
 gleam add gleam_otp
 ```
 
-## Actor hierarchy
+## Common types of actor
 
 This library provides several different types of actor that can be used in
 Gleam programs.
@@ -54,15 +54,6 @@ functionality.
 
 [Documentation](https://hexdocs.pm/gleam_otp/gleam/otp/actor.html)
 
-### Task
-
-A task is a kind of process that computes a value and then sends the result back
-to its parent. Commonly multiple tasks are used to compute multiple things at
-once.
-
-- [gleam/otp/task](https://hexdocs.pm/gleam_otp/gleam/otp/task.html)
-  documentation.
-
 ### Supervisor
 
 Supervisors is a process that starts and then supervises a group of processes,
@@ -71,24 +62,10 @@ resulting in a hierarchical process structure called a supervision tree,
 providing fault tolerance to a Gleam application.
 
 - [gleam/otp/static_supervisor](https://hexdocs.pm/gleam_otp/gleam/otp/static_supervisor.html) documentation.
-- [gleam/otp/supervisor](https://hexdocs.pm/gleam_otp/gleam/otp/supervisor.html)
   documentation.
 
 ## Limitations and known issues
 
-This library does not currently replicate all of the Erlang/OTP functionality.
-Some limitations include:
-
-- There is no support for named processes. They are untyped global mutable
-  variables which may be uninitialized, more research is needed to find a
-  suitable type safe alternative.
-- There are relatively few actor abstractions provided by this library. More
-  will be added in the future.
-- Actors do not yet support all OTP system messages. Unsupported messages are
-  dropped.
-- Supervisors do not yet support different shutdown periods per child. In
-  practice this means that children that are supervisors do not get an
-  unlimited amount of time to shut down, as is expected in Erlang or Elixir.
-- This library has not seen much testing compared to the Erlang OTP
-  libraries, both in terms of unit tests and real world testing in
-  applications.
+Actors do not yet support all OTP system messages, so some of the OTP debugging
+APIs may not be fully functional. These unsupported messages are discarded by
+actors.
