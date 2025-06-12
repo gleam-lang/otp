@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.0-rc4 - 2025-06-10
+## v1.0.0 - 2025-06-12
 
 - Improved the data displayed for Gleam actors in the Erlang observer.
 

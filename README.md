@@ -1,11 +1,9 @@
 # Gleam OTP
 
-<a href="https://github.com/gleam-lang/otp/releases"><img src="https://img.shields.io/github/release/gleam-lang/otp" alt="GitHub release"></a>
-<a href="https://discord.gg/Fm8Pwmy"><img src="https://img.shields.io/discord/768594524158427167?color=blue" alt="Discord chat"></a>
-![CI](https://github.com/gleam-lang/otp/workflows/test/badge.svg?branch=main)
+Fault tolerant multi-core programs with OTP, the BEAM actor framework.
 
-A Gleam library for building fault tolerant multi-core programs using the
-actor model. It is compatible with Erlang's OTP framework.
+[![Package Version](https://img.shields.io/hexpm/v/gleam_otp)](https://hex.pm/packages/gleam_otp)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gleam_otp/)
 
 Gleam’s actor system is built with a few primary goals:
 
