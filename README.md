@@ -55,8 +55,8 @@ Gleam’s actor system is built with a few primary goals:
 
 This library documents its abstractions and functionality, but you may also wish
 to read the documentation or other material on Erlang’s OTP framework to get a
-fuller understanding of OTP, the problems it solves, and and the motivations for
-its design.
+fuller understanding of OTP, the problems it solves, and the motivations for its
+design.
 
 Not all Erlang/OTP functionality is included in this library. Some is not
 possible to represent in a type safe way, so it is not included. Other features
