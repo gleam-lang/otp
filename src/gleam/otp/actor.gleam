@@ -91,11 +91,11 @@
 //// 
 //// // The last part is to implement the `handle_message` callback function.
 //// //
-//// // This function is called by the Actor each for each message it receives.
-//// // Actors are single threaded only does one thing at a time, so they handle
-//// // messages sequentially and one at a time, in the order they are received.
+//// // This function is called by the Actor for each message it receives.
+//// // Actors are single threaded only doing one thing at a time, so they handle
+//// // messages sequentially one at a time, in the order they are received.
 //// //
-//// // The function takes the message and the current state, and returns a data
+//// // The function takes the current state and a message, and returns a data
 //// // structure that indicates what to do next, along with the new state.
 //// fn handle_message(
 ////   stack: List(e),
