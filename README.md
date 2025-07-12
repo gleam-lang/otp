@@ -24,7 +24,11 @@ pub fn main() {
   actor.send(actor.data, Add(3))
 
   // Send a message and get a reply
-  assert actor.call(actor.data, 10, Get) == 8
+  assert actor.call(
+    subject: actor.data, 
+    timeout: 10, 
+    make_message: Get
+  ) == 8
 }
 
 pub fn handle_message(state: Int, message: Message) -> actor.Next(Int, Message) {
