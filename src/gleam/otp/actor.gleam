@@ -659,9 +659,9 @@ pub fn send(subject: Subject(msg), msg: msg) -> Nil {
 /// This is a re-export of `process.call`, for the sake of convenience.
 ///
 pub fn call(
-  subject: Subject(message),
-  timeout: Int,
-  make_message: fn(Subject(reply)) -> message,
+  subject subject: Subject(message),
+  timeout timeout: Int,
+  make_message make_message: fn(Subject(reply)) -> message,
 ) -> reply {
   process.call(subject, timeout, make_message)
 }
