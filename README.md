@@ -93,7 +93,6 @@ resulting in a hierarchical process structure called a supervision tree,
 providing fault tolerance to a Gleam application.
 
 - [gleam/otp/static_supervisor](https://hexdocs.pm/gleam_otp/gleam/otp/static_supervisor.html) documentation.
-  documentation.
 
 ## Limitations and known issues
 
