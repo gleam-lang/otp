@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.0 - 2025-07-15
+## v1.1.0 - 2025-07-15
 
 - Added corresponding labels in actor.call to mirror process.call.
 
