@@ -25,9 +25,9 @@ pub fn main() {
 
   // Send a message and get a reply
   assert actor.call(
-    subject: actor.data, 
-    timeout: 10, 
-    make_message: Get
+    actor.data, 
+    waiting: 10, 
+    sending: Get
   ) == 8
 }
 
