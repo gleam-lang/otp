@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.0 - 2025-07-15
+
+- Added corresponding labels in actor.call to mirror process.call.
+
 ## v1.0.0 - 2025-06-12
 
 - Improved the data displayed for Gleam actors in the Erlang observer.
