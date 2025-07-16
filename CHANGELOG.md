@@ -2,7 +2,9 @@
 
 ## v1.1.0 - 2025-07-15
 
-- Added corresponding labels in actor.call to mirror process.call.
+- The `call` function in the `gleam/otp/actor` module gains the labels
+  `sending` and `waiting`, to match the `call` function of
+  `gleam/erlang/process.`
 
 ## v1.0.0 - 2025-06-12
 

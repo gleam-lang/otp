@@ -1,5 +1,5 @@
 name = "gleam_otp"
-version = "1.0.0"
+version = "1.1.0"
 licences = ["Apache-2.0"]
 description = "Fault tolerant multi-core programs with OTP, the BEAM actor framework."
 
