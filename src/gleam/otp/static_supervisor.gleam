@@ -6,12 +6,12 @@
 //// # Example
 ////
 //// ```gleam
-//// import gleam/erlang/actor
+//// import gleam/otp/actor
 //// import gleam/otp/static_supervisor.{type Supervisor} as supervisor
 //// import app/database_pool
 //// import app/http_server
 //// 
-//// pub fn start_supervisor() ->  {
+//// pub fn start_supervisor() -> actor.StartResult(Supervisor) {
 ////   supervisor.new(supervisor.OneForOne)
 ////   |> supervisor.add(database_pool.supervised())
 ////   |> supervisor.add(http_server.supervised())
