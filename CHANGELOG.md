@@ -1,10 +1,5 @@
 # Changelog
 
-## v1.1.0 - 2025-08-04
-
-- Refernce to deprecated function `process.try_call` was removed from 
-  `call` function documentation.
-
 ## v1.1.0 - 2025-07-15
 
 - The `call` function in the `gleam/otp/actor` module gains the labels

@@ -653,7 +653,7 @@ pub fn send(subject: Subject(msg), msg: msg) -> Nil {
 /// process.
 ///
 /// If a reply is not received within the given timeout then the sender process
-/// crashes. 
+/// crashes rather than leaving the processes in an invalid state. 
 ///
 /// This is a re-export of `process.call`, for the sake of convenience.
 ///
