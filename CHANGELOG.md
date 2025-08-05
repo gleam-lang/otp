@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.1.0 - 2025-07-15
+## v1.1.0 - 2025-08-05
 
 - The `call` function in the `gleam/otp/actor` module gains the labels
   `sending` and `waiting`, to match the `call` function of
