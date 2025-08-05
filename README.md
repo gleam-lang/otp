@@ -6,7 +6,7 @@ Fault tolerant multi-core programs with OTP, the BEAM actor framework.
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gleam_otp/)
 
 ```shell
-gleam add gleam_otp
+gleam add gleam_otp@1
 ```
 ```gleam
 import gleam/erlang/process.{type Subject}
