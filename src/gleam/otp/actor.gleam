@@ -588,13 +588,7 @@ type StartInitMessage(data) {
   Mon(process.Down)
 }
 
-/// Start an actor from a given specification. If the actor's `init` function
-/// returns an error or does not return within `init_timeout` then an error is
-/// returned.
-///
-/// If you do not need to specify the initialisation behaviour of your actor
-/// consider using the `start` function.
-///
+/// Starts an actor from a given `Builder`. On failure, `start` returns a `StartError`
 pub fn start(
   builder: Builder(state, msg, return),
 ) -> Result(Started(return), StartError) {
