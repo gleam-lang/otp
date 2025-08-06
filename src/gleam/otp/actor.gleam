@@ -368,6 +368,16 @@ pub fn new_with_initialiser(
   )
 }
 
+/// Set the timeout for a `Builder` in milliseconds. This timeout value
+/// determines how long the actor should await intitialisation before returning 
+/// an error.
+pub fn set_timeout(
+  timeout: Int,
+  builder: Builder(state, message, return)
+) -> Builder(state, message, return) {
+  Builder(..builder, initialisation_timeout: timeout)
+}
+
 /// Set the message handler for the actor. This callback function will be
 /// called each time the actor receives a message.
 ///
