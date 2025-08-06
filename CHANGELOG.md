@@ -3,6 +3,7 @@
 ## v1.1.1 - 2025-08-06
 
 - Updated `actor.start` documentation to reflect current use case.
+- Added `actor.set_timeout` function for setting `Builder` timeout.
 
 ## v1.1.0 - 2025-08-05
 
