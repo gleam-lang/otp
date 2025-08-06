@@ -373,7 +373,7 @@ pub fn new_with_initialiser(
 /// an error.
 pub fn set_timeout(
   timeout: Int,
-  builder: Builder(state, message, return)
+  builder: Builder(state, message, return),
 ) -> Builder(state, message, return) {
   Builder(..builder, initialisation_timeout: timeout)
 }
