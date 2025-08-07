@@ -1,9 +1,5 @@
 # Changelog
 
-## v1.1.1 - 2025-08-06
-
-- Updated `actor.start` documentation to reflect current use case.
-
 ## v1.1.0 - 2025-08-05
 
 - The `call` function in the `gleam/otp/actor` module gains the labels
