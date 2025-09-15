@@ -55,6 +55,9 @@ pub type ChildSpecification(data) {
 ///
 /// You should use this unless your process is also a supervisor.
 ///
+/// The default shutdown timeout is 5000ms. This can be changed with the
+/// `timeout` function.
+///
 pub fn worker(
   run start: fn() -> Result(actor.Started(data), actor.StartError),
 ) -> ChildSpecification(data) {
@@ -67,6 +70,8 @@ pub fn worker(
 }
 
 /// A special child that is a supervisor itself.
+///
+/// Supervisor children have an unlimited shutdown time, there is no timeout.
 ///
 pub fn supervisor(
   run start: fn() -> Result(actor.Started(data), actor.StartError),
