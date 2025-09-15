@@ -5,6 +5,10 @@ description = "Fault tolerant multi-core programs with OTP, the BEAM actor frame
 
 gleam = ">= 1.11.0"
 
+internal_modules = [
+  "gleam/otp/internal/*"
+]
+
 repository = { type = "github", user = "gleam-lang", repo = "otp" }
 links = [
   { title = "Website", href = "https://gleam.run" },

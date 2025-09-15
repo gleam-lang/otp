@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.0 - Unreleased
+
+- The `gleam/otp/factory_supervisor` module has been added, for supervision of
+  dynamically started processes.
+
 ## v1.1.0 - 2025-08-05
 
 - The `call` function in the `gleam/otp/actor` module gains the labels

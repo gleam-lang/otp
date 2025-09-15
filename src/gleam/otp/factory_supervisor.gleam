@@ -1,0 +1,329 @@
+//// A supervisor where child processes are started dynamically using a
+//// pre-specified template.
+////
+//// This is analogous to the `simple_one_for_one` supervisor in Erlang/OTP.
+////
+//// When the supervisor is shut down it shuts down all its children
+//// concurrently and in no specified order.
+////
+//// For further detail see the Erlang documentation:
+//// <https://www.erlang.org/doc/apps/stdlib/supervisor.html>.
+
+// TODO: name registration
+// TODO: usage example
+
+import gleam/dynamic.{type Dynamic}
+import gleam/erlang/atom.{type Atom}
+import gleam/erlang/process.{type Pid}
+import gleam/otp/actor
+import gleam/otp/internal/result2.{type Result2}
+import gleam/otp/supervision.{type ChildSpecification}
+import gleam/string
+
+const default_intensity = 2
+
+const default_period = 5
+
+const default_restart_strategy = supervision.Transient
+
+/// A reference to the running supervisor
+///
+/// This supervisor wrap Erlang/OTP's `supervisor` module, and as such it does
+/// not use subjects for message sending. If it was implemented in Gleam a
+/// subject might be used instead of this type.
+///
+pub opaque type Supervisor(child_argument, child_data) {
+  Supervisor(pid: Pid)
+  NamedSupervisor(name: process.Name(Message(child_argument, child_data)))
+}
+
+pub type Message(child_argument, child_data)
+
+/// Get a reference to a supervisor using its registered name.
+///
+/// If no supervisor has been started using this name then functions
+/// using this reference will fail.
+///
+/// # Panics
+///
+/// If no living process exists with this name when this function is called
+/// then this function will panic.
+///
+/// If no living supervisor exists with this name then functions
+/// using this reference will fail.
+///
+pub fn get_by_name(
+  name: process.Name(Message(child_argument, child_data)),
+) -> Supervisor(child_argument, child_data) {
+  case process.named(name) {
+    Ok(_) -> NamedSupervisor(name)
+    Error(_) -> {
+      // TODO: use name_to_atom -> atom_to_string when these functions exist
+      let name = string.inspect(name)
+      panic as { "No supervisor found with name " <> name }
+    }
+  }
+}
+
+/// A builder for configuring and starting a supervisor. See each of the
+/// functions that take this type for details of the configuration possible.
+///
+pub opaque type Builder(child_argument, child_data) {
+  Builder(
+    child_type: supervision.ChildType,
+    template: fn(child_argument) -> actor.StartResult(child_data),
+    restart_strategy: supervision.Restart,
+    intensity: Int,
+    period: Int,
+  )
+}
+
+/// Configure a supervisor with a child-starting template function.
+///
+/// You should use this unless the child processes are also supervisors.
+///
+/// The default shutdown timeout is 5000ms. This can be changed with the
+/// `timeout` function.
+///
+pub fn worker_child(
+  template: fn(child_argument) -> actor.StartResult(child_data),
+) -> Builder(child_argument, child_data) {
+  Builder(
+    template:,
+    child_type: supervision.Worker(5000),
+    restart_strategy: default_restart_strategy,
+    intensity: default_intensity,
+    period: default_period,
+  )
+}
+
+/// Configure a supervisor with a template that will start children that are
+/// also supervisors.
+///
+/// You should only use this if the child processes are also supervisors.
+///
+/// Supervisor children have an unlimited amount of time to shutdown, there is
+/// no timeout.
+///
+pub fn supervisor_child(
+  template: fn(child_argument) -> actor.StartResult(child_data),
+) -> Builder(child_argument, child_data) {
+  Builder(
+    template:,
+    child_type: supervision.Supervisor,
+    restart_strategy: default_restart_strategy,
+    intensity: default_intensity,
+    period: default_period,
+  )
+}
+
+/// To prevent a supervisor from getting into an infinite loop of child
+/// process terminations and restarts, a maximum restart tolerance is
+/// defined using two integer values specified with keys intensity and
+/// period in the above map. Assuming the values MaxR for intensity and MaxT
+/// for period, then, if more than MaxR restarts occur within MaxT seconds,
+/// the supervisor terminates all child processes and then itself. The
+/// termination reason for the supervisor itself in that case will be
+/// shutdown. 
+///
+/// Intensity defaults to 2 and period defaults to 5.
+///
+pub fn restart_tolerance(
+  builder: Builder(child_argument, child_data),
+  intensity intensity: Int,
+  period period: Int,
+) -> Builder(child_argument, child_data) {
+  Builder(..builder, intensity: intensity, period: period)
+}
+
+/// Configure the amount of milliseconds a child has to shut down before
+/// being brutal killed by the supervisor.
+///
+/// If not set the default for a child is 5000ms.
+///
+/// This will be ignored if the child is a supervisor itself.
+///
+pub fn timeout(
+  builder: Builder(argument, data),
+  ms ms: Int,
+) -> Builder(argument, data) {
+  case builder.child_type {
+    supervision.Worker(_) ->
+      Builder(..builder, child_type: supervision.Worker(ms))
+    _ -> builder
+  }
+}
+
+/// Configure the strategy for restarting children when they exit. See the
+/// documentation for the `supervision.Restart` for details.
+///
+/// If not set the default strategy is `supervision.Transient`, so children
+/// will be restarted if they terminate abnormally.
+///
+pub fn restart_strategy(
+  builder: Builder(argument, data),
+  restart_strategy: supervision.Restart,
+) -> Builder(argument, data) {
+  case builder.child_type {
+    supervision.Worker(_) -> Builder(..builder, restart_strategy:)
+    _ -> builder
+  }
+}
+
+/// Start a new supervisor process with the configuration and child template
+/// specified within the builder.
+///
+/// Typically you would use the `supervised` function to add your supervisor to
+/// a supervision tree instead of using this function directly.
+///
+/// The supervisor will be linked to the parent process that calls this
+/// function.
+///
+pub fn start(
+  builder: Builder(child_argument, child_data),
+) -> actor.StartResult(Supervisor(child_argument, child_data)) {
+  let flags =
+    make_erlang_start_flags([
+      Strategy(SimpleOneForOne),
+      Intensity(builder.intensity),
+      Period(builder.period),
+    ])
+
+  let module_atom = atom.create("gleam@otp@factory_supervisor")
+  let function_atom = atom.create("start_child_callback")
+  let mfa = #(module_atom, function_atom, [builder.template])
+
+  let #(type_, shutdown) = case builder.child_type {
+    supervision.Supervisor -> #(atom.create("supervisor"), make_timeout(-1))
+    supervision.Worker(ms) -> #(atom.create("worker"), make_timeout(ms))
+  }
+
+  let child =
+    make_erlang_child_spec([
+      Id(0),
+      Start(mfa),
+      Restart(builder.restart_strategy),
+      Type(type_),
+      Shutdown(shutdown),
+    ])
+
+  case erlang_start_link(module_atom, #(flags, [child])) {
+    Ok(pid) -> Ok(actor.Started(pid:, data: Supervisor(pid)))
+    Error(error) -> Error(convert_erlang_start_error(error))
+  }
+}
+
+@external(erlang, "maps", "from_list")
+fn make_erlang_start_flags(
+  flags: List(ErlangStartFlag(data)),
+) -> ErlangStartFlags
+
+type ErlangStartFlags
+
+@external(erlang, "gleam_otp_external", "convert_erlang_start_error")
+fn convert_erlang_start_error(dynamic: Dynamic) -> actor.StartError
+
+@external(erlang, "supervisor", "start_link")
+fn erlang_start_link(
+  module: Atom,
+  args: #(ErlangStartFlags, List(ErlangChildSpec)),
+) -> Result(Pid, Dynamic)
+
+type Strategy {
+  SimpleOneForOne
+}
+
+type ErlangStartFlag(data) {
+  Strategy(Strategy)
+  Intensity(Int)
+  Period(Int)
+}
+
+type ErlangChildSpec
+
+@external(erlang, "maps", "from_list")
+fn make_erlang_child_spec(
+  properties: List(ErlangChildSpecProperty(argument, data)),
+) -> ErlangChildSpec
+
+type ErlangChildSpecProperty(argument, data) {
+  Id(Int)
+  Start(
+    #(
+      Atom,
+      Atom,
+      List(fn(argument) -> Result(actor.Started(data), actor.StartError)),
+    ),
+  )
+  Restart(supervision.Restart)
+  Type(Atom)
+  Shutdown(Timeout)
+}
+
+type Timeout
+
+/// Negative numbers mean an infinite timeout
+@external(erlang, "gleam_otp_external", "make_timeout")
+fn make_timeout(amount: Int) -> Timeout
+
+/// Create a `ChildSpecification` that adds this supervisor as the child of
+/// another, making it fault tolerant and part of the application's supervision
+/// tree. You should prefer to starting unsupervised supervisors with the
+/// `start` function.
+///
+/// If any child fails to start the supevisor first terminates all already
+/// started child processes with reason shutdown and then terminate itself and
+/// returns an error.
+///
+pub fn supervised(
+  builder: Builder(child_argument, child_data),
+) -> ChildSpecification(Supervisor(child_argument, child_data)) {
+  supervision.supervisor(fn() { start(builder) })
+}
+
+/// Start a new child using the supervisor's child template and the given
+/// argument. The start result of the child is returned.
+///
+pub fn start_child(
+  supervisor: Supervisor(child_argument, child_data),
+  argument: child_argument,
+) -> actor.StartResult(child_data) {
+  let start = case supervisor {
+    NamedSupervisor(name:) -> erlang_start_child_name(name, _)
+    Supervisor(pid:) -> erlang_start_child_pid(pid, _)
+  }
+  case start([argument]) {
+    result2.Ok(pid, data) -> Ok(actor.Started(pid, data))
+    result2.Error(reason) -> Error(reason)
+  }
+}
+
+@external(erlang, "supervisor", "start_child")
+fn erlang_start_child_name(
+  supervisor: process.Name(Message(child_argument, child_data)),
+  argument: List(child_argument),
+) -> Result2(Pid, data, actor.StartError)
+
+@external(erlang, "supervisor", "start_child")
+fn erlang_start_child_pid(
+  supervisor: Pid,
+  argument: List(child_argument),
+) -> Result2(Pid, data, actor.StartError)
+
+// Callback used by the Erlang supervisor module.
+@internal
+pub fn init(start_data: Dynamic) -> Result(Dynamic, never) {
+  Ok(start_data)
+}
+
+// Callback used by the Erlang supervisor module.
+@internal
+pub fn start_child_callback(
+  start: fn(argument) -> Result(actor.Started(data), actor.StartError),
+  argument: argument,
+) -> Result2(Pid, data, actor.StartError) {
+  case start(argument) {
+    Ok(started) -> result2.Ok(started.pid, started.data)
+    Error(error) -> result2.Error(error)
+  }
+}

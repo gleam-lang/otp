@@ -1,4 +1,5 @@
-//// Bindings to Erlang/OTP's `supervisor` module.
+//// A supervisor where the number and types of the children are specified
+//// once, and the supervisor manages them using a configured restart strategy.
 ////
 //// For further detail see the Erlang documentation:
 //// <https://www.erlang.org/doc/apps/stdlib/supervisor.html>.
@@ -86,7 +87,7 @@ pub type AutoShutdown {
 /// import app/database_pool
 /// import app/http_server
 /// 
-/// pub fn start_supervisor() ->  {
+/// pub fn start_supervisor() -> actor.StartResult(Supervisor) {
 ///   supervisor.new(supervisor.OneForOne)
 ///   |> supervisor.add(database_pool.supervised())
 ///   |> supervisor.add(http_server.supervised())
@@ -117,7 +118,7 @@ pub fn new(strategy strategy: Strategy) -> Builder {
 }
 
 /// To prevent a supervisor from getting into an infinite loop of child
-/// process terminations and restarts, a maximum restart intensity is
+/// process terminations and restarts, a maximum restart tolerance is
 /// defined using two integer values specified with keys intensity and
 /// period in the above map. Assuming the values MaxR for intensity and MaxT
 /// for period, then, if more than MaxR restarts occur within MaxT seconds,
@@ -125,7 +126,8 @@ pub fn new(strategy strategy: Strategy) -> Builder {
 /// termination reason for the supervisor itself in that case will be
 /// shutdown. 
 ///
-/// Intensity defaults to 1 and period defaults to 5.
+/// Intensity defaults to 2 and period defaults to 5.
+///
 pub fn restart_tolerance(
   builder: Builder,
   intensity intensity: Int,
