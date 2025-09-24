@@ -4,7 +4,7 @@
 ////
 //// One feature of OTP applications that makes them different from packages or
 //// libraries in other languages is that they have the option of defining a
-//// module through which they can be _started_ and _stopped_, and they can
+//// module through which they can be _started_ and _stopped_, and they can be
 //// configured using Erlang's configuration system.
 ////
 //// ## OTP application programs
@@ -19,6 +19,9 @@
 //// should expose functions for Gleam apps to call, passing configuration as
 //// arguments. There may be some libraries for which it makes sense to have
 //// this implicit global mutable state, but they are very rare.
+////
+//// ## Usage
+////
 ////
 
 // TODO: give example of how to use it
@@ -44,7 +47,7 @@ pub opaque type Application(state) {
 // TODO: test
 /// Create a new application recipe from a starter function. This function is
 /// called whenever an application is started, and it starts the supervision tree
-/// the OTP application.
+/// of the OTP application.
 /// 
 /// The `actor.StartResult` data returned from the starter function is used as the 
 /// state of the application and will be passed to the `before_stop` and
@@ -140,7 +143,7 @@ pub fn start(
 /// ```
 ///
 @internal
-pub fn pre_stop(
+pub fn prep_stop(
   state: #(Application(state), state),
 ) -> #(Application(state), state) {
   let #(application, state) = state
