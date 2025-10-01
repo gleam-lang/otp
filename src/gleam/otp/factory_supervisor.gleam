@@ -192,7 +192,6 @@ pub fn supervisor_child(
   )
 }
 
-// TODO: test
 /// Provide a name for the supervisor to be registered with when started,
 /// enabling it be more easily contacted by other processes. This is useful for
 /// enabling processes that can take over from an older one that has exited due
