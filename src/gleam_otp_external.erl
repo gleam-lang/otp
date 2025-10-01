@@ -62,8 +62,8 @@ application_stopped() ->
     ok.
 
 convert_erlang_start_error({already_started, _}) ->
-    {init_failed, "already started"};
+    {init_failed, <<"already started">>};
 convert_erlang_start_error({shutdown, _}) ->
-    {init_failed, "shutdown"};
+    {init_failed, <<"shutdown">>};
 convert_erlang_start_error(Term) ->
     {init_exited, {abnormal, Term}}.
