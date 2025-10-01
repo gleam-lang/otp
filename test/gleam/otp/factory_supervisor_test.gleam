@@ -1,4 +1,3 @@
-import gleam/erlang/charlist
 import gleam/erlang/process.{type Pid, type Subject}
 import gleam/otp/actor
 import gleam/otp/factory_supervisor
@@ -237,17 +236,27 @@ pub fn duplicate_child_test() {
 pub fn named_test() {
   // Create a name
   let name = process.new_name("my_factory")
-  let handle = factory_supervisor.get_by_name(name)
 
   // Create a supervisor
   let subject = process.new_subject()
   let builder =
     factory_supervisor.worker_child(init_notifier_child(subject, _))
     |> factory_supervisor.named(name)
-  let assert Ok(supervisor) = factory_supervisor.start(builder)
+  let assert Ok(actor.Started(pid:, ..)) = factory_supervisor.start(builder)
 
   // Attempting to create another with the same name will fail
   assert factory_supervisor.start(builder)
     == Error(actor.InitFailed("already started"))
-  // TODO: test use of the named supervisor
+
+  // Children can be started via the name
+  let supervisor = factory_supervisor.get_by_name(name)
+  let assert Ok(actor.Started(pid: p1, data: _)) =
+    factory_supervisor.start_child(supervisor, "1")
+  let assert Ok(actor.Started(pid: p2, data: _)) =
+    factory_supervisor.start_child(supervisor, "2")
+  assert process.receive(subject, 10) == Ok(#("1", p1))
+  assert process.receive(subject, 10) == Ok(#("2", p2))
+  assert process.receive(subject, 10) == Error(Nil)
+
+  process.send_exit(pid)
 }
