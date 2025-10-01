@@ -1,16 +1,97 @@
-//// A supervisor where child processes are started dynamically using a
-//// pre-specified template.
-////
-//// This is analogous to the `simple_one_for_one` supervisor in Erlang/OTP.
+//// A supervisor where child processes are started dynamically from a
+//// pre-specified template, so new processes can be created as needed
+//// while the program is running.
 ////
 //// When the supervisor is shut down it shuts down all its children
 //// concurrently and in no specified order.
 ////
-//// For further detail see the Erlang documentation:
+//// For further detail see the Erlang documentation, particularly the parts
+//// about the `simple_one_for_one` restart strategy, which is the Erlang
+//// equivilent of the factory supervisor.
 //// <https://www.erlang.org/doc/apps/stdlib/supervisor.html>.
+////
+//// ## Usage
+////
+//// Add the factory supervisor to your supervision tree using the `supervised`
+//// function and a name created at the start of the program. The `new`
+//// function takes a "template function", which is a function that takes one
+//// argument and starts a linked child process.
+////
+//// You most likely want to give the factory supervisor a name, and to pass
+//// that name to any other processes that will want to cause new child
+//// processes to be started under the factory supervisor. In this example a
+//// web server is used.
+////
+//// ```gleam
+//// import gleam/erlang/process.{type Name}
+//// import gleam/otp/actor.{type StartResult}
+//// import gleam/otp/factory_supervisor as factory
+//// import gleam/otp/static_supervisor as supervisor
+//// import my_app
+//// 
+//// /// This function starts the application's supervision tree.
+//// ///
+//// /// It takes a record as an argument that 
+//// ///
+//// pub fn start_supervision_tree(workers_name: Name(_)) -> StartResult(_) {
+////   // Define a named factory supervisor that can create new child processes
+////   // using the `my_app.start_worker` function.
+////   let worker_factory_supervisor =
+////     factory.new(my_app.start_worker)
+////     |> factory.named(workers_name)
+////     |> factory.supervised
+//// 
+////   // This web server process takes the name, so it can contact the factory
+////   // supervisor to command it to start new processes as needed.
+////   let web_server = my_app.supervised_web_server(workers_name)
+//// 
+////   // Create the top-level static supervisor with the supervisor and web
+////   // server as its children
+////   supervisor.new(supervisor.RestForOne)
+////   |> supervisor.add(worker_factory_supervisor)
+////   |> supervisor.add(web_server)
+////   |> supervisor.start
+//// }
+//// ```
+////
+//// Any process with the name of the factory supervisor can use the
+//// `get_by_name` function to get a reference to the supervisor, and then use
+//// the `start_child` function to have it start new child processes.
+////
+//// Remember! Each process name created with `process.new_name` is unique.
+//// Two names created by calling the function twice are different names, even
+//// if the same string is given as an argument. You must create the name value
+//// at the start of your program and then pass it down into application code
+//// and library code that uses names.
+////
+//// ```gleam
+//// import gleam/http/request.{type Request}
+//// import gleam/http/response.{type Response}
+//// import gleam/otp/factory_supervisor
+//// import my_app
+//// 
+//// /// In our example this function is called each time a HTTP request is 
+//// /// received by the web server.
+//// pub fn handle_request(req: Request(_), workers: Name(_)) -> Response(_) {
+////   // Get a reference to the supervisor using the name
+////   let supervisor = factory_supervisor.get_by_name(workers)
+//// 
+////   // Start a new worker under the supervisor, passing the request path to use
+////   // as the argument for the child-starting template function.
+////   let start_result = factory_supervisor.start_child(supervisor, request.path)
+//// 
+////   // A response is sent to the HTTP client.
+////   // The child starting template function returns a result, with the error case
+////   // being used when children fail to start. Because of this the `start_child`
+////   // function also returns a result, so it must be handled too.
+////   case start_result {
+////     Ok(_) -> response.new(200)
+////     Error(_) -> response.new(500)
+////   }
+//// }
+//// ```
 
-// TODO: name registration
-// TODO: usage example
+// TODO: `named` and `get_by_name`
 
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom.{type Atom}
