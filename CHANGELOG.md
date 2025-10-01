@@ -4,6 +4,8 @@
 
 - The `gleam/otp/factory_supervisor` module has been added, for supervision of
   dynamically started processes.
+- Fixed a bug where `InitFailed` could contain character lists instead of
+  strings.
 
 ## v1.1.0 - 2025-08-05
 

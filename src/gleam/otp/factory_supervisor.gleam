@@ -33,22 +33,23 @@
 //// ///
 //// /// It takes a record as an argument that 
 //// ///
-//// pub fn start_supervision_tree(workers_name: Name(_)) -> StartResult(_) {
+//// pub fn start_supervision_tree(reporters_name: Name(_)) -> StartResult(_) {
 ////   // Define a named factory supervisor that can create new child processes
-////   // using the `my_app.start_worker` function.
-////   let worker_factory_supervisor =
-////     factory.new(my_app.start_worker)
-////     |> factory.named(workers_name)
+////   // using the `my_app.start_reporter_actor` function, which is defined
+////   // elsewhere in the program.
+////   let reporter_factory_supervisor =
+////     factory.worker_child(my_app.start_reporter_actor)
+////     |> factory.named(reporters_name)
 ////     |> factory.supervised
 //// 
 ////   // This web server process takes the name, so it can contact the factory
 ////   // supervisor to command it to start new processes as needed.
-////   let web_server = my_app.supervised_web_server(workers_name)
+////   let web_server = my_app.supervised_web_server(reporters_name)
 //// 
 ////   // Create the top-level static supervisor with the supervisor and web
 ////   // server as its children
 ////   supervisor.new(supervisor.RestForOne)
-////   |> supervisor.add(worker_factory_supervisor)
+////   |> supervisor.add(reporter_factory_supervisor)
 ////   |> supervisor.add(web_server)
 ////   |> supervisor.start
 //// }
@@ -72,12 +73,12 @@
 //// 
 //// /// In our example this function is called each time a HTTP request is 
 //// /// received by the web server.
-//// pub fn handle_request(req: Request(_), workers: Name(_)) -> Response(_) {
+//// pub fn handle_request(req: Request(_), reporters: Name(_)) -> Response(_) {
 ////   // Get a reference to the supervisor using the name
-////   let supervisor = factory_supervisor.get_by_name(workers)
+////   let supervisor = factory_supervisor.get_by_name(reporters)
 //// 
-////   // Start a new worker under the supervisor, passing the request path to use
-////   // as the argument for the child-starting template function.
+////   // Start a new child process under the supervisor, passing the request path 
+////   // to use as the argument for the child-starting template function.
 ////   let start_result = factory_supervisor.start_child(supervisor, request.path)
 //// 
 ////   // A response is sent to the HTTP client.
@@ -91,15 +92,13 @@
 //// }
 //// ```
 
-// TODO: `named` and `get_by_name`
-
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom.{type Atom}
 import gleam/erlang/process.{type Pid}
+import gleam/option
 import gleam/otp/actor
 import gleam/otp/internal/result2.{type Result2}
 import gleam/otp/supervision.{type ChildSpecification}
-import gleam/string
 
 const default_intensity = 2
 
@@ -127,23 +126,15 @@ pub type Message(child_argument, child_data)
 ///
 /// # Panics
 ///
-/// If no living process exists with this name when this function is called
-/// then this function will panic.
-///
-/// If no living supervisor exists with this name then functions
-/// using this reference will fail.
+/// Functions using the `Supervisor` reference returned by this function
+/// will panic if there is no factory supervisor registered with the name
+/// when they are called. Always make sure your supervisors are themselves
+/// supervised.
 ///
 pub fn get_by_name(
   name: process.Name(Message(child_argument, child_data)),
 ) -> Supervisor(child_argument, child_data) {
-  case process.named(name) {
-    Ok(_) -> NamedSupervisor(name)
-    Error(_) -> {
-      // TODO: use name_to_atom -> atom_to_string when these functions exist
-      let name = string.inspect(name)
-      panic as { "No supervisor found with name " <> name }
-    }
-  }
+  NamedSupervisor(name)
 }
 
 /// A builder for configuring and starting a supervisor. See each of the
@@ -156,6 +147,7 @@ pub opaque type Builder(child_argument, child_data) {
     restart_strategy: supervision.Restart,
     intensity: Int,
     period: Int,
+    name: option.Option(process.Name(Message(child_argument, child_data))),
   )
 }
 
@@ -175,6 +167,7 @@ pub fn worker_child(
     restart_strategy: default_restart_strategy,
     intensity: default_intensity,
     period: default_period,
+    name: option.None,
   )
 }
 
@@ -195,7 +188,24 @@ pub fn supervisor_child(
     restart_strategy: default_restart_strategy,
     intensity: default_intensity,
     period: default_period,
+    name: option.None,
   )
+}
+
+// TODO: test
+/// Provide a name for the supervisor to be registered with when started,
+/// enabling it be more easily contacted by other processes. This is useful for
+/// enabling processes that can take over from an older one that has exited due
+/// to a failure.
+///
+/// If the name is already registered to another process then the factory
+/// supervisor will fail to start.
+///
+pub fn named(
+  builder: Builder(child_argument, child_data),
+  name: process.Name(Message(child_argument, child_data)),
+) -> Builder(child_argument, child_data) {
+  Builder(..builder, name: option.Some(name))
 }
 
 /// To prevent a supervisor from getting into an infinite loop of child
@@ -288,7 +298,13 @@ pub fn start(
       Shutdown(shutdown),
     ])
 
-  case erlang_start_link(module_atom, #(flags, [child])) {
+  let configuration = #(flags, [child])
+  let start_result = case builder.name {
+    option.None -> unnamed_start(module_atom, configuration)
+    option.Some(name) -> named_start(Local(name), module_atom, configuration)
+  }
+
+  case start_result {
     Ok(pid) -> Ok(actor.Started(pid:, data: Supervisor(pid)))
     Error(error) -> Error(convert_erlang_start_error(error))
   }
@@ -305,10 +321,21 @@ type ErlangStartFlags
 fn convert_erlang_start_error(dynamic: Dynamic) -> actor.StartError
 
 @external(erlang, "supervisor", "start_link")
-fn erlang_start_link(
+fn unnamed_start(
   module: Atom,
   args: #(ErlangStartFlags, List(ErlangChildSpec)),
 ) -> Result(Pid, Dynamic)
+
+@external(erlang, "supervisor", "start_link")
+fn named_start(
+  name: ErlangSupervisorName(child_argument, child_data),
+  module: Atom,
+  args: #(ErlangStartFlags, List(ErlangChildSpec)),
+) -> Result(Pid, Dynamic)
+
+type ErlangSupervisorName(child_argument, child_data) {
+  Local(process.Name(Message(child_argument, child_data)))
+}
 
 type Strategy {
   SimpleOneForOne
