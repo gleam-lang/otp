@@ -87,15 +87,22 @@ functionality.
 
 ### Supervisor
 
-Supervisors is a process that starts and then supervises a group of processes,
-restarting them if they crash. Supervisors can start other supervisors,
-resulting in a hierarchical process structure called a supervision tree,
-providing fault tolerance to a Gleam application.
+Supervisors are processes that start and then supervise other processes.
+They can restart them if they crash, and terminate them when the application is
+shutting down.
+
+Supervisors can start other supervisors, resulting in a hierarchical process
+structure called a supervision tree, providing fault tolerance and monitoring
+benefits to a Gleam application.
 
 - [gleam/otp/static_supervisor](https://hexdocs.pm/gleam_otp/gleam/otp/static_supervisor.html) documentation.
+- [gleam/otp/factory_supervisor](https://hexdocs.pm/gleam_otp/gleam/otp/factory_supervisor.html) documentation.
 
 ## Limitations and known issues
 
 Actors do not yet support all OTP system messages, so some of the OTP debugging
 APIs may not be fully functional. These unsupported messages are discarded by
 actors.
+
+If find that you have a need for one of the unimplemented system messages, open
+an issue and we will implement support for it.
