@@ -1,4 +1,4 @@
-//// A supervisor where child processes are started dynamically from afacto
+//// A supervisor where child processes are started dynamically from a
 //// pre-specified template, so new processes can be created as needed
 //// while the program is running.
 ////
