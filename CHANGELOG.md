@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.2.0 - Unreleased
+## v1.2.0 - 2025-10-03
 
 - The `gleam/otp/factory_supervisor` module has been added, for supervision of
   processes of a fixed type which are dynamically started while the program is
