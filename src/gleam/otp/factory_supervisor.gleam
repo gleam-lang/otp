@@ -117,6 +117,9 @@ pub opaque type Supervisor(child_argument, child_data) {
   NamedSupervisor(name: process.Name(Message(child_argument, child_data)))
 }
 
+/// The message type of a factory supervisor. This message type is not used
+/// directly, but if you are using a name with a factory supervisor then this
+/// will be the message type of the name.
 pub type Message(child_argument, child_data)
 
 /// Get a reference to a supervisor using its registered name.
