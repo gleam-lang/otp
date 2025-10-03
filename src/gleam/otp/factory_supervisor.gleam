@@ -1,4 +1,4 @@
-//// A supervisor where child processes are started dynamically from a
+//// A supervisor where child processes are started dynamically from afacto
 //// pre-specified template, so new processes can be created as needed
 //// while the program is running.
 ////
@@ -31,7 +31,7 @@
 //// 
 //// /// This function starts the application's supervision tree.
 //// ///
-//// /// It takes a record as an argument that 
+//// /// It takes a name as an argument that is used by the factory supervisor.
 //// ///
 //// pub fn start_supervision_tree(reporters_name: Name(_)) -> StartResult(_) {
 ////   // Define a named factory supervisor that can create new child processes
