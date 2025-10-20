@@ -104,5 +104,5 @@ Actors do not yet support all OTP system messages, so some of the OTP debugging
 APIs may not be fully functional. These unsupported messages are discarded by
 actors.
 
-If find that you have a need for one of the unimplemented system messages, open
+If you find that you have a need for one of the unimplemented system messages, open
 an issue and we will implement support for it.
