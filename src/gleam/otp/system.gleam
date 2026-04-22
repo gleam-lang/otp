@@ -82,7 +82,7 @@ pub fn suspend(pid: Pid) -> Nil {
 @external(erlang, "sys", "resume")
 fn erl_resume(from from: Pid) -> DoNotLeak
 
-/// Request a suspended OTP compatible process to result, causing it to handle
+/// Request a suspended OTP compatible process to resume, causing it to handle
 /// all messages rather than only system messages.
 ///
 /// For more information see the [Erlang documentation][1].
