@@ -4,6 +4,9 @@
 
 - Actors no longer rebuild their receive selector for every message, improving
   the performance of message receiving.
+- The `gleam/otp/static_supervisor` module's `start` function now returns 
+  `InitExited(Abnormal(reason))` holding the supervisor's whole exit reason 
+  instead of `InitFailed("shutdown")`.
 
 ## v1.3.0 - 2026-08-09
 
