@@ -225,8 +225,11 @@ type Self(state, msg) {
     parent: Pid,
     /// The state of this actor, provided by the programmer.
     state: state,
-    /// The selector that actor is currently using to reveive messages. This
-    /// can be changed by the `Next` value returned by the actor's `loop` callback.
+    /// The selector that actor is currently using to receive messages while
+    /// running. This selector includes the programmer's selector plus the
+    /// handlers for system and unexpected messages. The programmer's selector
+    /// can be changed by the `Next` value returned by the actor's `loop`
+    /// callback.
     selector: Selector(Message(msg)),
     /// An opaque value used by the OTP system debug APIs.
     debug_state: DebugState,
@@ -417,27 +420,35 @@ fn receive_message(self: Self(state, msg)) -> Message(msg) {
       |> select_system_messages
 
     // When running we respond to all messages
-    Running ->
-      // The actor needs to handle various different messages:
-      //
-      // - OTP system messages. These are handled by the actor for the
-      //   programmer, they don't need to do anything.
-      // - Messages sent to the subject the actor creates during initialisation
-      //   and returns to the parent.
-      // - Any arbitrary messages the programmer expects the actor to receive.
-      //   For example, messages sent by a pubsub system where it does not
-      //   support using the actor's subject.
-      // - Any unexpected messages.
-      //
-      // We add the handler for unexpected messages first so that the user
-      // supplied selector can override it if desired.
-      process.new_selector()
-      |> process.select_other(Unexpected)
-      |> process.merge_selector(self.selector)
-      |> select_system_messages
+    Running -> self.selector
   }
 
   process.selector_receive_forever(selector)
+}
+
+/// Build the selector the actor receives with while running. This function is
+/// called when the programmer's selector is set or replaced.
+///
+/// The actor needs to handle various different messages:
+///
+/// - OTP system messages. These are handled by the actor for the programmer,
+///   they don't need to do anything.
+/// - Messages sent to the subject the actor creates during initialisation and
+///   returns to the parent.
+/// - Any arbitrary messages the programmer expects the actor to receive. For
+///   example, messages sent by a pubsub system where it does not support
+///   using the actor's subject.
+/// - Any unexpected messages.
+///
+/// We add the handler for unexpected messages first so that the user supplied
+/// selector can override it if desired.
+fn running_selector(
+  selector: Selector(Message(msg)),
+) -> Selector(Message(msg)) {
+  process.new_selector()
+  |> process.select_other(Unexpected)
+  |> process.merge_selector(selector)
+  |> select_system_messages
 }
 
 fn select_system_messages(
@@ -503,7 +514,7 @@ fn loop(self: Self(state, msg)) -> ExitReason {
         Continue(state: state, selector: new_selector) -> {
           let selector = case new_selector {
             None -> self.selector
-            Some(s) -> process.map_selector(s, Message)
+            Some(s) -> running_selector(process.map_selector(s, Message))
           }
           loop(Self(..self, state: state, selector: selector))
         }
@@ -546,7 +557,7 @@ fn initialise_actor(
         Some(selector) -> selector
         None -> process.new_selector() |> process.select(subject)
       }
-      let selector = process.map_selector(selector, Message)
+      let selector = running_selector(process.map_selector(selector, Message))
       // Signal to parent that the process has initialised successfully
       process.send(ack, Ok(return))
       // Start message receive loop

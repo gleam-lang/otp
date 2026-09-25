@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Actors no longer rebuild their receive selector for every message.
+
 ## v1.3.0 - 2026-08-09
 
 - The `gleam/otp/factory_supervisor` module gains the `count_children` function.
