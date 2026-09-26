@@ -22,7 +22,10 @@ pub fn main() {
   assert actor.call(actor.data, 10, Get) == 8
 }
 
-pub fn handle_message(state: Int, message: Message) -> actor.Next(Int, Message) {
+pub fn handle_message(
+  state: Int,
+  message: Message,
+) -> actor.Next(Int, Message) {
   case message {
     Add(i) -> {
       let state = state + i
