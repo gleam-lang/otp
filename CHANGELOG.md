@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Actors no longer rebuild their receive selector for every message.
+- Actors no longer rebuild their receive selector for every message, improving
+  the performance of message receiving.
 
 ## v1.3.0 - 2026-08-09
 
