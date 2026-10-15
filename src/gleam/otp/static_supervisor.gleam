@@ -31,7 +31,7 @@ import gleam/otp/supervision.{type ChildSpecification}
 /// commands to the supervisor to perform certain actions, but today no such
 /// APIs have been exposed.
 ///
-/// This supervisor wrap Erlang/OTP's `supervisor` module, and as such it does
+/// This supervisor wraps Erlang/OTP's `supervisor` module, and as such it does
 /// not use subjects for message sending. If it was implemented in Gleam a
 /// subject might be used instead of this type.
 ///
